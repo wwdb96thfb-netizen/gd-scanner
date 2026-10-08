@@ -136,6 +136,8 @@ h2.sec{font:700 12px/1 var(--body);letter-spacing:.09em;text-transform:uppercase
 input[type=text],input[type=search]{border-radius:9px;padding:11px 12px}
 details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 .note b{color:var(--ink)}
+.flags .why{color:var(--ink);font-style:normal}
+.case .meta.why{color:var(--ink)}
 #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px))}
 .slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:480px){.slots{grid-template-columns:1fr}}
@@ -191,9 +193,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
           <option>Hawksbay</option><option>Rehri</option><option>Lath Basti</option><option>Hassan Shah Mazar</option>
           <option value="other">Other (type it)</option></select>
           <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
-        <label class="f">Seller offering the goods<input type="text" id="f-seller" placeholder="Name of person or firm" maxlength="120"></label>
-        <label class="f">Quantity on offer (kg)<input type="text" id="f-qty" inputmode="decimal" placeholder="If known" maxlength="12"></label>
-        <label class="f">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
+        <label class="f">Note<input type="text" id="f-note" placeholder="Optional: anything odd you noticed" maxlength="300"></label>
       </div>
       <div class="slots">
         <div class="slot">
@@ -214,7 +214,6 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
       <button class="btn wide" id="b-send" disabled>Send for checking</button>
       <p class="status" id="s-scan" role="status"></p>
       </div>
-      <p class="note"><b>One consignment per send.</b> Papers go in the left box, the vehicle in the right box. The vehicle's number is read from its photo. With no signal, photos stay on this phone and upload on their own later.</p>
       <p class="ver" id="ver"></p>
     </section>
 
@@ -271,7 +270,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.5.0';
+var APPV = '1.6.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -415,9 +414,9 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), veh = picked[i].kind === 'veh', tall = !veh && im.naturalHeight >= im.naturalWidth;
       pages.push({ kind: veh ? 'veh' : 'doc', ph: fingerprint(im), view: draw(im, 0, 1, 1000, 0.5), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), location: getLoc(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), offeredKg: parseFloat($('f-qty').value.replace(/,/g, '')) || null, pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
-  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-seller').value = ''; $('f-note').value = ''; $('f-qty').value = '';
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = '';
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
 });
 
@@ -433,7 +432,44 @@ function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q
   else if (p.type === 'veh') { var w = p.veh || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Vehicle, what was read' }));
     box.appendChild(kv([['Number plate', w.reg_no || 'not readable'], ['Type', w.vehicle_type], ['Colour', w.colour], ['Container number', w.container_no], ['Other writing', w.other_text]])); }
   else return null; return box; }
-function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + f.l, text: WORD[f.l] || '' }), h('span', { class: 't', text: f.t }), f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
+// What usually lies behind each flag. Shown under every red and amber flag so the reader knows what to suspect and what else it could be.
+var WHY = {
+  0: 'The photo was blurred, dark, cropped or at an angle.',
+  1: 'A hand-made or edited GD, or the number was misread from an unclear photo.',
+  2: 'A GD put together from parts of different papers, or a misread letter.',
+  3: 'A GD put together from parts of different papers, or a misread digit.',
+  4: 'A back-dated or edited paper.',
+  5: 'The photo was cropped, or the importer details were left out on purpose.',
+  7: 'Goods declared under a cheaper category to pay less duty.',
+  8: 'The origin was declared wrongly, or the paper belongs to other goods.',
+  9: 'Customs found more than was declared, the quantities were edited, or a digit was misread.',
+  10: 'The packaging on paper does not match what was really shipped.',
+  11: 'The importer under-declared and Customs corrected it. Not fraud by itself, but worth asking about.',
+  12: 'Figures edited after printing, or a digit misread from the photo.',
+  13: 'Figures edited after printing, or a digit misread from the photo.',
+  14: 'Figures edited after printing, or a digit misread from the photo.',
+  15: 'Figures edited after printing, or a digit misread from the photo.',
+  16: 'Figures edited after printing, or a digit misread from the photo.',
+  19: 'Papers from another consignment are being shown as cover for these goods.',
+  20: 'Papers from another consignment are being shown as cover for these goods.',
+  21: 'Papers from different shipments mixed together, or a back-dated paper.',
+  22: 'The goods changed hands. A chain of sales invoices back to the importer should exist.',
+  23: 'One GD used to cover more than one load, or the same load was scanned twice.',
+  24: 'The same container number reused on paper, or a misread.',
+  25: 'The GD is being used to move or sell more than was imported.',
+  26: 'One release order shown as cover for more than one load.',
+  27: 'A firm\'s name or NTN used without its knowledge, or a misread.',
+  28: 'An altered copy of a real GD, or a misread digit.',
+  29: 'A forwarded picture was used instead of the paper in hand.',
+  30: 'An old GD kept and reused as cover for new goods.',
+  31: 'The invoice was made up afterwards to match the goods.',
+  32: 'The invoice was made up afterwards, or the seller is not who the papers say.',
+  33: 'The invoice was made up afterwards, or more is being sold than was imported.',
+  34: 'Tax-free goods meant for Gilgit-Baltistan diverted to the rest of the country.',
+  35: 'One GD used for more than one load.',
+  37: 'The number plate was dirty, at an angle or too far away.'
+};
+function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + f.l, text: WORD[f.l] || '' }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
 
 function caseView(c) {
@@ -443,10 +479,12 @@ function caseView(c) {
   var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : v === 'ok' ? 'Clean' : WORD[v];
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
+  var top3 = fl.filter(function (f) { return f.l === 'red'; }).concat(fl.filter(function (f) { return f.l === 'amber'; })).filter(function (f, i, L) { return L.findIndex(function (x) { return x.t === f.t; }) === i; });
+  var reasons = done && top3.length ? 'Why: ' + top3.slice(0, 3).map(function (f) { return f.t; }).join('; ') + (top3.length > 3 ? '; and ' + (top3.length - 3) + ' more' : '') + '.' : '';
   var meta = [c.vehicles && c.vehicles.length ? 'Vehicle ' + c.vehicles.join(', ') : null, g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
-  d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), h('div', { class: 'meta', text: meta })));
+  d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });

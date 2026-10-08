@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 7;
+const VERSION = 8;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -38,7 +38,7 @@ const who = code => { if (!code) return null; if (code === cfg.adminCode) return
 
 function listFor(user) {
   const all = [...index.values()];
-  if (!xcache || xcache.ver !== xver) xcache = { ver: xver, ex: dbFlags(all.filter(m => m.status === 'done').map(m => ({ key: m.id, pages: m.pages, offeredKg: m.offeredKg, hashes: m.hashes, label: m.byName + ', ' + String(m.takenAt || m.receivedAt).slice(0, 10) }))) };
+  if (!xcache || xcache.ver !== xver) xcache = { ver: xver, ex: dbFlags(all.filter(m => m.status === 'done').map(m => ({ key: m.id, pages: m.pages, offeredKg: m.offeredKg || m.invoiceKg, hashes: m.hashes, label: m.byName + ', ' + String(m.takenAt || m.receivedAt).slice(0, 10) }))) };
   const ex = xcache.ex;
   return all.filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = (m.flags || []).concat(ex[m.id] || []);
@@ -124,6 +124,8 @@ async function vet(m) {
     }
   }
   const res = runChecks(pages, { seller: m.seller, takenAt: m.takenAt || m.receivedAt, location: m.location, offeredKg: m.offeredKg });
+  // With no quantity typed in, the quantity on the seller's invoice is what counts towards an oversold GD.
+  m.invoiceKg = pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
   Object.assign(m, { pages, flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, status: 'done', doneAt: new Date().toISOString(), msg: '' });
   save(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
   return true;
