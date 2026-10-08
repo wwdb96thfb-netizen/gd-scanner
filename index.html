@@ -114,6 +114,10 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 .act.red{background:var(--red);color:var(--card)}
 .act.amber{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber)}
 .act.ok{background:var(--green-soft);color:var(--green)}
+#gate{position:fixed;inset:0;z-index:60;background:var(--paper);padding:24px 16px 16px;display:flex;flex-direction:column;justify-content:center;overflow:auto}
+#gate input[type=password],#p-settings input[type=password]{font:600 20px var(--mono);letter-spacing:.3em;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);width:100%;box-sizing:border-box;text-align:center}
+#gate input::placeholder,#p-settings input::placeholder{letter-spacing:0;font:400 14px var(--body)}
+.tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4}.tick input{width:22px;height:22px;flex:none;margin:0}
 .qnote{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber);border-radius:8px;padding:9px 11px;font-size:13px;margin:0}
 .hist{margin:8px 0;font-size:12.5px}.hist b{display:block;margin-bottom:4px}.hist div{padding:5px 0;border-top:1px solid var(--grey-soft)}
 .dec{margin:8px 0;padding:10px;border-radius:8px;background:var(--grey-soft);font-size:13px;display:flex;flex-direction:column;gap:8px}
@@ -203,11 +207,31 @@ details.case>summary.nopic>*{grid-column:1}
     <div class="panel" id="join-form">
       <label class="f">Your name<input type="text" id="j-name" maxlength="40" placeholder="Name and location" autocomplete="name"></label>
       <label class="f">You are<select id="j-role"><option value="field">Post staff: I photograph papers and vehicles</option><option value="admin">Admin: I review everyone's files</option></select></label>
+      <label class="tick"><input type="checkbox" id="j-loc"><span>I agree that this phone's location is recorded with every scan I send. The app does not work without it.</span></label>
       <button class="btn wide" id="b-join">Send request</button>
     </div>
     <div class="empty" id="join-wait" hidden><b>Request sent.</b> An admin has to approve you. Keep this page; it opens by itself once you are approved.</div>
     <p class="status" id="s-join" role="status"></p>
   </section>
+
+  <div id="gate" hidden>
+    <div class="panel" id="g-loc" hidden>
+      <h2 class="sec">Location sharing is required</h2>
+      <p class="note">GD Scanner records where each scan is sent from, so that every check can be tied to its post. Your location is read only at the moment you press Send. The app does not work without it.</p>
+      <label class="tick"><input type="checkbox" id="g-agree"><span>I agree to share this phone's location with every scan.</span></label>
+      <button class="btn wide" id="g-allow">Allow location and continue</button>
+      <p class="status" id="s-gloc" role="status"></p>
+    </div>
+    <div class="panel" id="g-pin" hidden>
+      <h2 class="sec" id="g-title">Enter your PIN</h2>
+      <p class="note" id="g-text"></p>
+      <input type="password" id="g-p1" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="PIN" aria-label="PIN">
+      <input type="password" id="g-p2" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat PIN" aria-label="Repeat PIN">
+      <button class="btn wide" id="g-ok">Continue</button>
+      <p class="status" id="s-gpin" role="status"></p>
+      <button class="btn ghost small" id="g-forgot">Forgot PIN</button>
+    </div>
+  </div>
 
   <div id="main" hidden>
 
@@ -250,10 +274,13 @@ details.case>summary.nopic>*{grid-column:1}
         <input type="search" id="q" placeholder="Search GD number, vehicle, importer, container, seller, person">
       </div>
       <div class="list" id="files"></div>
-      <div id="legal-files"><footer class="legal"><b>GD Scanner</b><span class="lv"></span><span>Specially designed for use by Pakistan Coast Guards</span><span>&copy; 2026 &middot; All rights reserved &middot; Authorised official use only</span></footer></div>
     </section>
 
     <section id="p-people" hidden>
+      <div class="chips" id="grp-chips" style="margin-bottom:14px">
+        <button data-g="sum" aria-pressed="true">Summary</button><button data-g="people" aria-pressed="false" id="chip-people">People</button><button data-g="watch" aria-pressed="false">Watchlist</button><button data-g="values" aria-pressed="false">Values</button><button data-g="alerts" aria-pressed="false">Alerts</button>
+      </div>
+      <div class="grp" data-g="sum">
       <h2 class="sec">Daily summary</h2>
       <div class="panel">
         <label class="f">Day<input type="date" id="sum-day"></label>
@@ -261,6 +288,8 @@ details.case>summary.nopic>*{grid-column:1}
         <div class="row"><button class="btn small" id="b-sumshare">Share summary</button><button class="btn ghost small" id="b-sumcsv">Download as spreadsheet</button></div>
         <p class="note" id="sum-usage"></p>
       </div>
+      </div>
+      <div class="grp" data-g="watch" hidden>
       <h2 class="sec">Watchlist</h2>
       <div class="panel">
         <p class="note">Enter a vehicle number, importer name, NTN, GD number or container number. Any file that matches is marked Critical and the post is told to detain.</p>
@@ -271,6 +300,8 @@ details.case>summary.nopic>*{grid-column:1}
         <button class="btn" id="b-watch">Add to watchlist</button>
         <div class="list" id="watch"></div>
       </div>
+      </div>
+      <div class="grp" data-g="values" hidden>
       <h2 class="sec">Minimum customs values</h2>
       <div class="panel">
         <p class="note">Enter figures from the official valuation rulings. A GD that declares less is flagged. Use an HS code (at least 4 digits) or a word from the goods description.</p>
@@ -281,12 +312,16 @@ details.case>summary.nopic>*{grid-column:1}
         <button class="btn" id="b-value">Add minimum value</button>
         <div class="list" id="values"></div>
       </div>
+      </div>
+      <div class="grp" data-g="alerts" hidden>
       <h2 class="sec">Alerts on your phone</h2>
       <div class="panel">
         <p class="note">While this app is open, admins get an alert here whenever a post receives a Detain result. To be alerted with the app closed, install the free "ntfy" app, tap subscribe, and enter this private topic name. Do not share it.</p>
         <input class="linkbox" type="text" id="alert-topic" readonly aria-label="Alert topic">
       </div>
+      </div>
       <p class="status" id="s-admin" role="status"></p>
+      <div class="grp" data-g="people" hidden>
       <div id="req-box" hidden>
         <h2 class="sec" style="margin-bottom:10px">Waiting for approval</h2>
         <div class="list" id="requests"></div>
@@ -310,19 +345,49 @@ details.case>summary.nopic>*{grid-column:1}
       <h2 class="sec">People with access</h2>
       <p class="note">Post staff upload and see only their own files. Admins see every file and manage people.</p>
       <div class="list" id="people"></div>
+      </div>
+    </section>
+
+    <section id="p-settings" hidden>
+      <h2 class="sec">Your account</h2>
+      <div class="panel"><dl class="kv" id="st-acct"></dl></div>
+      <h2 class="sec">Location</h2>
+      <div class="panel">
+        <p class="note">Location sharing is on. It is recorded with every scan and cannot be switched off inside the app.</p>
+        <button class="btn ghost small" id="b-testloc">Test location now</button>
+        <p class="status" id="s-loc" role="status"></p>
+      </div>
+      <h2 class="sec">PIN</h2>
+      <div class="panel">
+        <p class="note">The PIN is asked every time the app is opened, and again after 5 minutes away. Your link does not work on another phone without it. If you forget it, an admin can reset it from the Admin tab.</p>
+        <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
+        <input type="password" id="c-new" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="New PIN, 4 to 6 digits" aria-label="New PIN">
+        <input type="password" id="c-new2" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat new PIN" aria-label="Repeat new PIN">
+        <div class="row"><button class="btn small" id="b-chpin">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
+        <p class="status" id="s-pin" role="status"></p>
+      </div>
+      <h2 class="sec">What the results mean</h2>
+      <div class="panel">
+        <p class="note"><b>Detain:</b> a critical point failed. Do not release; inform your officer.</p>
+        <p class="note"><b>Hold:</b> figures do not agree. Retake sharp photos and send again; if still red, detain.</p>
+        <p class="note"><b>Ask for documents / Question driver:</b> release only after the papers or answers listed are given.</p>
+        <p class="note"><b>Clear to go:</b> papers are in order. Match goods and vehicle number by eye, then release.</p>
+        <p class="note">After acting, record what you did under "What did you do with this vehicle?" in the file.</p>
+      </div>
       <footer class="legal"><b>GD Scanner</b><span class="lv"></span><span>Specially designed for use by Pakistan Coast Guards</span><span>&copy; 2026 &middot; All rights reserved &middot; Authorised official use only</span></footer>
     </section>
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/></svg><span>Scan</span></button>
       <button role="tab" aria-selected="false" data-p="files" id="t-files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span id="t-files-l">Files</span></button>
       <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>Admin<span class="badge" id="req-badge" hidden></span></span></button>
+      <button role="tab" aria-selected="false" data-p="settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
     </nav>
   </div>
 </div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.0.0';
+var APPV = '2.1.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -369,7 +434,7 @@ async function announced() { if (!cfg.t) return null; try { var r = await fx('ht
 async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
   for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
 function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
-async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
+async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
   S.finding = (async function () {
@@ -381,9 +446,9 @@ async function findServer() {
     return null; })();
   var s = await S.finding; S.finding = null; S.server = s; drawConn(); return s; }
 async function api(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
-  try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
+  try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now() + pinq(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
   catch (e) { S.server = null; drawConn(); throw { net: true }; }
-  if (r.status === 401) { revoked(); drawConn(); throw { code: true }; }
+  if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { pinRejected(); throw { pin: true }; } revoked(); drawConn(); throw { code: true }; }
   if (r.status >= 500) { S.server = null; drawConn(); throw { net: true }; }
   if (!r.ok) throw { status: r.status };
   return r.json(); }
@@ -396,11 +461,12 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
   else { e.className = 'conn wait'; e.textContent = 'The server is not reachable right now. Captures are kept on this phone and upload when it is back.' + held; }
-  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('legal-files').hidden = adm; $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
+  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
 async function refresh() {
+  if (cfg.c && cfg.ph && !cfg.pinSync) { var pr = await pinPost(cfg.ph); if (pr === 'ok') { cfg.pinSync = true; keep('gd.cfg', cfg); } else if (pr === 'wrong' || pr === 'locked') { pinRejected(); return; } }
   try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ();
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
@@ -415,8 +481,8 @@ function detainAlert(list) { var last = load('gd.alert'), max = last || '', hits
   list.forEach(function (c) { if (c.status !== 'done' || !c.doneAt) return; if (c.doneAt > max) max = c.doneAt; if (last && c.doneAt > last && advise(c).a === 'detain') hits.push(c); });
   if (!last) max = max || new Date().toISOString(); keep('gd.alert', max);
   if (hits.length) { toast('DETAIN at ' + (hits[0].location || 'a post') + (hits[0].vehicles && hits[0].vehicles[0] ? ': ' + hits[0].vehicles[0] : '') + (hits.length > 1 ? ' and ' + (hits.length - 1) + ' more' : '')); if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); } }
-function getGPS() { return new Promise(function (res) { if (!navigator.geolocation) return res(null); var done = false, fin = function (v) { if (!done) { done = true; res(v); } }; setTimeout(function () { fin(null); }, 7000);
-  try { navigator.geolocation.getCurrentPosition(function (p) { fin({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }); }, function () { fin(null); }, { enableHighAccuracy: true, timeout: 6500, maximumAge: 120000 }); } catch (e) { fin(null); } }); }
+function getGPS() { return new Promise(function (res) { if (!navigator.geolocation) return res(null); var done = false, fin = function (v) { if (!done) { done = true; res(v); } }; setTimeout(function () { fin(null); }, 16000);
+  try { navigator.geolocation.getCurrentPosition(function (p) { fin({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }); }, function () { fin(null); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 120000 }); } catch (e) { fin(null); } }); }
 async function sync() {
   if (S.syncing || !cfg.c || cfg.pending) return; S.syncing = true;
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
@@ -444,8 +510,8 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 // ---- tabs
 document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListener('click', function () {
   document.querySelectorAll('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
-  ['scan', 'files', 'people'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; });
-  if (b.dataset.p === 'people') { loadPeople(); loadAdmin(); } if (b.dataset.p === 'files') refresh(); }); });
+  ['scan', 'files', 'people', 'settings'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; });
+  if (b.dataset.p === 'people') { loadPeople(); loadAdmin(); } if (b.dataset.p === 'settings') drawSettings(); if (b.dataset.p === 'files') refresh(); }); });
 function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]').click(); }
 
 // ---- capture
@@ -472,12 +538,13 @@ function fingerprint(im) { try { var c = document.createElement('canvas'); c.wid
 function thumbOf(im) { var c = document.createElement('canvas'), d = Math.min(im.naturalWidth, im.naturalHeight); c.width = c.height = 160; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 160, 160); x.drawImage(im, (im.naturalWidth - d) / 2, (im.naturalHeight - d) / 2, d, d, 0, 0, 160, 160); var u = c.toDataURL('image/jpeg', 0.6); c.width = c.height = 0; return u; }
 function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 $('b-send').addEventListener('click', async function () {
-  if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Preparing photos…');
+  if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
+  var gps = await getGPS(); if (!gps) { setStatus('s-scan', 'Location is required with every scan. Turn on Location (GPS) on this phone, allow it for this app, and press Send again.', true); $('b-send').disabled = false; return; }
+  setStatus('s-scan', 'Preparing photos…');
   var pages = [];
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
       pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var gps = await getGPS();
   var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
   picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = '';
@@ -595,7 +662,7 @@ function caseView(c) {
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
   var pic = null;
   if (c.local) { var lp = (c.localPages || []), lt = (lp.filter(function (x) { return x.kind === 'goods'; })[0] || lp.filter(function (x) { return x.kind === 'veh'; })[0] || lp[0] || {}).thumb; if (lt) pic = h('img', { class: 'pic', src: lt, alt: '' }); }
-  else if (S.server && c.nPages) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); }
+  else if (S.server && c.nPages) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); }
   d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
@@ -609,7 +676,7 @@ function caseView(c) {
   if (ok.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: ok.length + ' checks passed' }), flagList(ok)));
   if (sk.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: sk.length + ' not checked' }), flagList(sk)));
   (c.pages || []).forEach(function (p, i) { if (c.local) return; var pv = pageView(p, i); if (pv) body.appendChild(pv); });
-  if (!c.local && c.nPages) { var ph = h('div', { class: 'photos' }); ph.appendChild(h('button', { class: 'btn ghost small', text: 'Show ' + c.nPages + ' photo' + (c.nPages > 1 ? 's' : ''), onclick: function (e) { if (!S.server) { e.currentTarget.textContent = 'Photos need the server. Try again later'; return; } e.currentTarget.remove(); for (var n = 0; n < c.nPages; n++) ph.appendChild(h('img', { src: S.server + '/api/photo/' + c.id + '/' + n + '?code=' + encodeURIComponent(cfg.c) + '&_=' + c.id, alt: 'Page ' + (n + 1), loading: 'lazy' })); } })); body.appendChild(ph); }
+  if (!c.local && c.nPages) { var ph = h('div', { class: 'photos' }); ph.appendChild(h('button', { class: 'btn ghost small', text: 'Show ' + c.nPages + ' photo' + (c.nPages > 1 ? 's' : ''), onclick: function (e) { if (!S.server) { e.currentTarget.textContent = 'Photos need the server. Try again later'; return; } e.currentTarget.remove(); for (var n = 0; n < c.nPages; n++) ph.appendChild(h('img', { src: S.server + '/api/photo/' + c.id + '/' + n + '?code=' + encodeURIComponent(cfg.c) + pinq() + '&_=' + c.id, alt: 'Page ' + (n + 1), loading: 'lazy' })); } })); body.appendChild(ph); }
   if (adm && !c.local) { var bar = h('div', { class: 'row' });
     var again = h('button', { class: 'btn ghost small', text: 'Read again', onclick: async function () { again.disabled = true; try { await api('/api/retry/' + c.id, { method: 'POST' }); refresh(); } catch (e) { again.disabled = false; } } });
     var ask = h('button', { class: 'btn danger small', text: 'Delete this file', onclick: function () { ask.hidden = true; yes.hidden = false; no.hidden = false; } });
@@ -665,7 +732,7 @@ async function loadPeople(quiet) { try { var j = await api('/api/people'), befor
   catch (e) { if (!quiet) setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
 function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.requests || []).length, sig = JSON.stringify([S.people, S.requests, S.joinKey, S.server]);
   if (sig === S.peopleSig) return; S.peopleSig = sig; box.textContent = ''; rq.textContent = '';
-  $('req-box').hidden = !n; $('req-badge').hidden = !n; $('req-badge').textContent = n; $('join-link').value = S.joinKey ? joinLink() : '';
+  $('req-box').hidden = !n; $('req-badge').hidden = !n; $('req-badge').textContent = n; $('chip-people').textContent = 'People' + (n ? ' (' + n + ')' : ''); $('join-link').value = S.joinKey ? joinLink() : '';
   (S.requests || []).forEach(function (r) { var act = async function (action, role) { try { await api('/api/requests/' + r.id, { method: 'POST', body: JSON.stringify({ action: action, role: role }) }); loadPeople(); } catch (e) { setStatus('s-people', 'Could not save. The server must be reachable.', true); } };
     rq.appendChild(h('div', { class: 'person' }, h('b', { text: r.name }), h('span', { class: 'note', text: 'Asked to join as ' + (r.role === 'admin' ? 'an admin' : 'post staff') + ' · ' + when(r.at) }),
       h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as post staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as admin', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
@@ -675,7 +742,7 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
     var role = h('button', { class: 'btn ghost small', text: adm ? 'Make post staff' : 'Make admin', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: adm ? 'field' : 'admin' }) }); loadPeople(); } catch (e) {} } });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
     var yes = h('button', { class: 'btn danger small', text: 'Yes, cancel this link', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
-    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Post staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, ask, yes))); }); }
+    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Post staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.pin ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); }); }
 $('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
 $('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Scanner: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
 $('join-link').addEventListener('focus', function (e) { e.target.select(); });
@@ -683,6 +750,8 @@ $('join-link').addEventListener('focus', function (e) { e.target.select(); });
 // ---- asking to join
 function randCode() { var A = 'abcdefghjkmnpqrstuvwxyz23456789', a = new Uint8Array(20), s = ''; crypto.getRandomValues(a); for (var i = 0; i < 20; i++) s += A[a[i] % A.length]; return s; }
 $('b-join').addEventListener('click', async function () { var name = $('j-name').value.trim(); if (!name) { setStatus('s-join', 'Type your name first.', true); return; }
+  if (!$('j-loc').checked) { setStatus('s-join', 'Tick the box to agree to location sharing. The app does not work without it.', true); return; }
+  setStatus('s-join', 'Checking location…'); if (!(await getGPS())) { setStatus('s-join', 'Location could not be read. Turn on Location (GPS), allow it for this app, and try again.', true); return; } locOK = true; keep('gd.locok', 1);
   $('b-join').disabled = true; setStatus('s-join', 'Looking for the server…');
   try { var f = await findWith(cfg.j); if (!f.url) throw 0; var code = cfg.c || randCode();
     var r = await fx(f.url + '/api/join', { method: 'POST', headers: { 'x-join': cfg.j, 'content-type': 'application/json' }, body: JSON.stringify({ name: name, role: $('j-role').value, code: code }) }, 15000);
@@ -697,7 +766,45 @@ setInterval(checkApproval, 10000);
 
 // ---- start
 $('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Scanner link.', true); });
-function start() { var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
+// ---- location consent and PIN lock
+var locOK = !!load('gd.locok');
+function pinq() { return cfg.ph ? '&pin=' + cfg.ph : ''; }
+async function sha(t) { var b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+function gate() { var ready = !!cfg.c && !cfg.pending, needLoc = ready && !locOK, needPin = ready && !needLoc && !S.unlocked;
+  $('gate').hidden = !(needLoc || needPin); $('g-loc').hidden = !needLoc; $('g-pin').hidden = !needPin;
+  if (needPin) { var fresh = !cfg.ph; $('g-title').textContent = fresh ? 'Set your PIN' : 'Enter your PIN'; $('g-p2').hidden = !fresh; $('g-forgot').hidden = fresh;
+    $('g-text').textContent = fresh ? 'Choose a PIN of 4 to 6 digits and remember it. It is asked every time you open the app. If you already chose a PIN for this link on another phone, enter that same PIN in both boxes.' : 'Enter your PIN to open GD Scanner.'; } }
+function pinRejected() { if (cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); } if (S.unlocked !== false || $('gate').hidden) { S.unlocked = false; gate(); setStatus('s-gpin', 'The server did not accept the PIN on this phone. Enter the PIN for this link.', true); } }
+async function pinPost(H, old) { var s = S.server || await findServer(); if (!s) return 'net';
+  try { var r = await fx(s + '/api/pin?_=' + Date.now() + (old ? '&pin=' + old : ''), { method: 'POST', headers: { 'x-code': cfg.c, 'content-type': 'application/json' }, body: JSON.stringify({ pin: H }) }, 10000);
+    if (r.ok) return 'ok'; if (r.status === 404) return 'old'; if (r.status === 401) { var j = await r.json().catch(function () { return {}; }); return j.error === 'pin' ? (j.locked ? 'locked' : 'wrong') : 'code'; } return 'net'; } catch (e) { return 'net'; } }
+function unlock() { S.unlocked = true; $('g-p1').value = ''; $('g-p2').value = ''; setStatus('s-gpin', ''); gate(); refresh(); sync(); }
+$('g-allow').addEventListener('click', function () { if (!$('g-agree').checked) { setStatus('s-gloc', 'Tick the box first.', true); return; } if (!navigator.geolocation) { setStatus('s-gloc', 'This phone or browser cannot share location.', true); return; }
+  setStatus('s-gloc', 'Asking the phone for its location…');
+  navigator.geolocation.getCurrentPosition(function () { locOK = true; keep('gd.locok', 1); setStatus('s-gloc', ''); gate(); }, function (e) { setStatus('s-gloc', e && e.code === 1 ? 'Location is blocked for this app. Open the phone Settings, allow Location for this app or browser, then press the button again.' : 'Could not get a location. Turn on Location (GPS), step into the open, and press the button again.', true); }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 600000 }); });
+$('g-ok').addEventListener('click', async function () { var p = $('g-p1').value; if (!/^\d{4,6}$/.test(p)) { setStatus('s-gpin', 'The PIN is 4 to 6 digits.', true); return; }
+  var H = await sha(cfg.c + ':' + p);
+  if (cfg.ph) { if (H === cfg.ph) unlock(); else { $('g-p1').value = ''; setStatus('s-gpin', 'Wrong PIN.', true); } return; }
+  if (p !== $('g-p2').value) { setStatus('s-gpin', 'The two PINs do not match.', true); return; }
+  $('g-ok').disabled = true; setStatus('s-gpin', 'Checking…'); var r = await pinPost(H); $('g-ok').disabled = false;
+  if (r === 'wrong') { setStatus('s-gpin', 'This link already has a different PIN. Enter that PIN, or ask an admin to reset it.', true); return; }
+  if (r === 'locked') { setStatus('s-gpin', 'Too many wrong tries. Wait 15 minutes, or ask an admin to reset the PIN.', true); return; }
+  if (r === 'code') { revoked(); drawConn(); return; }
+  cfg.ph = H; cfg.pinSync = r === 'ok'; keep('gd.cfg', cfg); unlock(); });
+$('g-forgot').addEventListener('click', function () { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); gate(); setStatus('s-gpin', 'Ask an admin to reset your PIN in the Admin tab, then choose a new one here.'); });
+document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
+function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {};
+  [['Name', me.name || '—'], ['Role', me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Post', getLoc() || 'Not chosen yet (choose on the Scan tab)'], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); box.appendChild(h('dd', { text: r[1] })); }); }
+$('b-testloc').addEventListener('click', async function () { setStatus('s-loc', 'Reading location…'); var g = await getGPS(); setStatus('s-loc', g ? 'Location is working' + (g.acc ? ', accurate to about ' + Math.round(g.acc) + ' metres.' : '.') : 'Location could not be read. Turn on Location (GPS) and allow it for this app.', !g); });
+$('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
+$('b-chpin').addEventListener('click', async function () { var o = $('c-old').value, n = $('c-new').value;
+  if (!cfg.ph || (await sha(cfg.c + ':' + o)) !== cfg.ph) { setStatus('s-pin', 'The current PIN is wrong.', true); return; }
+  if (!/^\d{4,6}$/.test(n)) { setStatus('s-pin', 'The new PIN must be 4 to 6 digits.', true); return; } if (n !== $('c-new2').value) { setStatus('s-pin', 'The two new PINs do not match.', true); return; }
+  var H = await sha(cfg.c + ':' + n), r = await pinPost(H, cfg.ph);
+  if (r !== 'ok') { setStatus('s-pin', 'The PIN could not be changed. The server must be reachable and up to date.', true); return; }
+  cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); setStatus('s-pin', 'PIN changed.'); });
+document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); }); });
+function start() { var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); gate(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
 document.querySelectorAll('.legal .lv').forEach(function (e) { e.textContent = 'Version ' + APPV; });
 // ---- automatic update: when a newer version is published, reload onto it at a quiet moment
 async function checkUpdate() { if (navigator.onLine) { try { var r = await fx('index.html?_=' + Date.now(), {}, 10000); if (r.ok) { var m = (await r.text()).match(/var APPV = '([^']+)'/); if (m && m[1] !== APPV) S.newV = m[1]; } } catch (e) {} } applyUpdate(); }

@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 15;
+const VERSION = 16;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -24,6 +24,7 @@ if (!cfg.joinKey) cfg.joinKey = rnd(20);
 if (!Array.isArray(cfg.requests)) cfg.requests = [];
 if (!cfg.alertTopic) cfg.alertTopic = 'gdalert' + rnd(20);
 if (!Array.isArray(cfg.watch)) cfg.watch = [];
+if (!cfg.pins || typeof cfg.pins !== 'object') cfg.pins = {};
 if (!Array.isArray(cfg.values)) cfg.values = [];
 if (!cfg.usage) cfg.usage = { day: '', pages: 0, lastLimit: null };
 cfg.people.forEach(x => { if (x.role !== 'admin') x.role = 'field'; });
@@ -41,6 +42,7 @@ const ID = /^[a-z0-9-]{8,40}$/, BOOT = rnd(6);
 const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8') === idOf(user.code); if (!create) return false; fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f, idOf(user.code)); return true; };
 // The picture shown on a file's card: the goods if photographed, else any non-paper photo, else the vehicle, else page one.
 const thumbOf = m => { const P = m.pages || [], f = t => P.findIndex(p => p.type === t); for (const t of ['goods', 'other', 'veh']) { if (f(t) >= 0) return f(t); } return 0; };
+const pinFails = new Map();
 const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
 
 // ---- flags that depend on other files or on what the admins have entered: worked out fresh whenever anything changes
@@ -312,6 +314,18 @@ const server = http.createServer(async (req, res) => {
     }
     const presented = req.headers['x-code'] || u.searchParams.get('code'), user = who(presented);
     if (!user) return cfg.requests.some(x => x.code === presented) ? send(res, 403, { error: 'pending' }) : send(res, 401, { error: 'code' });
+    // PIN: each person chooses one on first use. From then on their link alone is not enough; the PIN must come with it.
+    // What is stored and sent is a one-way hash, never the PIN itself.
+    const pinKey = idOf(user.code), sentPin = String(u.searchParams.get('pin') || ''), HEX = /^[a-f0-9]{64}$/;
+    if (user.owner && cfg.pins[pinKey] && fs.existsSync(path.join(ROOT, 'RESET-PIN.txt'))) { delete cfg.pins[pinKey]; saveCfg(); try { fs.unlinkSync(path.join(ROOT, 'RESET-PIN.txt')); } catch (e) {} log('Owner PIN was reset with RESET-PIN.txt'); }
+    const fails = pinFails.get(pinKey) || { n: 0, at: 0 }; if (Date.now() - fails.at > 15 * 60e3) fails.n = 0;
+    if (p[1] === 'pin' && req.method === 'POST') {
+      const b = await body(req), want = String(b.pin || ''); if (!HEX.test(want)) return send(res, 400, { error: 'form' });
+      if (cfg.pins[pinKey] && (fails.n >= 8 || (cfg.pins[pinKey] !== want && cfg.pins[pinKey] !== sentPin))) { fails.n++; fails.at = Date.now(); pinFails.set(pinKey, fails); log('Wrong PIN for', user.name); return send(res, 401, { error: 'pin', locked: fails.n >= 8 }); }
+      if (cfg.pins[pinKey] !== want) { cfg.pins[pinKey] = want; saveCfg(); log(user.name, 'set a PIN'); } pinFails.delete(pinKey);
+      return send(res, 200, { ok: true });
+    }
+    if (cfg.pins[pinKey] && cfg.pins[pinKey] !== sentPin) return send(res, 401, { error: 'pin' });
     if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {
@@ -379,11 +393,12 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
     if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
-      people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, files: [...index.values()].filter(m => m.by === x.code).length })),
+      people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
       requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
     if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: b.role === 'admin' ? 'admin' : 'field', added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
+    if (p[1] === 'people' && p[2] && p[3] === 'pin' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.pins[idOf(x.code)]; pinFails.delete(idOf(x.code)); saveCfg(); log(user.name, 'reset the PIN of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = b.role === 'admin' ? 'admin' : 'field'; saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);
