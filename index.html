@@ -165,7 +165,8 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
       <div class="form">
         <label class="f">Location<input type="text" id="f-loc" placeholder="Sost, Gilgit, Karachi…" maxlength="80"></label>
         <label class="f">Seller offering the goods<input type="text" id="f-seller" placeholder="Name of person or firm" maxlength="120"></label>
-        <label class="f full">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
+        <label class="f">Quantity on offer (kg)<input type="text" id="f-qty" inputmode="decimal" placeholder="If known" maxlength="12"></label>
+        <label class="f">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
       </div>
       <label class="drop" for="f-files" id="l-files" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>Add photos<small>One photo of each paper. Up to 6 pages.</small></label>
       <input type="file" id="f-files" accept="image/*" multiple hidden>
@@ -173,7 +174,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
       <button class="btn wide" id="b-send" disabled>Send for checking</button>
       <p class="status" id="s-scan" role="status"></p>
       </div>
-      <p class="note"><b>One consignment per send.</b> Photograph the Goods Declaration and the plant quarantine release order. Lay each page flat, fill the frame and avoid shadows. With no signal, photos stay on this phone and upload on their own later.</p>
+      <p class="note"><b>One consignment per send.</b> Photograph the Goods Declaration, the plant quarantine release order and the seller's sales tax invoice. Lay each page flat, fill the frame and avoid shadows. With no signal, photos stay on this phone and upload on their own later.</p>
     </section>
 
     <section id="p-files" hidden>
@@ -215,7 +216,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.0.1';
+var APPV = '1.1.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -284,7 +285,7 @@ async function sync() {
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
-      try { await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify({ id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, pages: it.pages }) });
+      try { await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify({ id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg, pages: it.pages }) });
         await outDel(it.id); S.outbox = S.outbox.filter(function (x) { return x.id !== it.id; }); S.seen[it.id] = 'queued'; }
       catch (e) { it.sending = false; break; } }
   } catch (e) {} finally { S.syncing = false; }
@@ -313,16 +314,18 @@ function drawThumbs() { var t = $('thumbs'); t.textContent = ''; picked.forEach(
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
 function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
+function fingerprint(im) { try { var c = document.createElement('canvas'); c.width = 9; c.height = 8; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 9, 8); var d = x.getImageData(0, 0, 9, 8).data, g = [], hex = ''; for (var i = 0; i < 72; i++) g.push(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114);
+    for (var r = 0; r < 8; r++) { var b = 0; for (var k = 0; k < 8; k++) b = (b << 1) | (g[r * 9 + k] > g[r * 9 + k + 1] ? 1 : 0); hex += ('0' + b.toString(16)).slice(-2); } return hex; } catch (e) { return null; } }
 function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 $('b-send').addEventListener('click', async function () {
   if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Preparing photos…');
   var pages = [];
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), tall = im.naturalHeight >= im.naturalWidth;
-      pages.push({ view: draw(im, 0, 1, 1300, 0.6), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
+      pages.push({ ph: fingerprint(im), view: draw(im, 0, 1, 1300, 0.6), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), location: $('f-loc').value.trim(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), location: $('f-loc').value.trim(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), offeredKg: parseFloat($('f-qty').value.replace(/,/g, '')) || null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
-  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-seller').value = ''; $('f-note').value = '';
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-seller').value = ''; $('f-note').value = ''; $('f-qty').value = '';
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
 });
 
@@ -333,6 +336,8 @@ function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q
     box.appendChild(kv([['GD number', g.machine_no], ['Importer', g.importer], ['NTN', g.ntn], ['STRN', g.strn], ['Exporter', g.exporter], ['Customs office', g.customs_office], ['Container / marks', g.container], ['Packages', g.packages != null ? fmt(g.packages) + ' ' + (g.package_type || '') : null], ['Net weight', g.net_wt_mt != null ? g.net_wt_mt + ' MT' : null], ['Exchange rate', g.exchange_rate], ['CFR value', g.cfr_usd != null ? '$' + fmt(g.cfr_usd) : null], ['Total paid', g.total_paid_pkr != null ? 'Rs ' + fmt(g.total_paid_pkr) : null]].concat((Array.isArray(g.items) ? g.items : []).map(function (it, k) { return ['Item ' + (it.no || k + 1), [it.description, it.hs_code, it.qty_kg != null ? fmt(it.qty_kg) + ' kg' : null, it.unit_assessed != null ? '$' + it.unit_assessed + '/kg' : null].filter(Boolean).join(' · ')]; })))); }
   else if (p.type === 'pq' && q) { box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Plant quarantine release order, what was read' }));
     box.appendChild(kv([['Release order', q.ro_no], ['GD quoted', [q.gd_no, q.gd_date].filter(Boolean).join(' dated ')], ['Importer', q.importer], ['Exporter', q.exporter], ['Goods', q.goods], ['Quantity', q.quantity_kg != null ? fmt(q.quantity_kg) + ' kg' : null], ['Container', q.container], ['Arrived', q.arrival_date], ['Inspected', q.inspection_date], ['Issued', [q.issue_date, q.place_of_issue].filter(Boolean).join(', ')]])); }
+  else if (p.type === 'inv' && p.inv) { var v = p.inv; box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Sales tax invoice, what was read' }));
+    box.appendChild(kv([['Invoice', v.invoice_no], ['Date', v.date], ['Seller', v.seller], ['Seller NTN', v.seller_ntn], ['Buyer', v.buyer], ['Goods', v.description], ['Quantity', v.quantity_kg != null ? fmt(v.quantity_kg) + ' kg' : null], ['GD quoted', v.gd_no]])); }
   else return null; return box; }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + f.l, text: WORD[f.l] || '' }), h('span', { class: 't', text: f.t }), f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
@@ -349,7 +354,7 @@ function caseView(c) {
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
   d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
-  if (c.seller || c.note) body.appendChild(kv([['Seller', c.seller], ['Note', c.note]]));
+  if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   if (hot.length) body.appendChild(flagList(hot));
   var ok = fl.filter(function (f) { return f.l === 'ok'; }), sk = fl.filter(function (f) { return f.l === 'skip'; });
@@ -366,7 +371,7 @@ function caseView(c) {
   return d; }
 
 function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0; box.textContent = '';
-  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note }; });
+  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? c.verdict : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
