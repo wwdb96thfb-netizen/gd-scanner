@@ -127,6 +127,13 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 #gate input[type=password],#p-settings input[type=password]{font:600 20px var(--mono);letter-spacing:.3em;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);width:100%;box-sizing:border-box;text-align:center}
 #gate input::placeholder,#p-settings input::placeholder{letter-spacing:0;font:400 14px var(--body)}
 .tick{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4}.tick input{width:22px;height:22px;flex:none;margin:0}
+#zoom{position:fixed;inset:0;z-index:80;background:#0b0f1a}
+#zoom-in{position:absolute;inset:0;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;display:flex}
+#zoom-img{width:100%;height:auto;margin:auto;display:block;flex:none}
+#zoom.big #zoom-img{width:280%;margin:0}
+#zoom-x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;font:600 14px var(--body);background:#fff;color:#111;border:0;border-radius:999px;padding:9px 16px;cursor:pointer}
+#zoom-tip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:12px;opacity:.8;pointer-events:none}
+.photos img{cursor:zoom-in}
 .qnote{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber);border-radius:8px;padding:9px 11px;font-size:13px;margin:0}
 .hist{margin:8px 0;font-size:12.5px}.hist b{display:block;margin-bottom:4px}.hist div{padding:5px 0;border-top:1px solid var(--grey-soft)}
 .dec{margin:8px 0;padding:10px;border-radius:8px;background:var(--grey-soft);font-size:13px;display:flex;flex-direction:column;gap:8px}
@@ -392,10 +399,11 @@ details.case>summary.nopic>*{grid-column:1}
     </nav>
   </div>
 </div>
+<div id="zoom" hidden><div id="zoom-in"><img id="zoom-img" alt="Enlarged photo"></div><button id="zoom-x" aria-label="Close photo">Close</button><span id="zoom-tip">Tap the photo to enlarge. Drag to move.</span></div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.3';
+var APPV = '2.3.4';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -823,6 +831,11 @@ $('b-chpin').addEventListener('click', async function () { var o = $('c-old').va
   if (r !== 'ok') { setStatus('s-pin', 'The PIN could not be changed. The server must be reachable and up to date.', true); return; }
   cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); setStatus('s-pin', 'PIN changed.'); });
 document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); }); });
+// tap a photo in a file to see it full screen; tap again to enlarge, drag to move
+document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { $('zoom-img').src = t.src; $('zoom').classList.remove('big'); $('zoom').hidden = false; } });
+$('zoom-img').addEventListener('click', function (e) { var z = $('zoom'), box = $('zoom-in'), r = e.target.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; z.classList.toggle('big');
+  if (z.classList.contains('big')) { var n = e.target.getBoundingClientRect(); box.scrollLeft = fx * n.width - box.clientWidth / 2; box.scrollTop = fy * n.height - box.clientHeight / 2; } });
+$('zoom-x').addEventListener('click', function () { $('zoom').hidden = true; $('zoom-img').removeAttribute('src'); });
 // keep the app fitted to the screen: no pinch or double-tap zoom
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
 document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
