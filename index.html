@@ -283,7 +283,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.9.0';
+var APPV = '1.9.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -444,6 +444,9 @@ function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q
     box.appendChild(kv([['Invoice', v.invoice_no], ['Date', v.date], ['Seller', v.seller], ['Seller NTN', v.seller_ntn], ['Buyer', v.buyer], ['Goods', v.description], ['Quantity', v.quantity_kg != null ? fmt(v.quantity_kg) + ' kg' : null], ['GD quoted', v.gd_no]])); }
   else if (p.type === 'veh') { var w = p.veh || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Vehicle, what was read' }));
     box.appendChild(kv([['Number plate', w.reg_no || 'not readable'], ['Type', w.vehicle_type], ['Colour', w.colour], ['Container number', w.container_no], ['Other writing', w.other_text]])); }
+  else if (p.type === 'doc') { var o = p.doc || {}; box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Other document' + (p.what || o.title ? ' (' + (o.title || p.what) + ')' : '') }));
+    box.appendChild(kv([['Document', o.title || p.what], ['Number', o.number], ['Date', o.date], ['Issued by', o.issued_by], ['Names on it', o.parties], ['Goods', o.goods], ['Quantity', o.quantity], ['Vehicle number', o.vehicle_no], ['GD quoted', o.gd_no]])); }
+  else if (p.type === 'goods') { box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Goods' + (p.what ? ' (' + p.what + ')' : '') })); }
   else return null; return box; }
 // What usually lies behind each flag. Shown under every red and amber flag so the reader knows what to suspect and what else it could be.
 var WHY = {
