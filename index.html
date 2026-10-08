@@ -152,7 +152,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 
   <section id="p-setup" hidden>
     <div class="empty"><b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.</div>
-    <label class="f">Your link<input type="text" id="f-link" placeholder="https://…#t=…&c=…" autocapitalize="off" autocomplete="off"></label>
+    <label class="f">Your link<input type="text" id="f-link" placeholder="Paste the whole link here" autocapitalize="off" autocomplete="off"></label>
     <button class="btn" id="b-link">Set up this phone</button>
     <p class="status" id="s-setup" role="status"></p>
   </section>
@@ -215,7 +215,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.0.0';
+var APPV = '1.0.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -226,9 +226,11 @@ function normS(s) { s = String(s || '').trim().replace(/\/+$/, ''); if (!s) retu
 var WORD = { red: 'Doubtful', amber: 'Check', ok: 'Passed', skip: 'Not checked' };
 
 var cfg = load('gd.cfg') || {};
-function takeLink(text) { var i = String(text || '').indexOf('#'); var q = new URLSearchParams(i >= 0 ? text.slice(i + 1) : text); if (!q.get('c')) return false;
+function takeLink(text) { text = String(text || '').trim(); var q = new URLSearchParams(), parts = text.split('#'), qi = parts[0].indexOf('?');
+  [qi >= 0 ? parts[0].slice(qi + 1) : (parts.length === 1 && text.indexOf('=') > 0 && text.indexOf('://') < 0 ? text : ''), parts[1] || ''].forEach(function (seg) { new URLSearchParams(seg).forEach(function (v, k) { q.set(k, v); }); });
+  if (!q.get('c')) return false;
   cfg = { c: q.get('c'), t: q.get('t') || cfg.t || '', s: q.get('s') ? normS(q.get('s')) : (cfg.s || '') }; keep('gd.cfg', cfg); return true; }
-if (location.hash.length > 1 && takeLink(location.hash)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+if ((location.hash.length > 1 || location.search.length > 1) && takeLink(location.href)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 
 var S = { server: null, finding: null, me: load('gd.me'), bad: false, list: load('gd.list') || [], outbox: [], syncing: false, files: [], filter: 'all', people: [], topic: '', tick: 0, seen: {} };
 S.list.forEach(function (c) { S.seen[c.id] = c.status; });
@@ -374,7 +376,7 @@ document.querySelectorAll('#chips button').forEach(function (b) { b.addEventList
 $('q').addEventListener('input', drawFiles);
 
 // ---- people (admin)
-function linkFor(code) { return location.origin + location.pathname + '#t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
+function linkFor(code) { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 async function loadPeople() { try { var j = await api('/api/people'); S.people = j.people; S.topic = j.topic; setStatus('s-people', ''); } catch (e) { setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
 function drawPeople() { var box = $('people'); box.textContent = ''; if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'Nobody added yet. Add a name, then send that person their link.' }));
   S.people.forEach(function (p) { var link = linkFor(p.code), field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });

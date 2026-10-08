@@ -160,7 +160,7 @@ const server = http.createServer(async (req, res) => {
 
 // ---- public address: Cloudflare quick tunnel, announced on a private ntfy topic so phones can find it
 let publicUrl = '', opened = false;
-const link = code => APP_URL + '#t=' + cfg.topic + '&c=' + code + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : '');
+const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : '');
 function writeLinks() {
   const L = ['GD Scanner links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
   cfg.people.forEach(x => { L.push(x.name + ':', link(x.code), ''); });
