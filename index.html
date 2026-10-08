@@ -130,7 +130,7 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 #zoom{position:fixed;inset:0;z-index:80;background:#0b0f1a}
 #zoom-in{position:absolute;inset:0;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;display:flex}
 #zoom-img{width:100%;height:auto;margin:auto;display:block;flex:none}
-#zoom.big #zoom-img{width:280%;margin:0}
+#zoom.big #zoom-img{width:280%;max-width:none;margin:0}
 #zoom-x{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;font:600 14px var(--body);background:#fff;color:#111;border:0;border-radius:999px;padding:9px 16px;cursor:pointer}
 #zoom-tip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:12px;opacity:.8;pointer-events:none}
 .photos img{cursor:zoom-in}
@@ -403,7 +403,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.4';
+var APPV = '2.3.5';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
