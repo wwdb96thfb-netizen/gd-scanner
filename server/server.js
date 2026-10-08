@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 5;
+const VERSION = 6;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -79,7 +79,8 @@ async function readAny(dir, n, kind) {
 }
 function readOnce(dir, n, mode, kind) {
   return new Promise((resolve, reject) => {
-    const files = ['p' + n + '-top.jpg', 'p' + n + '-bottom.jpg'].filter(f => fs.existsSync(path.join(dir, f)));
+    let files = ['p' + n + '-top.jpg', 'p' + n + '-bottom.jpg'].filter(f => fs.existsSync(path.join(dir, f)));
+    if (!files.length && fs.existsSync(path.join(dir, 'p' + n + '-view.jpg'))) files = ['p' + n + '-view.jpg'];   // the sharp copies were already cleared: read the small one
     if (!files.length) return reject(new Error('The photo did not arrive complete. Take it again.'));
     let out = '', err = '', done = false;
     const args = mode === 'A' ? ['-p', promptFor(files, kind), '--output-format', 'json', '--permission-mode', 'dontAsk', '--disallowedTools', 'Bash', '--model', MODEL] : ['-p', promptFor(files, kind), '--output-format', 'json', '--allowedTools', 'Read', '--permission-mode', 'dontAsk', '--model', MODEL];
@@ -147,6 +148,29 @@ async function work() {
   applyUpdate();
 }
 setInterval(work, 30e3);
+
+// ---- saving disk space: the sharp copies are only needed for reading. Once a file is checked and a few days old,
+// they are deleted and only one small photo per page is kept as a record.
+const KEEP_DAYS = +process.env.GD_KEEP_DAYS || 3;
+function shrink(file) { return new Promise(res => { if (process.platform !== 'darwin') return res(); const c = spawn('sips', ['-Z', '1000', '-s', 'format', 'jpeg', '-s', 'formatOptions', '50', file], { stdio: 'ignore' }); c.on('close', () => res()); c.on('error', () => res()); }); }
+let tidying = false;
+async function tidy() {
+  if (tidying) return; tidying = true; let freed = 0, n = 0;
+  try {
+    for (const m of [...index.values()]) {
+      if (m.status !== 'done' || m.slim || !m.doneAt || Date.now() - Date.parse(m.doneAt) < KEEP_DAYS * 864e5) continue;
+      const dir = path.join(CAP, m.id);
+      for (const f of fs.readdirSync(dir)) {
+        const fp = path.join(dir, f), size = fs.statSync(fp).size;
+        if (/-(top|bottom)\.jpg$/.test(f)) { fs.unlinkSync(fp); freed += size; }
+        else if (/-view\.jpg$/.test(f) && size > 180e3) { await shrink(fp); try { freed += size - fs.statSync(fp).size; } catch (e) {} }
+      }
+      m.slim = true; save(m); n++;
+    }
+    if (n) log('Cleared the sharp copies of ' + n + ' checked file(s), freeing about ' + Math.round(freed / 1e6) + ' MB.');
+  } catch (e) { log('tidy error:', e.message); } finally { tidying = false; }
+}
+setInterval(tidy, 6 * 3600e3); setTimeout(tidy, 90e3);
 
 // ---- self-update: fetch the published server files, check them, swap them in when idle, and restart
 const RAW = process.env.GD_UPDATE_URL || 'https://raw.githubusercontent.com/wwdb96thfb-netizen/gd-scanner/main/server/';
