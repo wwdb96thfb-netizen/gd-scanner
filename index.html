@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GD Scanner</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2b3f94">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GD Scanner">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --paper:#f2f4f8; --card:#ffffff; --ink:#18202e; --muted:#586478; --line:#d3dae5;
+  --stamp:#2b3f94; --stamp-soft:#e5e9f7; --on-stamp:#ffffff;
+  --red:#b3261e; --red-soft:#fbe8e6; --amber:#8a5a00; --amber-soft:#fcefd3;
+  --green:#1e6b3a; --green-soft:#e1f2e7; --grey-soft:#e8ecf2;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root{
+  --paper:#10141c; --card:#19202c; --ink:#e8ecf3; --muted:#9aa6b8; --line:#2c3545;
+  --stamp:#9db0ff; --stamp-soft:#222b47; --on-stamp:#10141c;
+  --red:#ff8a80; --red-soft:#3a1c1a; --amber:#f2c063; --amber-soft:#3a2e12;
+  --green:#7fd49b; --green-soft:#15301f; --grey-soft:#232b39; color-scheme:dark } }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+.wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;display:flex;flex-direction:column;gap:16px}
+h1{font:800 24px/1.1 var(--body);margin:0;letter-spacing:-.01em}
+h2{font:700 17px/1.2 var(--body);margin:0}
+.sub{margin:6px 0 0;color:var(--muted)}
+.conn{margin:8px 0 0;font:500 12px/1.4 var(--mono);padding:7px 9px;border-radius:5px;background:var(--grey-soft);color:var(--muted)}
+.conn.ok{background:var(--green-soft);color:var(--green)}
+.conn.bad{background:var(--red-soft);color:var(--red)}
+.conn.wait{background:var(--amber-soft);color:var(--amber)}
+.tabs{display:flex;gap:6px;border-bottom:1px solid var(--line)}
+.tabs button{font:600 14px var(--body);color:var(--muted);background:none;border:0;border-bottom:3px solid transparent;padding:10px 12px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--stamp);border-bottom-color:var(--stamp)}
+section{display:flex;flex-direction:column;gap:14px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form .full{grid-column:1/-1}
+@media (max-width:480px){.form{grid-template-columns:1fr}}
+label.f{display:flex;flex-direction:column;gap:4px;font:600 12px var(--body);color:var(--muted);min-width:0}
+input[type=text],input[type=search]{font:400 16px var(--body);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px;width:100%}
+.btn{font:600 15px var(--body);background:var(--stamp);color:var(--on-stamp);border:1px solid var(--stamp);border-radius:6px;padding:12px 16px;cursor:pointer;text-align:center}
+.btn.ghost{background:transparent;color:var(--stamp)}
+.btn.small{font-size:13px;padding:7px 10px}
+.btn.danger{background:transparent;color:var(--red);border-color:var(--red)}
+.btn:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--stamp);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px}
+.thumbs figure{margin:0;position:relative}
+.thumbs img{width:76px;height:100px;object-fit:cover;border:1px solid var(--line);border-radius:4px;display:block}
+.thumbs button{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;line-height:1;font-size:13px}
+.status{margin:0;font:500 13px/1.4 var(--mono);color:var(--muted);min-height:1.4em}
+.status.bad{color:var(--red)}
+.empty{border:1px dashed var(--line);border-radius:8px;padding:18px;color:var(--muted)}
+.empty b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--muted);align-items:center}
+.pill{display:inline-block;font:500 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:5px 7px;border-radius:3px;white-space:nowrap}
+.pill.red{background:var(--red);color:var(--card)}
+.pill.amber{background:var(--amber-soft);color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+.pill.ok{background:var(--green-soft);color:var(--green)}
+.pill.skip{background:var(--grey-soft);color:var(--muted)}
+.pill.busy{background:var(--stamp-soft);color:var(--stamp)}
+details.case{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--line);border-radius:6px}
+details.case.red{border-left-color:var(--red)}
+details.case.amber{border-left-color:var(--amber)}
+details.case.ok{border-left-color:var(--green)}
+details.case.busy{border-left-color:var(--stamp)}
+details.case>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+details.case>summary::-webkit-details-marker{display:none}
+.case .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.case .gdno{font:500 14px var(--mono);overflow-wrap:anywhere;min-width:0}
+.case .meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.case .body{border-top:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:14px}
+.flags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.flags li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-items:start;padding:9px 10px;border-radius:5px;background:var(--grey-soft)}
+.flags li.red{background:var(--red-soft)}
+.flags li.amber{background:var(--amber-soft)}
+.flags .t{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.flags .d{grid-column:2;font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.flags .n{font:400 11px var(--mono);color:var(--muted)}
+details.more>summary{cursor:pointer;font:600 13px var(--body);color:var(--stamp);padding:4px 0}
+dl.kv{display:grid;grid-template-columns:minmax(96px,34%) 1fr;gap:4px 12px;margin:8px 0 0;font-size:13px}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;min-width:0}
+.photos{display:flex;flex-direction:column;gap:10px}
+.photos img{border:1px solid var(--line);border-radius:4px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font:600 13px var(--body);border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--stamp);border-color:var(--stamp);color:var(--on-stamp)}
+.list{display:flex;flex-direction:column;gap:10px}
+.person{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.person b{font-size:15px}
+.linkbox{font:400 12px var(--mono);width:100%;padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--grey-soft);color:var(--ink)}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:688px;margin:0 auto;background:var(--ink);color:var(--paper);padding:12px 14px;border-radius:6px;font-weight:600;z-index:5}
+.ver{font:400 11px var(--mono);color:var(--muted);text-align:center;margin:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>GD Scanner</h1>
+    <p class="conn" id="conn" role="status">Starting…</p>
+  </header>
+
+  <section id="p-setup" hidden>
+    <div class="empty"><b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.</div>
+    <label class="f">Your link<input type="text" id="f-link" placeholder="https://…#t=…&c=…" autocapitalize="off" autocomplete="off"></label>
+    <button class="btn" id="b-link">Set up this phone</button>
+    <p class="status" id="s-setup" role="status"></p>
+  </section>
+
+  <div id="main" hidden>
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-p="scan">Scan</button>
+      <button role="tab" aria-selected="false" data-p="files" id="t-files">Files</button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden>People</button>
+    </nav>
+
+    <section id="p-scan" style="margin-top:16px">
+      <div class="form">
+        <label class="f">Location<input type="text" id="f-loc" placeholder="Sost, Gilgit, Karachi…" maxlength="80"></label>
+        <label class="f">Seller offering the goods<input type="text" id="f-seller" placeholder="Name of person or firm" maxlength="120"></label>
+        <label class="f full">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
+      </div>
+      <div class="row">
+        <label class="btn ghost" for="f-files" id="l-files" tabindex="0">Add photos</label>
+        <input type="file" id="f-files" accept="image/*" multiple hidden>
+        <button class="btn" id="b-send" disabled>Send for checking</button>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <p class="status" id="s-scan" role="status"></p>
+      <div class="empty"><b>One consignment per send.</b> Add one photo of each paper: the Goods Declaration and the plant quarantine release order. Lay each page flat, fill the frame and avoid shadows. With no signal the photos stay on this phone and upload on their own later.</div>
+    </section>
+
+    <section id="p-files" hidden style="margin-top:16px">
+      <div class="legend">
+        <span class="pill red">Doubtful</span><span class="pill amber">Check</span><span class="pill ok">Clean</span>
+        <span>Red can also come from a blurred photo. Retake before you conclude.</span>
+      </div>
+      <div id="admin-tools" hidden>
+        <div class="chips" id="chips" style="margin-bottom:10px">
+          <button data-f="all" aria-pressed="true">All</button>
+          <button data-f="red" aria-pressed="false">Doubtful</button>
+          <button data-f="amber" aria-pressed="false">Check</button>
+          <button data-f="ok" aria-pressed="false">Clean</button>
+        </div>
+        <input type="search" id="q" placeholder="Search GD number, importer, container, seller, person">
+      </div>
+      <div class="list" id="files"></div>
+    </section>
+
+    <section id="p-people" hidden style="margin-top:16px">
+      <p class="note">Each person gets a personal link. Their uploads are stamped with their name. They see only their own files; you see everything.</p>
+      <div class="row">
+        <label class="f" style="flex:1 1 180px">Name<input type="text" id="f-person" placeholder="Name and location" maxlength="40"></label>
+        <button class="btn" id="b-person" style="align-self:flex-end">Add person</button>
+      </div>
+      <p class="status" id="s-people" role="status"></p>
+      <div class="list" id="people"></div>
+    </section>
+  </div>
+  <p class="ver" id="ver"></p>
+</div>
+<div id="toast" hidden role="status"></div>
+
+<script>
+var APPV = 1;
+var $ = function (id) { return document.getElementById(id); };
+function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
+  for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
+function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function keep(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }); }
+function normS(s) { s = String(s || '').trim().replace(/\/+$/, ''); if (!s) return ''; return /^https?:\/\//.test(s) ? s : 'https://' + s; }
+var WORD = { red: 'Doubtful', amber: 'Check', ok: 'Passed', skip: 'Not checked' };
+
+var cfg = load('gd.cfg') || {};
+function takeLink(text) { var i = String(text || '').indexOf('#'); var q = new URLSearchParams(i >= 0 ? text.slice(i + 1) : text); if (!q.get('c')) return false;
+  cfg = { c: q.get('c'), t: q.get('t') || cfg.t || '', s: q.get('s') ? normS(q.get('s')) : (cfg.s || '') }; keep('gd.cfg', cfg); return true; }
+if (location.hash.length > 1 && takeLink(location.hash)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
+
+var S = { server: null, finding: null, me: load('gd.me'), bad: false, list: load('gd.list') || [], outbox: [], syncing: false, files: [], filter: 'all', people: [], topic: '', tick: 0, seen: {} };
+S.list.forEach(function (c) { S.seen[c.id] = c.status; });
+
+// ---- phone-side waiting list (IndexedDB)
+function idb() { return new Promise(function (res, rej) { var r = indexedDB.open('gd', 1); r.onupgradeneeded = function () { r.result.createObjectStore('outbox', { keyPath: 'id' }); }; r.onsuccess = function () { res(r.result); }; r.onerror = function () { rej(r.error); }; }); }
+function tx(mode, fn) { return idb().then(function (db) { return new Promise(function (res, rej) { var t = db.transaction('outbox', mode), q = fn(t.objectStore('outbox')); t.oncomplete = function () { res(q && q.result); }; t.onerror = function () { rej(t.error); }; t.onabort = function () { rej(t.error); }; }); }); }
+function outPut(x) { return tx('readwrite', function (s) { return s.put(x); }); }
+function outAll() { return tx('readonly', function (s) { return s.getAll(); }).then(function (a) { return a || []; }); }
+function outDel(id) { return tx('readwrite', function (s) { return s.delete(id); }); }
+
+// ---- finding and talking to the server
+function fx(url, opts, ms) { var c = new AbortController(), t = setTimeout(function () { c.abort(); }, ms || 10000); return fetch(url, Object.assign({ signal: c.signal, cache: 'no-store' }, opts)).finally(function () { clearTimeout(t); }); }
+async function ping(url) { try { var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { S.bad = true; return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.bad = false; return true; } catch (e) { return false; } }
+async function findServer() {
+  if (S.server) return S.server; if (S.finding) return S.finding;
+  S.finding = (async function () {
+    if (!navigator.onLine) return null;
+    if (cfg.s && await ping(cfg.s)) return cfg.s;
+    if (cfg.t) { try { var r = await fx('https://ntfy.sh/' + cfg.t + '/json?poll=1&since=12h', {}, 10000), url = null;
+        (await r.text()).split('\n').forEach(function (l) { try { var m = JSON.parse(l); if (m.event === 'message' && /^https:\/\/[a-z0-9.-]+$/.test(m.message || '')) url = m.message; } catch (e) {} });
+        if (url && url !== cfg.s && await ping(url)) { cfg.s = url; keep('gd.cfg', cfg); return url; } } catch (e) {} }
+    return null; })();
+  var s = await S.finding; S.finding = null; S.server = s; drawConn(); return s; }
+async function api(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
+  try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
+  catch (e) { S.server = null; drawConn(); throw { net: true }; }
+  if (r.status === 401) { S.bad = true; drawConn(); throw { code: true }; }
+  if (r.status >= 500) { S.server = null; drawConn(); throw { net: true }; }
+  if (!r.ok) throw { status: r.status };
+  return r.json(); }
+
+function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' capture' + (n > 1 ? 's' : '') + ' waiting on this phone.' : '';
+  if (!cfg.c) { e.className = 'conn'; e.textContent = 'Not set up'; }
+  else if (S.bad) { e.className = 'conn bad'; e.textContent = 'This link is no longer valid. Ask for a new one.' + held; }
+  else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Captures are kept on this phone and upload later.' + held; }
+  else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
+  else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
+  else { e.className = 'conn wait'; e.textContent = 'The server is not reachable right now. Captures are kept on this phone and upload when it is back.' + held; }
+  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('admin-tools').hidden = !adm; $('t-files').textContent = adm ? 'All files' : 'My files'; }
+
+function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
+
+async function refresh() {
+  try { var j = await api('/api/captures'); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me);
+    j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + (c.verdict === 'red' ? 'DOUBTFUL' : c.verdict === 'amber' ? 'needs a check' : 'clean')); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
+    S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
+  drawConn(); drawFiles(); }
+async function sync() {
+  if (S.syncing || !cfg.c) return; S.syncing = true;
+  try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
+    var items = S.outbox.slice();
+    for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
+      try { await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify({ id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, pages: it.pages }) });
+        await outDel(it.id); S.outbox = S.outbox.filter(function (x) { return x.id !== it.id; }); S.seen[it.id] = 'queued'; }
+      catch (e) { it.sending = false; break; } }
+  } catch (e) {} finally { S.syncing = false; }
+  await refresh(); }
+setInterval(function () { if (document.hidden || !cfg.c) return; S.tick++;
+  var pending = S.outbox.length || S.list.some(function (c) { return c.status !== 'done'; });
+  if (pending || S.tick % 6 === 0 || !S.server) { if (S.outbox.length) sync(); else refresh(); } }, 5000);
+window.addEventListener('online', function () { S.server = null; sync(); });
+window.addEventListener('offline', drawConn);
+document.addEventListener('visibilitychange', function () { if (!document.hidden) sync(); });
+
+// ---- tabs
+document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListener('click', function () {
+  document.querySelectorAll('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+  ['scan', 'files', 'people'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; });
+  if (b.dataset.p === 'people') loadPeople(); if (b.dataset.p === 'files') refresh(); }); });
+function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]').click(); }
+
+// ---- capture
+var picked = [];
+$('l-files').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('f-files').click(); } });
+$('f-files').addEventListener('change', function (e) { Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 6) picked.push({ file: f, url: URL.createObjectURL(f) }); }); e.target.value = ''; drawThumbs(); });
+function setStatus(id, msg, bad) { var e = $(id); e.textContent = msg || ''; e.className = 'status' + (bad ? ' bad' : ''); }
+function drawThumbs() { var t = $('thumbs'); t.textContent = ''; picked.forEach(function (f, i) { t.appendChild(h('figure', null, h('img', { src: f.url, alt: 'Page ' + (i + 1) }), h('button', { 'aria-label': 'Remove page ' + (i + 1), text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(i, 1); drawThumbs(); } }))); });
+  $('b-send').disabled = !picked.length; setStatus('s-scan', picked.length ? picked.length + ' page' + (picked.length > 1 ? 's' : '') + ' ready. Up to 6 per consignment.' : ''); }
+function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
+function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
+function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+$('b-send').addEventListener('click', async function () {
+  if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Preparing photos…');
+  var pages = [];
+  for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), tall = im.naturalHeight >= im.naturalWidth;
+      pages.push({ view: draw(im, 0, 1, 1300, 0.6), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
+    catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
+  var item = { id: newId(), takenAt: new Date().toISOString(), location: $('f-loc').value.trim(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), pages: pages };
+  try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-seller').value = ''; $('f-note').value = '';
+  setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
+});
+
+// ---- showing files
+function kv(rows) { var dl = h('dl', { class: 'kv' }); rows.forEach(function (r) { if (r[1] == null || r[1] === '') return; dl.appendChild(h('dt', { text: r[0] })); dl.appendChild(h('dd', { text: String(r[1]) })); }); return dl; }
+function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q = p.pq;
+  if (p.type === 'gd' && g) { box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Goods Declaration, what was read' }));
+    box.appendChild(kv([['GD number', g.machine_no], ['Importer', g.importer], ['NTN', g.ntn], ['STRN', g.strn], ['Exporter', g.exporter], ['Customs office', g.customs_office], ['Container / marks', g.container], ['Packages', g.packages != null ? fmt(g.packages) + ' ' + (g.package_type || '') : null], ['Net weight', g.net_wt_mt != null ? g.net_wt_mt + ' MT' : null], ['Exchange rate', g.exchange_rate], ['CFR value', g.cfr_usd != null ? '$' + fmt(g.cfr_usd) : null], ['Total paid', g.total_paid_pkr != null ? 'Rs ' + fmt(g.total_paid_pkr) : null]].concat((Array.isArray(g.items) ? g.items : []).map(function (it, k) { return ['Item ' + (it.no || k + 1), [it.description, it.hs_code, it.qty_kg != null ? fmt(it.qty_kg) + ' kg' : null, it.unit_assessed != null ? '$' + it.unit_assessed + '/kg' : null].filter(Boolean).join(' · ')]; })))); }
+  else if (p.type === 'pq' && q) { box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Plant quarantine release order, what was read' }));
+    box.appendChild(kv([['Release order', q.ro_no], ['GD quoted', [q.gd_no, q.gd_date].filter(Boolean).join(' dated ')], ['Importer', q.importer], ['Exporter', q.exporter], ['Goods', q.goods], ['Quantity', q.quantity_kg != null ? fmt(q.quantity_kg) + ' kg' : null], ['Container', q.container], ['Arrived', q.arrival_date], ['Inspected', q.inspection_date], ['Issued', [q.issue_date, q.place_of_issue].filter(Boolean).join(', ')]])); }
+  else return null; return box; }
+function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + f.l, text: WORD[f.l] || '' }), h('span', { class: 't', text: f.t }), f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
+function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
+
+function caseView(c) {
+  var adm = !!(S.me && S.me.admin), done = c.status === 'done', v = done ? (c.verdict || 'ok') : 'busy', fl = c.flags || [];
+  var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
+  var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, q = ((c.pages || []).filter(function (p) { return p.type === 'pq'; })[0] || {}).pq || {};
+  var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : 'Unread file')) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
+  var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : v === 'ok' ? 'Clean' : WORD[v];
+  var line = c.local ? (c.sending ? 'Uploading now.' : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
+  var meta = [g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
+  var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
+  d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
+  d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), h('div', { class: 'meta', text: meta })));
+  var body = h('div', { class: 'body' }); d.appendChild(body);
+  if (c.seller || c.note) body.appendChild(kv([['Seller', c.seller], ['Note', c.note]]));
+  var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
+  if (hot.length) body.appendChild(flagList(hot));
+  var ok = fl.filter(function (f) { return f.l === 'ok'; }), sk = fl.filter(function (f) { return f.l === 'skip'; });
+  if (ok.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: ok.length + ' checks passed' }), flagList(ok)));
+  if (sk.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: sk.length + ' not checked' }), flagList(sk)));
+  (c.pages || []).forEach(function (p, i) { if (c.local) return; var pv = pageView(p, i); if (pv) body.appendChild(pv); });
+  if (!c.local && c.nPages) { var ph = h('div', { class: 'photos' }); ph.appendChild(h('button', { class: 'btn ghost small', text: 'Show ' + c.nPages + ' photo' + (c.nPages > 1 ? 's' : ''), onclick: function (e) { if (!S.server) { e.currentTarget.textContent = 'Photos need the server. Try again later'; return; } e.currentTarget.remove(); for (var n = 0; n < c.nPages; n++) ph.appendChild(h('img', { src: S.server + '/api/photo/' + c.id + '/' + n + '?code=' + encodeURIComponent(cfg.c) + '&_=' + c.id, alt: 'Page ' + (n + 1), loading: 'lazy' })); } })); body.appendChild(ph); }
+  if (adm && !c.local) { var bar = h('div', { class: 'row' });
+    var again = h('button', { class: 'btn ghost small', text: 'Read again', onclick: async function () { again.disabled = true; try { await api('/api/retry/' + c.id, { method: 'POST' }); refresh(); } catch (e) { again.disabled = false; } } });
+    var ask = h('button', { class: 'btn danger small', text: 'Delete this file', onclick: function () { ask.hidden = true; yes.hidden = false; no.hidden = false; } });
+    var yes = h('button', { class: 'btn danger small', text: 'Yes, delete for everyone', hidden: '', onclick: async function () { yes.disabled = true; try { await api('/api/capture/' + c.id, { method: 'DELETE' }); refresh(); } catch (e) { yes.disabled = false; yes.textContent = 'Delete failed. Try again'; } } });
+    var no = h('button', { class: 'btn ghost small', text: 'Keep', hidden: '', onclick: function () { ask.hidden = false; yes.hidden = true; no.hidden = true; } });
+    bar.appendChild(again); bar.appendChild(ask); bar.appendChild(yes); bar.appendChild(no); body.appendChild(bar); }
+  return d; }
+
+function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0; box.textContent = '';
+  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note }; });
+  local.concat(S.list).forEach(function (c) {
+    if (adm && !c.local) { var v = c.status === 'done' ? c.verdict : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
+      if (term && JSON.stringify([c.gdNos, c.containers, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
+    n++; box.appendChild(caseView(c)); });
+  if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
+document.querySelectorAll('#chips button').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
+$('q').addEventListener('input', drawFiles);
+
+// ---- people (admin)
+function linkFor(code) { return location.origin + location.pathname + '#t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
+async function loadPeople() { try { var j = await api('/api/people'); S.people = j.people; S.topic = j.topic; setStatus('s-people', ''); } catch (e) { setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
+function drawPeople() { var box = $('people'); box.textContent = ''; if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'Nobody added yet. Add a name, then send that person their link.' }));
+  S.people.forEach(function (p) { var link = linkFor(p.code), field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
+    var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: async function () { try { if (navigator.share) await navigator.share({ title: 'GD Scanner', text: 'Your GD Scanner link, ' + p.name + '. Open it once on your phone:\n' + link }); else { await navigator.clipboard.writeText(link); send.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } } });
+    var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
+    var yes = h('button', { class: 'btn danger small', text: 'Yes, cancel this link', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
+    box.appendChild(h('div', { class: 'person' }, h('b', { text: p.name }), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, ask, yes))); }); }
+$('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) return; try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
+
+// ---- start
+$('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Scanner link.', true); });
+function start() { var ready = !!cfg.c; $('p-setup').hidden = ready; $('main').hidden = !ready; drawConn(); if (ready) { drawFiles(); sync(); } }
+$('ver').textContent = 'GD Scanner app v' + APPV;
+start();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
+</script>
+</body>
+</html>
