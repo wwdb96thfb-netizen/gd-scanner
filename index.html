@@ -114,6 +114,11 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 .act.red{background:var(--red);color:var(--card)}
 .act.amber{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber)}
 .act.ok{background:var(--green-soft);color:var(--green)}
+.qnote{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber);border-radius:8px;padding:9px 11px;font-size:13px;margin:0}
+.hist{margin:8px 0;font-size:12.5px}.hist b{display:block;margin-bottom:4px}.hist div{padding:5px 0;border-top:1px solid var(--grey-soft)}
+.dec{margin:8px 0;padding:10px;border-radius:8px;background:var(--grey-soft);font-size:13px;display:flex;flex-direction:column;gap:8px}
+.dec select,.dec input{font:inherit;padding:8px;border-radius:6px;border:1px solid var(--muted);background:var(--card);color:var(--ink);min-width:0}
+.sum{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}.sum th,.sum td{padding:5px 4px;text-align:right;border-bottom:1px solid var(--grey-soft)}.sum th:first-child,.sum td:first-child{text-align:left}
 .pill.crit{background:var(--ink);color:var(--card)}
 
 /* app shell */
@@ -223,6 +228,7 @@ details.case>summary.nopic>*{grid-column:1}
         <b>Take or choose photos</b><small>Papers, vehicle and goods, in any order. The app sorts them itself.</small></label>
       <input type="file" id="f-files" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
+      <p class="qnote" id="q-note" hidden role="status"></p>
       <button class="btn wide" id="b-send" disabled>Send for checking</button>
       <p class="status" id="s-scan" role="status"></p>
       </div>
@@ -248,6 +254,39 @@ details.case>summary.nopic>*{grid-column:1}
     </section>
 
     <section id="p-people" hidden>
+      <h2 class="sec">Daily summary</h2>
+      <div class="panel">
+        <label class="f">Day<input type="date" id="sum-day"></label>
+        <div id="sum-box"></div>
+        <div class="row"><button class="btn small" id="b-sumshare">Share summary</button><button class="btn ghost small" id="b-sumcsv">Download as spreadsheet</button></div>
+        <p class="note" id="sum-usage"></p>
+      </div>
+      <h2 class="sec">Watchlist</h2>
+      <div class="panel">
+        <p class="note">Enter a vehicle number, importer name, NTN, GD number or container number. Any file that matches is marked Critical and the post is told to detain.</p>
+        <div class="form">
+          <label class="f">Watch for<input type="text" id="w-value" maxlength="60" placeholder="e.g. TKA-123 or a firm name"></label>
+          <label class="f">Reason<input type="text" id="w-note" maxlength="120" placeholder="Optional"></label>
+        </div>
+        <button class="btn" id="b-watch">Add to watchlist</button>
+        <div class="list" id="watch"></div>
+      </div>
+      <h2 class="sec">Minimum customs values</h2>
+      <div class="panel">
+        <p class="note">Enter figures from the official valuation rulings. A GD that declares less is flagged. Use an HS code (at least 4 digits) or a word from the goods description.</p>
+        <div class="form">
+          <label class="f">HS code or goods word<input type="text" id="v-match" maxlength="40" placeholder="e.g. 0802.3200 or walnut"></label>
+          <label class="f">Minimum value, US$ per kg<input type="number" id="v-min" inputmode="decimal" step="0.01" min="0"></label>
+        </div>
+        <button class="btn" id="b-value">Add minimum value</button>
+        <div class="list" id="values"></div>
+      </div>
+      <h2 class="sec">Alerts on your phone</h2>
+      <div class="panel">
+        <p class="note">While this app is open, admins get an alert here whenever a post receives a Detain result. To be alerted with the app closed, install the free "ntfy" app, tap subscribe, and enter this private topic name. Do not share it.</p>
+        <input class="linkbox" type="text" id="alert-topic" readonly aria-label="Alert topic">
+      </div>
+      <p class="status" id="s-admin" role="status"></p>
       <div id="req-box" hidden>
         <h2 class="sec" style="margin-bottom:10px">Waiting for approval</h2>
         <div class="list" id="requests"></div>
@@ -276,14 +315,14 @@ details.case>summary.nopic>*{grid-column:1}
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/></svg><span>Scan</span></button>
       <button role="tab" aria-selected="false" data-p="files" id="t-files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span id="t-files-l">Files</span></button>
-      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>People<span class="badge" id="req-badge" hidden></span></span></button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>Admin<span class="badge" id="req-badge" hidden></span></span></button>
     </nav>
   </div>
 </div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.9.2';
+var APPV = '2.0.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -362,17 +401,28 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
 async function refresh() {
-  try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.ver = j.ver || '';
+  try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ();
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
+    if (j.admin) detainAlert(j.list);
     S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
   drawConn(); drawFiles(); }
+function drawQ() { var q = S.q, e = $('q-note'), msg = '';
+  if (q && q.waitUntil > Date.now()) msg = 'The server has reached its reading limit for now. Checking resumes at about ' + new Date(q.waitUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. You can still send; ' + q.ahead + ' file' + (q.ahead === 1 ? ' is' : 's are') + ' waiting.';
+  else if (q && q.ahead >= 3) msg = 'Server busy: ' + q.ahead + ' files are ahead of yours. Expect a delay of about ' + Math.ceil(q.ahead * 1.5) + ' minutes.';
+  e.textContent = msg; e.hidden = !msg; }
+function detainAlert(list) { var last = load('gd.alert'), max = last || '', hits = [];
+  list.forEach(function (c) { if (c.status !== 'done' || !c.doneAt) return; if (c.doneAt > max) max = c.doneAt; if (last && c.doneAt > last && advise(c).a === 'detain') hits.push(c); });
+  if (!last) max = max || new Date().toISOString(); keep('gd.alert', max);
+  if (hits.length) { toast('DETAIN at ' + (hits[0].location || 'a post') + (hits[0].vehicles && hits[0].vehicles[0] ? ': ' + hits[0].vehicles[0] : '') + (hits.length > 1 ? ' and ' + (hits.length - 1) + ' more' : '')); if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); } }
+function getGPS() { return new Promise(function (res) { if (!navigator.geolocation) return res(null); var done = false, fin = function (v) { if (!done) { done = true; res(v); } }; setTimeout(function () { fin(null); }, 7000);
+  try { navigator.geolocation.getCurrentPosition(function (p) { fin({ lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy }); }, function () { fin(null); }, { enableHighAccuracy: true, timeout: 6500, maximumAge: 120000 }); } catch (e) { fin(null); } }); }
 async function sync() {
   if (S.syncing || !cfg.c || cfg.pending) return; S.syncing = true;
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
-      try { var meta = { id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
+      try { var meta = { id: it.id, takenAt: it.takenAt, gps: it.gps || null, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
         try { have = await api('/api/have/' + it.id); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
         if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
         else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
@@ -395,7 +445,7 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListener('click', function () {
   document.querySelectorAll('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
   ['scan', 'files', 'people'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; });
-  if (b.dataset.p === 'people') loadPeople(); if (b.dataset.p === 'files') refresh(); }); });
+  if (b.dataset.p === 'people') { loadPeople(); loadAdmin(); } if (b.dataset.p === 'files') refresh(); }); });
 function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]').click(); }
 
 // ---- capture
@@ -427,7 +477,8 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
       pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
+  var gps = await getGPS();
+  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
   picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = '';
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
@@ -484,10 +535,14 @@ var WHY = {
   34: 'Tax-free goods meant for Gilgit-Baltistan diverted to the rest of the country.',
   35: 'One GD used for more than one load.',
   37: 'The number plate was dirty, at an angle or too far away.',
+  17: 'Under-invoicing: a low value was declared to pay less duty and tax.',
+  40: 'A repeat offender, or a vehicle used again after an earlier problem.',
+  41: 'An admin asked for this vehicle, firm or number to be stopped.',
+  42: 'The scan was sent from somewhere else, or the wrong post was selected.',
   38: 'A transport or supporting paper from another consignment is being shown with this GD.',
   39: 'The goods were moved to a different vehicle, or the paper belongs to another load.'
 };
-var CRIT = { 7: 1, 8: 1, 19: 1, 20: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 29: 1, 30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, 38: 1, 39: 1 };
+var CRIT = { 7: 1, 8: 1, 19: 1, 20: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 29: 1, 30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, 38: 1, 39: 1, 41: 1 };
 var ACT = { detain: 'Detain', hold: 'Hold', ask: 'Ask for documents', query: 'Question driver', clear: 'Clear to go' };
 function advise(c) {
   var fl = c.flags || [], pg = c.pages || [], has = function (t) { return pg.some(function (p) { return p.type === t; }); };
@@ -512,6 +567,16 @@ function advise(c) {
   if (why.length) return { k: 'amber', a: 'query', head: 'QUESTION THE DRIVER', text: 'Release only after a satisfactory answer on:', items: why, foot: 'If the answer does not satisfy you, hold the vehicle and inform your officer.' };
   return { k: 'ok', a: 'clear', head: 'CLEAR TO GO', text: 'Papers are in order. Match the goods and the vehicle number with the papers by eye, then release.', items: [], foot: '' };
 }
+var DEC = { released: 'Released', held: 'Held', detained: 'Detained', handed: 'Handed to Customs' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
+function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
+  var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); Object.keys(DEC).forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && d.action === k) o.selected = true; sel.appendChild(o); });
+    var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span');
+    var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not save. The server is not reachable.'; } } });
+    [h('b', { text: 'What did you do with this vehicle?' }), sel, rem, btn, msg].forEach(function (x) { box.appendChild(x); }); };
+  if (d) { box.appendChild(h('span', null, h('b', { text: 'Action taken: ' + (DEC[d.action] || d.action) }), h('span', { text: (d.remark ? ' · ' + d.remark : '') + ' · ' + (d.byName || '') + ', ' + when(d.at) }))); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
+  return box; }
+function histBox(c) { var box = h('div', { class: 'hist' }, h('b', { text: 'Other scans of this vehicle: ' + c.history.length + ' file' + (c.history.length > 1 ? 's' : '') }));
+  c.history.slice(0, 8).forEach(function (x) { box.appendChild(h('div', { text: when(x.at) + ' · ' + (x.location || '?') + ' · ' + (RES[x.result] || x.result) + (x.taken ? ' · ' + DEC[x.taken] : '') + (x.gd ? ' · ' + x.gd : '') + (x.why ? ' · ' + x.why : '') })); }); return box; }
 function actBox(a) { return h('div', { class: 'act ' + a.k }, h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
@@ -536,6 +601,9 @@ function caseView(c) {
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   if (adv) body.appendChild(actBox(adv));
+  if (done && !c.local) body.appendChild(decBox(c));
+  if (c.history && c.history.length) body.appendChild(histBox(c));
+  if (adm && !c.local) body.appendChild(h('div', { class: 'meta' }, c.gps ? h('a', { href: 'https://maps.google.com/?q=' + c.gps.lat + ',' + c.gps.lon, target: '_blank', rel: 'noopener', text: 'Where it was sent from (map)' + (c.gps.acc ? ', within ' + c.gps.acc + ' m' : '') }) : h('span', { text: 'Phone location was not shared for this file.' })));
   if (hot.length) body.appendChild(flagList(hot));
   var ok = fl.filter(function (f) { return f.l === 'ok'; }), sk = fl.filter(function (f) { return f.l === 'skip'; });
   if (ok.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: ok.length + ' checks passed' }), flagList(ok)));
@@ -564,6 +632,34 @@ $('q').addEventListener('input', drawFiles);
 function linkFor(code) { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 function joinLink() { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&j=' + (S.joinKey || '') + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 async function shareText(text, btn, field) { try { if (navigator.share) await navigator.share({ title: 'GD Scanner', text: text }); else { await navigator.clipboard.writeText(field.value); btn.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } }
+function dayOf(s) { var d = new Date(s); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function summary() { var day = $('sum-day').value, rows = {}, tot = { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} };
+  S.list.forEach(function (c) { if (c.status !== 'done' || dayOf(c.takenAt || c.receivedAt) !== day) return; var k = c.location || 'No post given', r = rows[k] = rows[k] || { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} }, a = advise(c).a, col = a === 'detain' ? 'detain' : a === 'hold' ? 'hold' : a === 'clear' ? 'clear' : 'ask';
+    [r, tot].forEach(function (x) { x.n++; x[col]++; if (c.decision && (c.decision.action === 'detained' || c.decision.action === 'handed')) x.acted++; x.people[c.byName || '?'] = 1; }); });
+  return { day: day, rows: rows, tot: tot }; }
+function drawSummary() { var s = summary(), box = $('sum-box'); box.textContent = ''; var t = h('table', { class: 'sum' }), tr = h('tr'); ['Post', 'Checked', 'Clear', 'Ask', 'Hold', 'Detain', 'Actually detained'].forEach(function (x) { tr.appendChild(h('th', { text: x })); }); t.appendChild(tr);
+  var line = function (name, r) { var tr = h('tr'); [name, r.n, r.clear, r.ask, r.hold, r.detain, r.acted].forEach(function (x) { tr.appendChild(h('td', { text: String(x) })); }); t.appendChild(tr); };
+  Object.keys(s.rows).sort().forEach(function (k) { line(k, s.rows[k]); }); line('All posts', s.tot);
+  box.appendChild(s.tot.n ? t : h('p', { class: 'note', text: 'No checked files on this day.' })); }
+function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Checked', 'Clear to go', 'Ask or question', 'Hold', 'Detain', 'Actually detained or handed to Customs', 'Staff'].join(',')] : ['GD Scanner summary for ' + s.day];
+  Object.keys(s.rows).sort().concat(['All posts']).forEach(function (k) { var r = k === 'All posts' ? s.tot : s.rows[k], who = Object.keys(r.people).join('; ');
+    L.push(csv ? [s.day, '"' + k.replace(/"/g, '""') + '"', r.n, r.clear, r.ask, r.hold, r.detain, r.acted, '"' + who.replace(/"/g, '""') + '"'].join(',') : k + ': ' + r.n + ' checked, ' + r.clear + ' clear, ' + r.ask + ' ask, ' + r.hold + ' hold, ' + r.detain + ' detain, ' + r.acted + ' actually detained'); });
+  return L.join('\n'); }
+async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf(new Date()); drawSummary();
+  try { var j = await api('/api/admin'); S.adminOk = true; $('alert-topic').value = j.alertTopic || '';
+    $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
+    var wb = $('watch'), vb = $('values'); wb.textContent = ''; vb.textContent = '';
+    var item = function (box, title, sub, path) { var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function () { del.disabled = true; try { await api(path, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (e) { del.disabled = false; } } }); box.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, h('b', { text: title }), h('div', { class: 'meta', text: sub }), del))); };
+    j.watch.forEach(function (w) { item(wb, w.value, (w.note ? w.note + ' · ' : '') + 'by ' + w.by + ', ' + when(w.at), '/api/watch/' + w.id); });
+    j.values.forEach(function (v) { item(vb, v.match + ': minimum $' + v.min + ' per kg', 'by ' + v.by + ', ' + when(v.at), '/api/values/' + v.id); });
+  } catch (e) { if (!e || !e.net) setStatus('s-admin', 'Watchlist, minimum values and alerts appear once the server has updated itself (within about 30 minutes).'); } }
+$('sum-day').addEventListener('change', drawSummary);
+$('b-sumshare').addEventListener('click', async function () { var t = summaryText(false); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Summary copied'); } } catch (e) {} });
+$('b-sumcsv').addEventListener('click', function () { var a = h('a', { href: URL.createObjectURL(new Blob([summaryText(true)], { type: 'text/csv' })), download: 'gd-scanner-' + $('sum-day').value + '.csv' }); document.body.appendChild(a); a.click(); a.remove(); });
+$('b-watch').addEventListener('click', async function () { var v = $('w-value').value.trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) { setStatus('s-admin', 'Enter at least 4 letters or digits to watch for.', true); return; }
+  try { await api('/api/watch', { method: 'POST', body: JSON.stringify({ value: v, note: $('w-note').value }) }); $('w-value').value = ''; $('w-note').value = ''; setStatus('s-admin', ''); toast('Added to watchlist'); S.ver = ''; loadAdmin(); refresh(); } catch (e) { setStatus('s-admin', 'Could not add. The server is not reachable or has not updated yet.', true); } });
+$('b-value').addEventListener('click', async function () { var m = $('v-match').value.trim(), n = parseFloat($('v-min').value); if (m.length < 3 || !(n > 0)) { setStatus('s-admin', 'Enter the HS code or goods word, and a minimum value above zero.', true); return; }
+  try { await api('/api/values', { method: 'POST', body: JSON.stringify({ match: m, min: n }) }); $('v-match').value = ''; $('v-min').value = ''; setStatus('s-admin', ''); toast('Minimum value added'); S.ver = ''; loadAdmin(); refresh(); } catch (e) { setStatus('s-admin', 'Could not add. The server is not reachable or has not updated yet.', true); } });
 async function loadPeople(quiet) { try { var j = await api('/api/people'), before = (S.requests || []).length; S.people = j.people; S.requests = j.requests || []; S.topic = j.topic; S.joinKey = j.joinKey; if (!quiet) setStatus('s-people', '');
     if (quiet && S.requests.length > before) toast(S.requests.length + (S.requests.length === 1 ? ' person is' : ' people are') + ' waiting for approval'); }
   catch (e) { if (!quiet) setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }

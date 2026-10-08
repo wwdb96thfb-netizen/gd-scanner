@@ -47,6 +47,7 @@ function checkGD(g,add){
     if(/^(0[6-9]|1[0-4])/.test(hs)) info.plant=true;
     if(/walnut/.test(desc)&&hs){ var exp=/in\s*-?\s*shell/.test(desc)?'08023100':(/shelled|kern/.test(desc)?'08023200':null);
       if(exp){ hsN++; if(hs.slice(0,8)!==exp) hsP.push(L+': "'+it.description+'" should be '+exp.slice(0,4)+'.'+exp.slice(4)+', GD shows '+it.hs_code); } }
+    else if(hs){ var hr=hsRule(desc); if(hr){ hsN++; if(!hr.hs.some(function(x){ return hs.indexOf(x)===0; })) hsP.push(L+': "'+it.description+'" belongs under '+hr.say+', GD shows '+it.hs_code); } }
     var o=same(it.origin,g.exporter_country); if(o!==null){ orN++; if(!o) orP.push(L+': origin '+it.origin+', exporter in '+g.exporter_country); }
     var q=num(it.qty_kg),ud=num(it.unit_declared),ua=num(it.unit_assessed),td=num(it.total_declared),ta=num(it.total_assessed),cv=num(it.customs_value_assessed_pkr);
     if(q==null) qOk=false; else sQ+=q; if(ta==null) tOk=false; else sT+=ta; if(cv==null) cOk=false; else sC+=cv;
@@ -83,6 +84,37 @@ function checkGD(g,add){
   return info;
 }
 
+// Goods that posts commonly meet, and the HS chapter or heading each belongs under. Heading level only: a wrong heading is a clear mismatch.
+var HS_RULES=[
+  [/\b(betel|areca)\s*nuts?\b/,null,['080280'],'0802.80 (areca nuts)'],
+  [/\balmonds?\b/,/oil|milk|flavou?r|essence/,['080211','080212'],'0802.11 or 0802.12 (almonds)'],
+  [/\bpistachios?\b/,/flavou?r|paste/,['080251','080252'],'0802.51 or 0802.52 (pistachios)'],
+  [/\bcashew/,/shell liquid|flavou?r/,['080131','080132'],'0801.31 or 0801.32 (cashew nuts)'],
+  [/\braisins?\b/,null,['080620'],'0806.20 (dried grapes)'],
+  [/\b(black|green)\s+tea\b/,/whitener|bag paper|machine|filter/,['0902'],'heading 0902 (tea)'],
+  [/\bcardamoms?\b/,null,['0908'],'heading 0908 (cardamom)'],
+  [/\bcumin\b/,null,['0909'],'heading 0909 (cumin)'],
+  [/\bblack\s+pepper\b/,null,['0904'],'heading 0904 (pepper)'],
+  [/\b(used|old|retreaded|second\s*hand)\b.*\b(tyres?|tires?)\b/,/tube|flap|machine|rim\b/,['4012'],'heading 4012 (used or retreaded tyres)'],
+  [/\b(tyres?|tires?)\b/,/tube|flap|machine|rim\b|used|old|retread|second|lever|valve|cord|repair|sealant|inflat|gauge|changer/,['4011'],'heading 4011 (new tyres)'],
+  [/\bcigarettes?\b/,/paper|filter|lighter|case|machine|electronic|holder|tow/,['2402'],'heading 2402 (cigarettes)'],
+  [/\b(mobile|cellular|smart)\s*phones?\b/,/cover|case|charger|accessor|parts?\b|batter|glass|protector|cable|holder|stand|pouch|lcd|screen/,['8517'],'heading 8517 (telephones)'],
+  [/\blaptops?\b|\bnotebook\s+computers?\b/,/bag|charger|adapt|parts?\b|batter|stand|cover|keyboard|screen|sleeve|cooler/,['8471'],'heading 8471 (computers)'],
+  [/\b(led|lcd|smart)\s*(tv|television)s?\b|\btelevision\s+sets?\b/,/parts?\b|panel|remote|stand|bracket|mount|board|kit/,['8528'],'heading 8528 (televisions)'],
+  [/\bsolar\s*(panels?|modules?)\b|\bphotovoltaic\s+(panels?|modules?)\b/,/stand|structure|mount|cable|cleaning|frame/,['8541','8501'],'heading 8541 (solar panels)'],
+  [/\b(used|second\s*hand|worn)\s+(clothing|clothes|garments)\b/,null,['6309'],'heading 6309 (worn clothing)'],
+  [/\bfabrics?\b|\bcloth\b/,/used|worn|clothing|clothes|glass|wire|metal|emery|abrasive|softener|dye|machine|cutter|filter/,['50','51','52','53','54','55','56','57','58','59','60'],'chapters 50 to 60 (textile fabrics)'],
+  [/\bmotor\s*cycles?\b|\bmotor\s*bikes?\b/,/parts?\b|helmet|tyre|tire|chain|batter|oil|cover|accessor/,['8711'],'heading 8711 (motorcycles)'],
+  [/\bsugar\b/,/free|confection|candy|machine|mill|cane juice|substitute|bag|sachet/,['1701','1702'],'heading 1701 or 1702 (sugar)'],
+  [/\brice\b/,/machine|cooker|bran|paper|husk|mill|flour|bag/,['1006'],'heading 1006 (rice)'],
+  [/\bpalm\s+(oil|olein)\b/,/soap|fatty acid/,['1511'],'heading 1511 (palm oil)'],
+  [/\bsoya?\s*bean\s+oil\b/,null,['1507'],'heading 1507 (soyabean oil)'],
+  [/\burea\b/,/formaldehyde|resin|moulding/,['3102'],'heading 3102 (nitrogen fertiliser)'],
+  [/\bdiesel\b/,/engine|generator|pump|filter|parts?\b|injector|nozzle|loader|truck|vehicle|additive/,['2710'],'heading 2710 (petroleum oils)'],
+  [/\bblankets?\b/,/electric|fire|insulation/,['6301'],'heading 6301 (blankets)'],
+  [/\b(footwear|shoes)\b/,/polish|lace|sole|parts?\b|rack|brush|box|machine|horn|cover|upper/,['64'],'chapter 64 (footwear)']
+];
+function hsRule(desc){ for(var i=0;i<HS_RULES.length;i++){ var r=HS_RULES[i]; if(r[0].test(desc)&&!(r[1]&&r[1].test(desc))) return {hs:r[2],say:r[3]}; } return null; }
 function runChecks(pages,meta){
   var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], seen={};
   pages.forEach(function(p,i){

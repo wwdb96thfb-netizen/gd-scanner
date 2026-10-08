@@ -7,8 +7,8 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 14;
-const CHECKS_V = 5;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
+const VERSION = 15;
+const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -22,6 +22,10 @@ let cfg;
 try { cfg = JSON.parse(fs.readFileSync(CFG, 'utf8')); } catch (e) { cfg = { topic: 'gd' + rnd(22), adminCode: rnd(10), people: [] }; }
 if (!cfg.joinKey) cfg.joinKey = rnd(20);
 if (!Array.isArray(cfg.requests)) cfg.requests = [];
+if (!cfg.alertTopic) cfg.alertTopic = 'gdalert' + rnd(20);
+if (!Array.isArray(cfg.watch)) cfg.watch = [];
+if (!Array.isArray(cfg.values)) cfg.values = [];
+if (!cfg.usage) cfg.usage = { day: '', pages: 0, lastLimit: null };
 cfg.people.forEach(x => { if (x.role !== 'admin') x.role = 'field'; });
 const saveCfg = () => { fs.writeFileSync(CFG + '.tmp', JSON.stringify(cfg, null, 2)); fs.renameSync(CFG + '.tmp', CFG); };
 saveCfg();
@@ -39,17 +43,70 @@ const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if
 const thumbOf = m => { const P = m.pages || [], f = t => P.findIndex(p => p.type === t); for (const t of ['goods', 'other', 'veh']) { if (f(t) >= 0) return f(t); } return 0; };
 const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
 
+// ---- flags that depend on other files or on what the admins have entered: worked out fresh whenever anything changes
+const AN = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const CRIT = new Set([7, 8, 19, 20, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 38, 39, 41]);
+const resultOf = fl => fl.some(f => f.l === 'red' && CRIT.has(f.n)) ? 'detain' : fl.some(f => f.l === 'red') ? 'hold' : fl.some(f => f.l === 'amber') ? 'check' : 'clear';
+const fieldsOf = m => { const o = [].concat(m.vehicles || [], m.gdNos || [], m.containers || []);
+  (m.pages || []).forEach(p => { const g = p.gd, q = p.pq, v = p.inv, d = p.doc, w = p.veh;
+    if (g) o.push(g.importer, g.ntn, g.exporter, g.container); if (q) o.push(q.importer, q.exporter, q.container);
+    if (v) o.push(v.seller, v.seller_ntn, v.buyer, v.buyer_ntn); if (d) o.push(d.parties, d.vehicle_no, d.gd_no); if (w) o.push(w.container_no, w.other_text); });
+  return o.map(AN).filter(Boolean); };
+const km = (a, b) => { const R = 6371, r = x => x * Math.PI / 180, dl = r(b.lat - a.lat), dn = r(b.lon - a.lon), h = Math.sin(dl / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
+const med = L => { const a = L.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
+const tOf = m => String(m.takenAt || m.receivedAt || '');
+function live() {
+  if (xcache && xcache.ver === xver) return xcache;
+  const all = [...index.values()], done = all.filter(m => m.status === 'done');
+  const ex = dbFlags(done.map(m => ({ key: m.id, pages: m.pages, offeredKg: m.offeredKg || m.invoiceKg, hashes: m.hashes, label: m.byName + ', ' + String(m.takenAt || m.receivedAt).slice(0, 10) })));
+  const flags = new Map(), hist = new Map(), byVeh = {}, byLoc = {};
+  done.forEach(m => { if (m.gps && m.location) (byLoc[m.location] = byLoc[m.location] || []).push(m); (m.vehicles || []).forEach(v => { const k = AN(v); if (k.length >= 4) (byVeh[k] = byVeh[k] || []).push(m); }); });
+  done.forEach(m => {
+    let fl = (m.flags || []).concat(ex[m.id] || []);
+    const F = fieldsOf(m);
+    cfg.watch.forEach(w => { const k = AN(w.value); if (k.length >= 4 && F.some(x => x.indexOf(k) >= 0)) fl.push({ l: 'red', n: 41, t: 'On the watchlist: ' + w.value, d: (w.note ? w.note + '. ' : '') + 'Added by ' + (w.by || 'an admin') + ' on ' + String(w.at).slice(0, 10) + '.', p: 0 }); });
+    if (cfg.values.length) { let hit = false;
+      (m.pages || []).forEach((p, i) => { if (p.type !== 'gd' || !p.gd || !Array.isArray(p.gd.items)) return; p.gd.items.forEach((it, k) => {
+        const hs = String(it.hs_code || '').replace(/\D/g, ''), desc = String(it.description || '').toLowerCase(), dec = parseFloat(it.unit_declared), asd = parseFloat(it.unit_assessed);
+        const r = cfg.values.find(v => /^\d{4,}$/.test(v.match) ? hs.indexOf(v.match) === 0 : desc.indexOf(String(v.match).toLowerCase()) >= 0);
+        if (!r || !isFinite(dec)) return; hit = true; const L = 'Item ' + (it.no || k + 1) + ' (' + (it.description || '') + '): declared $' + dec + ' per kg, minimum $' + r.min + ' per kg';
+        if (dec >= r.min * 0.98) fl.push({ l: 'ok', n: 17, t: 'Declared value is at or above the minimum value', d: L + '.', p: i + 1 });
+        else if (isFinite(asd) && asd >= r.min * 0.98) fl.push({ l: 'amber', n: 17, t: 'Declared value was below the minimum; Customs raised it', d: L + ', assessed at $' + asd + '.', p: i + 1 });
+        else fl.push({ l: 'red', n: 17, t: 'Value is below the minimum customs value', d: L + '.', p: i + 1 }); }); });
+      if (hit) fl = fl.filter(f => !(f.n === 17 && f.l === 'skip')); }
+    if (m.gps && m.location) { const o = (byLoc[m.location] || []).filter(x => x.id !== m.id);
+      if (o.length >= 3) { const d = km(m.gps, { lat: med(o.map(x => x.gps.lat)), lon: med(o.map(x => x.gps.lon)) }); if (d > 5) fl.push({ l: 'amber', n: 42, t: 'Captured ' + Math.round(d) + ' km from where ' + m.location + ' usually scans', d: 'The phone was not at the usual place for this post when the photos were sent.', p: 0 }); } }
+    flags.set(m.id, fl);
+  });
+  done.forEach(m => { const seen = new Set(), H = [];
+    (m.vehicles || []).forEach(v => (byVeh[AN(v)] || []).forEach(x => { if (x.id === m.id || seen.has(x.id)) return; seen.add(x.id); const fl = flags.get(x.id) || [], top = fl.find(f => f.l === 'red' && CRIT.has(f.n)) || fl.find(f => f.l === 'red') || fl.find(f => f.l === 'amber');
+      H.push({ at: tOf(x), location: x.location, gd: (x.gdNos || [])[0] || '', result: resultOf(fl), why: top ? top.t : '', taken: x.decision ? x.decision.action : '' }); }));
+    H.sort((a, b) => b.at.localeCompare(a.at)); hist.set(m.id, H.slice(0, 20));
+    const bad = H.filter(x => x.at < tOf(m) && (x.result === 'detain' || x.taken === 'detained' || x.taken === 'handed'));
+    if (bad.length) flags.get(m.id).push({ l: 'amber', n: 40, t: 'This vehicle was stopped before', d: bad.slice(0, 3).map(x => x.at.slice(0, 10) + ' at ' + (x.location || '?') + (x.why ? ': ' + x.why : '')).join('; ') + '.', p: 0 });
+  });
+  return xcache = { ver: xver, flags, hist };
+}
 function listFor(user) {
-  const all = [...index.values()];
-  if (!xcache || xcache.ver !== xver) xcache = { ver: xver, ex: dbFlags(all.filter(m => m.status === 'done').map(m => ({ key: m.id, pages: m.pages, offeredKg: m.offeredKg || m.invoiceKg, hashes: m.hashes, label: m.byName + ', ' + String(m.takenAt || m.receivedAt).slice(0, 10) }))) };
-  const ex = xcache.ex;
-  return all.filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
-    const flags = (m.flags || []).concat(ex[m.id] || []);
+  const L = live();
+  return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
+    const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [] };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, gps: m.gps || null };
   });
 }
-
+const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
+const today = () => new Date().toLocaleDateString('en-CA');
+const countPage = () => { if (cfg.usage.day !== today()) { cfg.usage.day = today(); cfg.usage.pages = 0; } cfg.usage.pages++; };
+// Tell the admins at once when a file comes out as "detain". Goes to a private ntfy topic; carries no codes and no document details.
+async function alertAdmins(m) {
+  try { const fl = live().flags.get(m.id) || []; if (resultOf(fl) !== 'detain' || m.alerted) return; m.alerted = true; save(m);
+    const why = fl.find(f => f.l === 'red' && CRIT.has(f.n));
+    log('  ALERT: detain at', m.location || '?', (m.vehicles || []).join(' '));
+    const r = await fetch('https://ntfy.sh/' + cfg.alertTopic, { method: 'POST', headers: { Title: 'DETAIN: ' + clip(String(m.location || 'post').replace(/[^\x20-\x7e]/g, ''), 60), Priority: 'high', Tags: 'rotating_light' }, body: 'Vehicle: ' + ((m.vehicles || []).join(', ') || 'not read') + '\nReason: ' + (why ? why.t : '') + '\nSent by: ' + m.byName + '\nOpen GD Scanner for the file.' });
+    if (!r.ok) throw new Error('status ' + r.status);
+  } catch (e) { log('  could not send the admin alert (' + e.message + ')'); }
+}
 // ---- reading a page with Claude
 const SHAPE = '{"type":"gd" | "pq" | "inv" | "veh" | "doc" | "goods" | "other","what":"short name of the document",\n' +
   '"gd":{"machine_no":"box 58, joined on one line, e.g. GBSI-HC-1117-09-09-2026","gd_date":"","igm_no":"box 8","igm_date":"","index_no":"number after INDEX in box 8","bl_no":"box 23 number only","cash_no":"box 65 C/F/D number","importer":"","importer_address":"","ntn":"","strn":"box 15","exporter":"","exporter_country":"","customs_office":"","container":"box 30 marks / container nos","exchange_rate":0,"packages":0,"package_type":"","gross_wt_mt":0,"net_wt_mt":0,"cfr_usd":0,"insurance_pct":0,"landing_pct":0,"assessed_value_pkr":0,"total_paid_pkr":0,"totals":[{"code":"CD","amount_pkr":0}],\n' +
@@ -124,9 +181,9 @@ async function vet(m) {
   const pages = [];
   for (let n = 0; n < m.nPages; n++) {
     if ((m.kinds || [])[n] === 'goods') { pages.push({ type: 'goods' }); continue; }   // a reference picture: kept, never sent for reading
-    try { const r = await readPage(dir, n, (m.kinds || [])[n]); pages.push(r.type === 'other' ? { type: 'goods', what: clip(r.what, 80) } : r); }
+    try { const r = await readPage(dir, n, (m.kinds || [])[n]); countPage(); pages.push(r.type === 'other' ? { type: 'goods', what: clip(r.what, 80) } : r); }
     catch (e) {
-      if (e.wait) { m.status = 'waiting'; m.retryAt = Date.now() + 15 * 60e3; m.msg = e.message; save(m); log('  usage limit reached, retry in 15 min'); return false; }
+      if (e.wait) { m.status = 'waiting'; m.retryAt = Date.now() + 15 * 60e3; m.msg = e.message; save(m); cfg.usage.lastLimit = new Date().toISOString(); saveCfg(); log('  usage limit reached, retry in 15 min'); return false; }
       pages.push({ type: 'unread', err: e.message });
     }
   }
@@ -135,7 +192,7 @@ async function vet(m) {
   m.invoiceKg = pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
   m.checksV = CHECKS_V;
   Object.assign(m, { pages, flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, status: 'done', doneAt: new Date().toISOString(), msg: '' });
-  save(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
+  save(m); saveCfg(); alertAdmins(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
   return true;
 }
 // Bring files checked by an older version up to date. Uses the readings already saved, so it costs no Claude usage.
@@ -290,11 +347,11 @@ const server = http.createServer(async (req, res) => {
         if (!nPages || !fs.existsSync(dir) || !claim(dir, user, false)) return send(res, 409, { error: 'missing' });
         for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); let k = 'doc'; try { const t = fs.readFileSync(path.join(dir, 'p' + n + '.kind'), 'utf8'); k = t === 'veh' ? 'veh' : t === 'goods' ? 'goods' : 'doc'; } catch (e) {} kinds.push(k); }
       }
-      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
+      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, gps: (b.gps && isFinite(+b.gps.lat) && isFinite(+b.gps.lon) && Math.abs(+b.gps.lat) <= 90 && Math.abs(+b.gps.lon) <= 180) ? { lat: +(+b.gps.lat).toFixed(5), lon: +(+b.gps.lon).toFixed(5), acc: Math.round(+b.gps.acc) || null } : null, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, q: queueInfo(), list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
@@ -307,7 +364,18 @@ const server = http.createServer(async (req, res) => {
       if (!fs.existsSync(f)) return send(res, 404, { error: 'none' });
       res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=3600' }); return fs.createReadStream(f).pipe(res);
     }
+    if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      const b = await body(req); if (['released', 'held', 'detained', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
+      m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'recorded', b.action, 'for', m.id);
+      return send(res, 200, { ok: true });
+    }
     if (!user.admin) return send(res, 403, { error: 'admin' });
+    if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, alertTopic: cfg.alertTopic, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
+    if (p[1] === 'watch' && !p[2] && req.method === 'POST') { const b = await body(req), value = clip(b.value, 60).trim(); if (AN(value).length < 4) return send(res, 400, { error: 'form' }); if (cfg.watch.length >= 500) return send(res, 429, { error: 'full' }); cfg.watch.push({ id: rnd(8), value, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added to watchlist:', value); return send(res, 200, { ok: true }); }
+    if (p[1] === 'watch' && p[2] && req.method === 'DELETE') { const x = cfg.watch.find(y => y.id === p[2]); cfg.watch = cfg.watch.filter(y => y.id !== p[2]); saveCfg(); xver++; if (x) log(user.name, 'removed from watchlist:', x.value); return send(res, 200, { ok: true }); }
+    if (p[1] === 'values' && !p[2] && req.method === 'POST') { const b = await body(req), match = clip(b.match, 40).trim().replace(/^(\d{4})\.(\d+)$/, '$1$2'), min = +b.min; if (match.length < 3 || !(min > 0) || !isFinite(min)) return send(res, 400, { error: 'form' }); if (cfg.values.length >= 500) return send(res, 429, { error: 'full' }); cfg.values.push({ id: rnd(8), match, min, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added minimum value:', match, min); return send(res, 200, { ok: true }); }
+    if (p[1] === 'values' && p[2] && req.method === 'DELETE') { cfg.values = cfg.values.filter(y => y.id !== p[2]); saveCfg(); xver++; return send(res, 200, { ok: true }); }
     if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
     if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
