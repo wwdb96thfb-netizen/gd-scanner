@@ -105,20 +105,50 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 .linkbox{font:400 12px var(--mono);width:100%;padding:8px;border:1px solid var(--line);border-radius:5px;background:var(--grey-soft);color:var(--ink)}
 #toast{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:688px;margin:0 auto;background:var(--ink);color:var(--paper);padding:12px 14px;border-radius:6px;font-weight:600;z-index:5}
 .ver{font:400 11px var(--mono);color:var(--muted);text-align:center;margin:0}
+
+/* app shell */
+body{padding-top:0;padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
+.appbar{background:linear-gradient(135deg,#3550b4,#172258);padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px}
+.appbar .in{max-width:688px;margin:0 auto}
+.appbar h1{color:#fff;font-size:21px}
+.appbar .tag{color:rgba(255,255,255,.72)}
+.appbar .brand img{box-shadow:0 0 0 1px rgba(255,255,255,.28)}
+.appbar .conn{display:flex;gap:8px;align-items:flex-start;background:rgba(255,255,255,.13);color:#fff;font:500 13px/1.4 var(--body);border-radius:9px;padding:8px 11px;margin:12px 0 0}
+.appbar .conn::before{content:"";flex:none;width:9px;height:9px;border-radius:50%;margin-top:5px;background:#aab3c5}
+.appbar .conn.ok::before{background:#4ade80}
+.appbar .conn.wait::before{background:#fbbf24}
+.appbar .conn.bad::before{background:#f87171}
+.wrap{padding-block:18px 20px}
+#main{display:flex;flex-direction:column;gap:16px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:4;background:var(--card);border-top:1px solid var(--line);border-bottom:0;justify-content:center;gap:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabs button{flex:1 1 0;max-width:220px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 6px 8px;border-bottom:0;font-size:11.5px}
+.tabs button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+h2.sec{font:700 12px/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;border:1.5px dashed var(--stamp);border-radius:12px;padding:22px 12px;color:var(--stamp);font-weight:600;background:var(--stamp-soft);cursor:pointer;text-align:center}
+.drop svg{width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.drop small{font-weight:400;color:var(--muted);font-size:12.5px}
+.btn{border-radius:10px;padding:13px 16px}
+.btn.small{border-radius:8px;padding:7px 10px}
+.btn.wide{width:100%}
+input[type=text],input[type=search]{border-radius:9px;padding:11px 12px}
+details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
+.note b{color:var(--ink)}
+#toast{bottom:calc(78px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand">
-      <img src="icon-192.png" alt="" width="46" height="46">
-      <div>
-        <h1>GD Scanner</h1>
-        <p class="tag">Customs document check</p>
-      </div>
+<header class="appbar"><div class="in">
+  <div class="brand">
+    <img src="icon-192.png" alt="" width="44" height="44">
+    <div>
+      <h1>GD Scanner</h1>
+      <p class="tag">Customs document check</p>
     </div>
-    <p class="conn" id="conn" role="status">Starting…</p>
-  </header>
+  </div>
+  <p class="conn" id="conn" role="status">Starting…</p>
+</div></header>
+<div class="wrap">
 
   <section id="p-setup" hidden>
     <div class="empty"><b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.</div>
@@ -128,29 +158,26 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
   </section>
 
   <div id="main" hidden>
-    <nav class="tabs" role="tablist">
-      <button role="tab" aria-selected="true" data-p="scan">Scan</button>
-      <button role="tab" aria-selected="false" data-p="files" id="t-files">Files</button>
-      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden>People</button>
-    </nav>
 
-    <section id="p-scan" style="margin-top:16px">
+    <section id="p-scan">
+      <h2 class="sec">New consignment</h2>
+      <div class="panel">
       <div class="form">
         <label class="f">Location<input type="text" id="f-loc" placeholder="Sost, Gilgit, Karachi…" maxlength="80"></label>
         <label class="f">Seller offering the goods<input type="text" id="f-seller" placeholder="Name of person or firm" maxlength="120"></label>
         <label class="f full">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
       </div>
-      <div class="row">
-        <label class="btn ghost" for="f-files" id="l-files" tabindex="0">Add photos</label>
-        <input type="file" id="f-files" accept="image/*" multiple hidden>
-        <button class="btn" id="b-send" disabled>Send for checking</button>
-      </div>
+      <label class="drop" for="f-files" id="l-files" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>Add photos<small>One photo of each paper. Up to 6 pages.</small></label>
+      <input type="file" id="f-files" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
+      <button class="btn wide" id="b-send" disabled>Send for checking</button>
       <p class="status" id="s-scan" role="status"></p>
-      <div class="empty"><b>One consignment per send.</b> Add one photo of each paper: the Goods Declaration and the plant quarantine release order. Lay each page flat, fill the frame and avoid shadows. With no signal the photos stay on this phone and upload on their own later.</div>
+      </div>
+      <p class="note"><b>One consignment per send.</b> Photograph the Goods Declaration and the plant quarantine release order. Lay each page flat, fill the frame and avoid shadows. With no signal, photos stay on this phone and upload on their own later.</p>
     </section>
 
-    <section id="p-files" hidden style="margin-top:16px">
+    <section id="p-files" hidden>
+      <h2 class="sec">Checked files</h2>
       <div class="legend">
         <span class="pill red">Doubtful</span><span class="pill amber">Check</span><span class="pill ok">Clean</span>
         <span>Red can also come from a blurred photo. Retake before you conclude.</span>
@@ -167,7 +194,8 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
       <div class="list" id="files"></div>
     </section>
 
-    <section id="p-people" hidden style="margin-top:16px">
+    <section id="p-people" hidden>
+      <h2 class="sec">People and links</h2>
       <p class="note">Each person gets a personal link. Their uploads are stamped with their name. They see only their own files; you see everything.</p>
       <div class="row">
         <label class="f" style="flex:1 1 180px">Name<input type="text" id="f-person" placeholder="Name and location" maxlength="40"></label>
@@ -176,13 +204,18 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
       <p class="status" id="s-people" role="status"></p>
       <div class="list" id="people"></div>
     </section>
+    <nav class="tabs" role="tablist">
+      <button role="tab" aria-selected="true" data-p="scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/></svg><span>Scan</span></button>
+      <button role="tab" aria-selected="false" data-p="files" id="t-files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span id="t-files-l">Files</span></button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>People</span></button>
+    </nav>
   </div>
   <p class="ver" id="ver"></p>
 </div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = 2;
+var APPV = '1.0.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -235,7 +268,7 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
   else { e.className = 'conn wait'; e.textContent = 'The server is not reachable right now. Captures are kept on this phone and upload when it is back.' + held; }
-  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('admin-tools').hidden = !adm; $('t-files').textContent = adm ? 'All files' : 'My files'; }
+  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
@@ -354,7 +387,7 @@ $('b-person').addEventListener('click', async function () { var name = $('f-pers
 // ---- start
 $('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Scanner link.', true); });
 function start() { var ready = !!cfg.c; $('p-setup').hidden = ready; $('main').hidden = !ready; drawConn(); if (ready) { drawFiles(); sync(); } }
-$('ver').textContent = 'GD Scanner app v' + APPV;
+$('ver').textContent = 'GD Scanner · Version ' + APPV;
 start();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
 </script>
