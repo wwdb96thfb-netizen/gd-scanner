@@ -50,6 +50,7 @@ section{display:flex;flex-direction:column;gap:14px}
 .form .full{grid-column:1/-1}
 @media (max-width:480px){.form{grid-template-columns:1fr}}
 label.f{display:flex;flex-direction:column;gap:4px;font:600 12px var(--body);color:var(--muted);min-width:0}
+select{font:400 16px var(--body);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:9px;padding:11px 12px;width:100%}
 input[type=text],input[type=search]{font:400 16px var(--body);color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px;width:100%}
 .btn{font:600 15px var(--body);background:var(--stamp);color:var(--on-stamp);border:1px solid var(--stamp);border-radius:6px;padding:12px 16px;cursor:pointer;text-align:center}
 .btn.ghost{background:transparent;color:var(--stamp)}
@@ -136,6 +137,15 @@ input[type=text],input[type=search]{border-radius:9px;padding:11px 12px}
 details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 .note b{color:var(--ink)}
 #toast{bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:480px){.slots{grid-template-columns:1fr}}
+.slot{display:flex;flex-direction:column;gap:10px;min-width:0}
+.drop .art{width:92px;height:68px;stroke:none;fill:none}
+.drop b{font-size:15px}
+.drop.veh{border-color:var(--amber);color:var(--amber);background:var(--amber-soft)}
+.role{display:inline-block;font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;border-radius:3px;background:var(--grey-soft);color:var(--muted);margin-left:8px;vertical-align:middle}
+.role.admin{background:var(--stamp-soft);color:var(--stamp)}
+.badge{display:inline-block;min-width:18px;padding:2px 5px;border-radius:9px;background:var(--red);color:var(--card);font:700 11px/1.2 var(--body);margin-left:4px}
 </style>
 </head>
 <body>
@@ -158,6 +168,17 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
     <p class="status" id="s-setup" role="status"></p>
   </section>
 
+  <section id="p-join" hidden>
+    <h2 class="sec">Request access</h2>
+    <div class="panel" id="join-form">
+      <label class="f">Your name<input type="text" id="j-name" maxlength="40" placeholder="Name and location" autocomplete="name"></label>
+      <label class="f">You are<select id="j-role"><option value="field">Ground staff: I photograph papers and vehicles</option><option value="admin">Admin: I review everyone's files</option></select></label>
+      <button class="btn wide" id="b-join">Send request</button>
+    </div>
+    <div class="empty" id="join-wait" hidden><b>Request sent.</b> An admin has to approve you. Keep this page; it opens by itself once you are approved.</div>
+    <p class="status" id="s-join" role="status"></p>
+  </section>
+
   <div id="main" hidden>
 
     <section id="p-scan">
@@ -169,13 +190,27 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
         <label class="f">Quantity on offer (kg)<input type="text" id="f-qty" inputmode="decimal" placeholder="If known" maxlength="12"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
       </div>
-      <label class="drop" for="f-files" id="l-files" tabindex="0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/></svg>Add photos<small>One photo of each paper. Up to 6 pages.</small></label>
-      <input type="file" id="f-files" accept="image/*" multiple hidden>
-      <div class="thumbs" id="thumbs"></div>
+      <div class="slots">
+        <div class="slot">
+          <label class="drop" for="f-files" id="l-files" tabindex="0">
+            <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="27" y="4" width="38" height="52" rx="3" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M55 4v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M33 20h18M33 27h26M33 34h26M33 41h14"/></g><circle cx="55" cy="45" r="6" fill="none" stroke="#b3261e" stroke-width="2"/><path d="M51.5 45h7" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/><path d="M19 62h54" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+            <b>Papers</b><small>GD, release order, sales tax invoice. One photo per page, flat and sharp.</small></label>
+          <input type="file" id="f-files" accept="image/*" multiple hidden>
+          <div class="thumbs" id="thumbs"></div>
+        </div>
+        <div class="slot">
+          <label class="drop veh" for="f-veh" id="l-veh" tabindex="0">
+            <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="6" y="14" width="50" height="34" rx="2" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M56 26h14l10 12v10H56z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M62 31h7l5 6H62z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity=".55"/><circle cx="22" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="66" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="17" y="27" width="28" height="11" rx="2" fill="#fff" stroke="#b3261e" stroke-width="2"/><path d="M22 32.5h18" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 2.4"/><path d="M4 62h84" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+            <b>Vehicle</b><small>The truck carrying the goods, with the number plate clear.</small></label>
+          <input type="file" id="f-veh" accept="image/*" multiple hidden>
+          <div class="thumbs" id="thumbs-veh"></div>
+        </div>
+      </div>
       <button class="btn wide" id="b-send" disabled>Send for checking</button>
       <p class="status" id="s-scan" role="status"></p>
       </div>
-      <p class="note"><b>One consignment per send.</b> Photograph the Goods Declaration, the plant quarantine release order and the seller's sales tax invoice. Lay each page flat, fill the frame and avoid shadows. With no signal, photos stay on this phone and upload on their own later.</p>
+      <p class="note"><b>One consignment per send.</b> Papers go in the left box, the vehicle in the right box. The vehicle's number is read from its photo. With no signal, photos stay on this phone and upload on their own later.</p>
+      <p class="ver" id="ver"></p>
     </section>
 
     <section id="p-files" hidden>
@@ -191,33 +226,47 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
           <button data-f="amber" aria-pressed="false">Check</button>
           <button data-f="ok" aria-pressed="false">Clean</button>
         </div>
-        <input type="search" id="q" placeholder="Search GD number, importer, container, seller, person">
+        <input type="search" id="q" placeholder="Search GD number, vehicle, importer, container, seller, person">
       </div>
       <div class="list" id="files"></div>
     </section>
 
     <section id="p-people" hidden>
-      <h2 class="sec">People and links</h2>
-      <p class="note">Each person gets a personal link. Their uploads are stamped with their name. They see only their own files; you see everything.</p>
-      <div class="row">
-        <label class="f" style="flex:1 1 180px">Name<input type="text" id="f-person" placeholder="Name and location" maxlength="40"></label>
-        <button class="btn" id="b-person" style="align-self:flex-end">Add person</button>
+      <div id="req-box" hidden>
+        <h2 class="sec" style="margin-bottom:10px">Waiting for approval</h2>
+        <div class="list" id="requests"></div>
+      </div>
+      <h2 class="sec">Invite with the join link</h2>
+      <div class="panel">
+        <p class="note">Send this one link to anyone who should join. They enter their name and ask for access. Nobody gets in until an admin approves them here.</p>
+        <input class="linkbox" type="text" id="join-link" readonly aria-label="Join link">
+        <button class="btn" id="b-sharejoin">Send join link</button>
+      </div>
+      <h2 class="sec">Or add a person yourself</h2>
+      <div class="panel">
+        <div class="form">
+          <label class="f">Name<input type="text" id="f-person" placeholder="Name and location" maxlength="40"></label>
+          <label class="f">Role<select id="f-role"><option value="field">Ground staff</option><option value="admin">Admin</option></select></label>
+        </div>
+        <button class="btn" id="b-person">Add and get their link</button>
+        <p class="note">A person you add is approved straight away and gets a personal link.</p>
       </div>
       <p class="status" id="s-people" role="status"></p>
+      <h2 class="sec">People with access</h2>
+      <p class="note">Ground staff upload and see only their own files. Admins see every file and manage people.</p>
       <div class="list" id="people"></div>
     </section>
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/></svg><span>Scan</span></button>
       <button role="tab" aria-selected="false" data-p="files" id="t-files"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4"/></svg><span id="t-files-l">Files</span></button>
-      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>People</span></button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M21 20v-1a4 4 0 0 0-3-3.8M15.5 4.2a3.5 3.5 0 0 1 0 6.6"/></svg><span>People<span class="badge" id="req-badge" hidden></span></span></button>
     </nav>
   </div>
-  <p class="ver" id="ver"></p>
 </div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.3.0';
+var APPV = '1.4.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -230,7 +279,8 @@ var WORD = { red: 'Doubtful', amber: 'Check', ok: 'Passed', skip: 'Not checked' 
 var cfg = load('gd.cfg') || {};
 function takeLink(text) { text = String(text || '').trim(); var q = new URLSearchParams(), parts = text.split('#'), qi = parts[0].indexOf('?');
   [qi >= 0 ? parts[0].slice(qi + 1) : (parts.length === 1 && text.indexOf('=') > 0 && text.indexOf('://') < 0 ? text : ''), parts[1] || ''].forEach(function (seg) { new URLSearchParams(seg).forEach(function (v, k) { q.set(k, v); }); });
-  if (!q.get('c')) return false;
+  if (!q.get('c')) { if (!q.get('j') || (cfg.c && !cfg.pending)) return false;   // a join link never replaces a working sign-in
+    cfg = { j: q.get('j'), t: q.get('t') || '', s: q.get('s') ? normS(q.get('s')) : '' }; cfg.trusted = cfg.s; keep('gd.cfg', cfg); return true; }
   cfg = { c: q.get('c'), t: q.get('t') || cfg.t || '', s: q.get('s') ? normS(q.get('s')) : (cfg.s || '') }; cfg.trusted = cfg.s; keep('gd.cfg', cfg); return true; }
 if ((location.hash.length > 1 || location.search.length > 1) && takeLink(location.href)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 
@@ -251,13 +301,19 @@ if (cfg.c && cfg.trusted === undefined) { cfg.trusted = cfg.s || ''; keep('gd.cf
 function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 async function uidOf(code) { return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))).slice(0, 16); }
 async function proofOf(code, n) { var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(n))); }
-async function verify(url) { var a = new Uint8Array(16); crypto.getRandomValues(a); var n = hex(a);
-  var r = await fx(url + '/api/hello?u=' + (await uidOf(cfg.c)) + '&n=' + n + '&_=' + Date.now(), {}, 8000);
-  if (r.status === 401) return url === cfg.trusted;   // a server from before this check existed: only the address this phone already used
-  if (r.status === 404) { if (url === cfg.trusted) revoked(); return false; }
-  if (!r.ok) return false; var j = await r.json(); return !!(j && j.proof && j.proof === await proofOf(cfg.c, n)); }
+async function hello(url, key) { var a = new Uint8Array(16); crypto.getRandomValues(a); var n = hex(a);
+  var r = await fx(url + '/api/hello?u=' + (await uidOf(key)) + '&n=' + n + '&_=' + Date.now(), {}, 8000);
+  if (r.status === 401) return 'old'; if (r.status === 404) return 'unknown'; if (!r.ok) return 'no';
+  var j = await r.json(); return (j && j.proof && j.proof === await proofOf(key, n)) ? 'ok' : 'no'; }
+async function verify(url) { var hres = await hello(url, cfg.c); if (hres === 'ok') return true;
+  if (hres === 'old') return url === cfg.trusted;   // a server from before this check existed: only the address this phone already used
+  if (hres === 'unknown' && url === cfg.trusted) revoked(); return false; }
+async function announced() { if (!cfg.t) return null; try { var r = await fx('https://ntfy.sh/' + cfg.t + '/json?poll=1&since=12h', {}, 10000), url = null;
+    (await r.text()).split('\n').forEach(function (l) { try { var m = JSON.parse(l); if (m.event === 'message' && /^https:\/\/[a-z0-9.-]+$/.test(m.message || '')) url = m.message; } catch (e) {} }); return url; } catch (e) { return null; } }
+async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
+  for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
 function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
-async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
+async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
   S.finding = (async function () {
@@ -277,7 +333,8 @@ async function api(path, opts) { var s = await findServer(); if (!s) throw { net
   return r.json(); }
 
 function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' capture' + (n > 1 ? 's' : '') + ' waiting on this phone.' : '';
-  if (!cfg.c) { e.className = 'conn'; e.textContent = 'Not set up'; }
+  if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an admin to approve you.'; }
+  else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.j ? 'Not a member yet' : 'Not set up'; }
   else if (S.bad) { e.className = 'conn bad'; e.textContent = 'This link is no longer valid. Ask for a new one.' + held; }
   else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Captures are kept on this phone and upload later.' + held; }
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
@@ -294,7 +351,7 @@ async function refresh() {
     S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
   drawConn(); drawFiles(); }
 async function sync() {
-  if (S.syncing || !cfg.c) return; S.syncing = true;
+  if (S.syncing || !cfg.c || cfg.pending) return; S.syncing = true;
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
@@ -302,14 +359,15 @@ async function sync() {
         try { have = await api('/api/have/' + it.id); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
         if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
         else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
-          for (var n = 0; n < it.pages.length; n++) { if (have.pages.indexOf(n) >= 0) continue; it.progress = 'Uploading page ' + (n + 1) + ' of ' + it.pages.length + '.'; drawFiles(); var pg = it.pages[n];
-            await api('/api/page', { method: 'POST', ms: 150000, body: JSON.stringify({ id: it.id, n: n, ph: pg.ph, view: pg.view, top: pg.top, bottom: pg.bottom }) }); }
+          for (var n = 0; n < it.pages.length; n++) { if (have.pages.indexOf(n) >= 0) continue; it.progress = 'Uploading photo ' + (n + 1) + ' of ' + it.pages.length + '.'; drawFiles(); var pg = it.pages[n];
+            await api('/api/page', { method: 'POST', ms: 150000, body: JSON.stringify({ id: it.id, n: n, kind: pg.kind, ph: pg.ph, view: pg.view, top: pg.top, bottom: pg.bottom }) }); }
           await api('/api/capture', { method: 'POST', ms: 30000, body: JSON.stringify(Object.assign({ nPages: it.pages.length }, meta)) }); }
         await outDel(it.id); S.outbox = S.outbox.filter(function (x) { return x.id !== it.id; }); S.seen[it.id] = 'queued'; }
       catch (e) { it.sending = false; break; } }
   } catch (e) {} finally { S.syncing = false; }
   await refresh(); }
-setInterval(function () { if (document.hidden || !cfg.c) return; S.tick++;
+setInterval(function () { if (document.hidden || !cfg.c || cfg.pending) return; S.tick++;
+  if (S.me && S.me.admin && S.server && S.tick % 6 === 3) loadPeople(true);
   var pending = S.outbox.length || S.list.some(function (c) { return c.status !== 'done'; });
   if (pending || S.tick % 6 === 0 || !S.server) { if (S.outbox.length) sync(); else refresh(); } }, 5000);
 window.addEventListener('online', function () { S.server = null; sync(); });
@@ -325,11 +383,14 @@ function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]')
 
 // ---- capture
 var picked = [];
-$('l-files').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('f-files').click(); } });
-$('f-files').addEventListener('change', function (e) { Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 6) picked.push({ file: f, url: URL.createObjectURL(f) }); }); e.target.value = ''; drawThumbs(); });
+[['l-files', 'f-files', 'doc', 6], ['l-veh', 'f-veh', 'veh', 2]].forEach(function (d) {
+  $(d[0]).addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(d[1]).click(); } });
+  $(d[1]).addEventListener('change', function (e) { Array.prototype.forEach.call(e.target.files, function (f) { if (picked.filter(function (x) { return x.kind === d[2]; }).length < d[3]) picked.push({ file: f, url: URL.createObjectURL(f), kind: d[2] }); }); e.target.value = ''; drawThumbs(); }); });
 function setStatus(id, msg, bad) { var e = $(id); e.textContent = msg || ''; e.className = 'status' + (bad ? ' bad' : ''); }
-function drawThumbs() { var t = $('thumbs'); t.textContent = ''; picked.forEach(function (f, i) { t.appendChild(h('figure', null, h('img', { src: f.url, alt: 'Page ' + (i + 1) }), h('button', { 'aria-label': 'Remove page ' + (i + 1), text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(i, 1); drawThumbs(); } }))); });
-  $('b-send').disabled = !picked.length; setStatus('s-scan', picked.length ? picked.length + ' page' + (picked.length > 1 ? 's' : '') + ' ready. Up to 6 per consignment.' : ''); }
+function drawThumbs() { var nd = 0, nv = 0; $('thumbs').textContent = ''; $('thumbs-veh').textContent = '';
+  picked.forEach(function (f) { var veh = f.kind === 'veh', label = veh ? 'Vehicle photo ' + (++nv) : 'Page ' + (++nd);
+    $(veh ? 'thumbs-veh' : 'thumbs').appendChild(h('figure', null, h('img', { src: f.url, alt: label }), h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
+  $('b-send').disabled = !picked.length; setStatus('s-scan', picked.length ? nd + ' paper page' + (nd === 1 ? '' : 's') + ' and ' + nv + ' vehicle photo' + (nv === 1 ? '' : 's') + ' ready.' + (nd && !nv ? ' Add the vehicle if it is there.' : '') : ''); }
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
 function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
@@ -339,8 +400,9 @@ function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return 
 $('b-send').addEventListener('click', async function () {
   if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Preparing photos…');
   var pages = [];
-  for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), tall = im.naturalHeight >= im.naturalWidth;
-      pages.push({ ph: fingerprint(im), view: draw(im, 0, 1, 1300, 0.6), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
+  picked.sort(function (a, b) { return (a.kind === 'veh' ? 1 : 0) - (b.kind === 'veh' ? 1 : 0); });
+  for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), veh = picked[i].kind === 'veh', tall = !veh && im.naturalHeight >= im.naturalWidth;
+      pages.push({ kind: veh ? 'veh' : 'doc', ph: fingerprint(im), view: draw(im, 0, 1, 1300, 0.6), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
   var item = { id: newId(), takenAt: new Date().toISOString(), location: $('f-loc').value.trim(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), offeredKg: parseFloat($('f-qty').value.replace(/,/g, '')) || null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
@@ -357,6 +419,8 @@ function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q
     box.appendChild(kv([['Release order', q.ro_no], ['GD quoted', [q.gd_no, q.gd_date].filter(Boolean).join(' dated ')], ['Importer', q.importer], ['Exporter', q.exporter], ['Goods', q.goods], ['Quantity', q.quantity_kg != null ? fmt(q.quantity_kg) + ' kg' : null], ['Container', q.container], ['Arrived', q.arrival_date], ['Inspected', q.inspection_date], ['Issued', [q.issue_date, q.place_of_issue].filter(Boolean).join(', ')]])); }
   else if (p.type === 'inv' && p.inv) { var v = p.inv; box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Sales tax invoice, what was read' }));
     box.appendChild(kv([['Invoice', v.invoice_no], ['Date', v.date], ['Seller', v.seller], ['Seller NTN', v.seller_ntn], ['Buyer', v.buyer], ['Goods', v.description], ['Quantity', v.quantity_kg != null ? fmt(v.quantity_kg) + ' kg' : null], ['GD quoted', v.gd_no]])); }
+  else if (p.type === 'veh') { var w = p.veh || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Vehicle, what was read' }));
+    box.appendChild(kv([['Number plate', w.reg_no || 'not readable'], ['Type', w.vehicle_type], ['Colour', w.colour], ['Container number', w.container_no], ['Other writing', w.other_text]])); }
   else return null; return box; }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + f.l, text: WORD[f.l] || '' }), h('span', { class: 't', text: f.t }), f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
@@ -365,10 +429,10 @@ function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', v = done ? (c.verdict || 'ok') : 'busy', fl = c.flags || [];
   var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
   var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, q = ((c.pages || []).filter(function (p) { return p.type === 'pq'; })[0] || {}).pq || {};
-  var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : 'Unread file')) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
+  var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : v === 'ok' ? 'Clean' : WORD[v];
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
-  var meta = [g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
+  var meta = [c.vehicles && c.vehicles.length ? 'Vehicle ' + c.vehicles.join(', ') : null, g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
   d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), h('div', { class: 'meta', text: meta })));
@@ -393,7 +457,7 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? c.verdict : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
-      if (term && JSON.stringify([c.gdNos, c.containers, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
+      if (term && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
     n++; box.appendChild(caseView(c)); });
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
 document.querySelectorAll('#chips button').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
@@ -401,18 +465,45 @@ $('q').addEventListener('input', drawFiles);
 
 // ---- people (admin)
 function linkFor(code) { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
-async function loadPeople() { try { var j = await api('/api/people'); S.people = j.people; S.topic = j.topic; setStatus('s-people', ''); } catch (e) { setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
-function drawPeople() { var box = $('people'); box.textContent = ''; if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'Nobody added yet. Add a name, then send that person their link.' }));
-  S.people.forEach(function (p) { var link = linkFor(p.code), field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
-    var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: async function () { try { if (navigator.share) await navigator.share({ title: 'GD Scanner', text: 'Your GD Scanner link, ' + p.name + '. Open it once on your phone:\n' + link }); else { await navigator.clipboard.writeText(link); send.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } } });
+function joinLink() { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&j=' + (S.joinKey || '') + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
+async function shareText(text, btn, field) { try { if (navigator.share) await navigator.share({ title: 'GD Scanner', text: text }); else { await navigator.clipboard.writeText(field.value); btn.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } }
+async function loadPeople(quiet) { try { var j = await api('/api/people'), before = (S.requests || []).length; S.people = j.people; S.requests = j.requests || []; S.topic = j.topic; S.joinKey = j.joinKey; if (!quiet) setStatus('s-people', '');
+    if (quiet && S.requests.length > before) toast(S.requests.length + (S.requests.length === 1 ? ' person is' : ' people are') + ' waiting for approval'); }
+  catch (e) { if (!quiet) setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
+function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.requests || []).length; box.textContent = ''; rq.textContent = '';
+  $('req-box').hidden = !n; $('req-badge').hidden = !n; $('req-badge').textContent = n; $('join-link').value = S.joinKey ? joinLink() : '';
+  (S.requests || []).forEach(function (r) { var act = async function (action, role) { try { await api('/api/requests/' + r.id, { method: 'POST', body: JSON.stringify({ action: action, role: role }) }); loadPeople(); } catch (e) { setStatus('s-people', 'Could not save. The server must be reachable.', true); } };
+    rq.appendChild(h('div', { class: 'person' }, h('b', { text: r.name }), h('span', { class: 'note', text: 'Asked to join as ' + (r.role === 'admin' ? 'an admin' : 'ground staff') + ' · ' + when(r.at) }),
+      h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as ground staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as admin', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
+  if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'Nobody has access yet apart from you.' }));
+  S.people.forEach(function (p) { var link = linkFor(p.code), adm = p.role === 'admin', field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
+    var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Scanner link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
+    var role = h('button', { class: 'btn ghost small', text: adm ? 'Make ground staff' : 'Make admin', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: adm ? 'field' : 'admin' }) }); loadPeople(); } catch (e) {} } });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
     var yes = h('button', { class: 'btn danger small', text: 'Yes, cancel this link', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
-    box.appendChild(h('div', { class: 'person' }, h('b', { text: p.name }), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, ask, yes))); }); }
-$('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) return; try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
+    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Ground staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, ask, yes))); }); }
+$('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
+$('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Scanner: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
+$('join-link').addEventListener('focus', function (e) { e.target.select(); });
+
+// ---- asking to join
+function randCode() { var A = 'abcdefghjkmnpqrstuvwxyz23456789', a = new Uint8Array(20), s = ''; crypto.getRandomValues(a); for (var i = 0; i < 20; i++) s += A[a[i] % A.length]; return s; }
+$('b-join').addEventListener('click', async function () { var name = $('j-name').value.trim(); if (!name) { setStatus('s-join', 'Type your name first.', true); return; }
+  $('b-join').disabled = true; setStatus('s-join', 'Looking for the server…');
+  try { var f = await findWith(cfg.j); if (!f.url) throw 0; var code = cfg.c || randCode();
+    var r = await fx(f.url + '/api/join', { method: 'POST', headers: { 'x-join': cfg.j, 'content-type': 'application/json' }, body: JSON.stringify({ name: name, role: $('j-role').value, code: code }) }, 15000);
+    if (!r.ok) throw 0; cfg.c = code; cfg.pending = true; cfg.s = f.url; cfg.trusted = f.url; keep('gd.cfg', cfg); setStatus('s-join', ''); start(); }
+  catch (e) { setStatus('s-join', 'The server is not reachable right now, or this join link is out of date. Try again in a minute.', true); }
+  $('b-join').disabled = false; });
+async function checkApproval() { if (!cfg.pending || document.hidden) return;
+  try { var f = await findWith(cfg.c); if (f.unknown) { cfg = { j: cfg.j, t: cfg.t, s: cfg.s, trusted: cfg.trusted }; keep('gd.cfg', cfg); start(); setStatus('s-join', 'Your request was not approved. You can ask again, or contact the admin.', true); return; }
+    if (!f.url) return; var r = await fx(f.url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000);
+    if (r.ok) { cfg = { c: cfg.c, t: cfg.t, s: f.url, trusted: f.url }; keep('gd.cfg', cfg); toast('You are approved. Welcome.'); start(); } } catch (e) {} }
+setInterval(checkApproval, 10000);
 
 // ---- start
 $('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Scanner link.', true); });
-function start() { var ready = !!cfg.c; $('p-setup').hidden = ready; $('main').hidden = !ready; drawConn(); if (ready) { drawFiles(); sync(); } }
+function start() { var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
 $('ver').textContent = 'GD Scanner · Version ' + APPV;
 // ---- automatic update: when a newer version is published, reload onto it at a quiet moment
 async function checkUpdate() { if (navigator.onLine) { try { var r = await fx('index.html?_=' + Date.now(), {}, 10000); if (r.ok) { var m = (await r.text()).match(/var APPV = '([^']+)'/); if (m && m[1] !== APPV) S.newV = m[1]; } } catch (e) {} } applyUpdate(); }

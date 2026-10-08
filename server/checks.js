@@ -84,7 +84,7 @@ function checkGD(g,add){
 }
 
 function runChecks(pages,meta){
-  var flags=[], gds=[], pqs=[], invs=[], seen={};
+  var flags=[], gds=[], pqs=[], invs=[], vehs=[], seen={};
   pages.forEach(function(p,i){
     var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:i+1}); };
     var key=p.type==='gd'&&p.gd?'gd:'+conf(String(p.gd.machine_no||'').replace(/\s+/g,'')):(p.type==='pq'&&p.pq?'pq:'+conf(String(p.pq.ro_no||'').replace(/\s+/g,''))+'|'+String(p.pq.gd_no||'').replace(/\D/g,''):'');
@@ -92,6 +92,9 @@ function runChecks(pages,meta){
     if(p.type==='gd'&&p.gd){ gds.push({g:p.gd,info:checkGD(p.gd,add),p:i+1}); }
     else if(p.type==='pq'&&p.pq){ pqs.push({q:p.pq,p:i+1}); if(!p.pq.gd_no) add('amber',19,'Release order does not show a GD number','Could not read the GD number on the release order.'); }
     else if(p.type==='inv'&&p.inv){ invs.push({v:p.inv,p:i+1}); }
+    else if(p.type==='veh'){ var reg=String((p.veh||{}).reg_no||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+      if(reg.length>=3){ vehs.push(reg); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
+      else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
   });
@@ -135,7 +138,7 @@ function runChecks(pages,meta){
   });
   var off=num(meta&&meta.offeredKg); if(G&&off!=null&&G.info.qty!=null){ if(off>G.info.qty*1.02) add('red',25,'More is on offer than the GD covers','Offered '+fmt(off)+' kg, GD '+fmt(G.info.qty)+' kg.'); else add('ok',25,'Quantity on offer is within the GD quantity',''); }
   var v=flags.some(function(f){return f.l==='red';})?'red':(flags.some(function(f){return f.l==='amber';})?'amber':'ok');
-  return {flags:flags,verdict:v,
+  return {flags:flags,verdict:v,vehicles:vehs.filter(function(x,i){return vehs.indexOf(x)===i;}),
     gdNos:gds.map(function(x){return x.info.mn;}).filter(Boolean),
     containers:gds.map(function(x){return String(x.g.container||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();}).filter(Boolean)};
 }
@@ -146,7 +149,7 @@ function dbFlags(cases){
   var put=function(c,f){ var L=(out[c.key]=out[c.key]||[]); if(!L.some(function(x){return x.n===f.n&&x.t===f.t;})) L.push(f); };
   var others=function(L,c){ var o=L.filter(function(x){return x!==c;}).map(function(x){return x.label;}).filter(Boolean); return o.length?' Other file'+(o.length>1?'s':'')+': '+o.slice(0,3).join('; ')+(o.length>3?' and more':'')+'.':''; };
   var uniq=function(L){ return Array.from(new Set(L)); };
-  var byGd={}, byCt={}, byRo={}, byNtn={}, byName={}, byNear={}, byBand={}, disp={}, D=function(k){ return disp[k]||k; };
+  var byGd={}, byCt={}, byRo={}, byNtn={}, byName={}, byNear={}, byBand={}, vehOf={}, disp={}, D=function(k){ return disp[k]||k; };
   var add=function(map,k,v){ (map[k]=map[k]||[]).push(v); };
   cases.forEach(function(c){ c._gd=[]; var seen={};
     (c.pages||[]).forEach(function(p){
@@ -160,9 +163,13 @@ function dbFlags(cases){
         if(ok&&date!=null&&(ntn||nm(g.importer))) add(byNear,(ntn||nm(g.importer))+'|'+q+'|'+date,{c:c,mn:mn}); }
       else if(p.type==='pq'&&p.pq){ var r=p.pq, no=U(r.ro_no); if(!no) return; var yr=(String(r.issue_date||r.inspection_date||r.gd_date||'').match(/\d{4}/)||[''])[0];
         add(byRo,no+'|'+U(r.place_of_issue)+'|'+yr,{c:c,quoted:String(r.gd_no||'').replace(/\D/g,''),label:r.ro_no}); } });
+    vehOf[c.key]=(c.pages||[]).filter(function(p){return p.type==='veh'&&p.veh;}).map(function(p){return U(p.veh.reg_no);}).filter(function(x){return x.length>=3;});
     (c.hashes||[]).forEach(function(hh){ if(!/^[0-9a-f]{16}$/.test(hh||'')) return; for(var b=0;b<4;b++) add(byBand,b+':'+hh.substr(b*4,4),{c:c,h:hh}); });
   });
   Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]); if(L.length<2) return; L.forEach(function(c){ put(c,{l:'red',n:23,t:'Same GD number appears in '+(L.length-1)+' other file'+(L.length>2?'s':''),d:D(k)+'. One GD covers one consignment. Compare seller, goods and quantity.'+others(L,c),p:0}); }); });
+  Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]), regs=[]; L.forEach(function(c){ vehOf[c.key].forEach(function(r){ if(regs.indexOf(r)<0) regs.push(r); }); });
+    var withVeh=L.filter(function(c){return vehOf[c.key].length;}); if(regs.length<2||withVeh.length<2) return;
+    withVeh.forEach(function(c){ put(c,{l:'amber',n:35,t:'The same GD was photographed with different vehicles',d:D(k)+' appears with '+regs.slice(0,4).join(', ')+'. One GD normally travels on one vehicle. Ask why.'+others(withVeh,c),p:0}); }); });
   Object.keys(byCt).forEach(function(k){ var L=byCt[k], gd=uniq(L.map(function(x){return x.mn;})); if(gd.length<2) return; uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:24,t:'Same container appears on different GDs',d:k+' is on '+gd.map(D).join(', ')+'.',p:0}); }); });
   Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]), qty=null; L.forEach(function(c){ c._gd.forEach(function(g){ if(g.mn===k&&g.qty!=null&&qty==null) qty=g.qty; }); });
     var offers=L.filter(function(c){ return num(c.offeredKg)>0; }); if(qty==null||offers.length<2) return; var sum=0; offers.forEach(function(c){ sum+=num(c.offeredKg); });
