@@ -272,7 +272,7 @@ details.case>summary.nopic>*{grid-column:1}
       </div>
       <label class="drop one" for="f-files" id="l-files" tabindex="0">
         <span class="arts"><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="27" y="4" width="38" height="52" rx="3" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M55 4v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M33 20h18M33 27h26M33 34h26M33 41h14"/></g><circle cx="55" cy="45" r="6" fill="none" stroke="#b3261e" stroke-width="2"/><path d="M51.5 45h7" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/><path d="M19 62h54" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="6" y="14" width="50" height="34" rx="2" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M56 26h14l10 12v10H56z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M62 31h7l5 6H62z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity=".55"/><circle cx="22" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="66" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="17" y="27" width="28" height="11" rx="2" fill="#fff" stroke="#b3261e" stroke-width="2"/><path d="M22 32.5h18" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 2.4"/><path d="M4 62h84" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><g fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="12" y="34" width="30" height="22"/><rect x="42" y="34" width="30" height="22"/><rect x="27" y="12" width="30" height="22"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M23 34v8M31 34v8M53 34v8M61 34v8M38 12v8M46 12v8"/></g><path d="M6 62h80" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg></span>
-        <b>Take or choose photos</b><small>Papers, vehicle and goods, in any order. The app sorts them itself.</small></label>
+        <b>Take or choose photos</b><small>Papers, vehicle and goods, in any order. The app sorts them automatically.</small></label>
       <input type="file" id="f-files" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
       <p class="qnote" id="q-note" hidden role="status"></p>
@@ -410,7 +410,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.2.1';
+var APPV = '2.2.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
