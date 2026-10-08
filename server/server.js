@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 6;
+const VERSION = 7;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -160,12 +160,15 @@ async function tidy() {
     for (const m of [...index.values()]) {
       if (m.status !== 'done' || m.slim || !m.doneAt || Date.now() - Date.parse(m.doneAt) < KEEP_DAYS * 864e5) continue;
       const dir = path.join(CAP, m.id);
-      for (const f of fs.readdirSync(dir)) {
-        const fp = path.join(dir, f), size = fs.statSync(fp).size;
-        if (/-(top|bottom)\.jpg$/.test(f)) { fs.unlinkSync(fp); freed += size; }
-        else if (/-view\.jpg$/.test(f) && size > 180e3) { await shrink(fp); try { freed += size - fs.statSync(fp).size; } catch (e) {} }
-      }
-      m.slim = true; save(m); n++;
+      try {   // one damaged folder must not stop the others being cleared
+        for (const f of fs.readdirSync(dir)) {
+          const fp = path.join(dir, f), size = fs.statSync(fp).size;
+          if (/-(top|bottom)\.jpg$/.test(f)) { fs.unlinkSync(fp); freed += size; }
+          else if (/-view\.jpg$/.test(f) && size > 180e3) { await shrink(fp); try { freed += size - fs.statSync(fp).size; } catch (e) {} }
+        }
+        n++;
+      } catch (e) { log('  could not clear', m.id, '-', e.message); }
+      m.slim = true; try { save(m); } catch (e) {}
     }
     if (n) log('Cleared the sharp copies of ' + n + ' checked file(s), freeing about ' + Math.round(freed / 1e6) + ' MB.');
   } catch (e) { log('tidy error:', e.message); } finally { tidying = false; }

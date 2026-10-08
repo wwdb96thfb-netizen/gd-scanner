@@ -93,7 +93,7 @@ function runChecks(pages,meta){
     else if(p.type==='pq'&&p.pq){ pqs.push({q:p.pq,p:i+1}); if(!p.pq.gd_no) add('amber',19,'Release order does not show a GD number','Could not read the GD number on the release order.'); }
     else if(p.type==='inv'&&p.inv){ invs.push({v:p.inv,p:i+1}); }
     else if(p.type==='veh'){ var reg=String((p.veh||{}).reg_no||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
-      if(reg.length>=3){ vehs.push(reg); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
+      if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
@@ -138,7 +138,7 @@ function runChecks(pages,meta){
   });
   var off=num(meta&&meta.offeredKg); if(G&&off!=null&&G.info.qty!=null){ if(off>G.info.qty*1.02) add('red',25,'More is on offer than the GD covers','Offered '+fmt(off)+' kg, GD '+fmt(G.info.qty)+' kg.'); else add('ok',25,'Quantity on offer is within the GD quantity',''); }
   var v=flags.some(function(f){return f.l==='red';})?'red':(flags.some(function(f){return f.l==='amber';})?'amber':'ok');
-  return {flags:flags,verdict:v,vehicles:vehs.filter(function(x,i){return vehs.indexOf(x)===i;}),
+  return {flags:flags,verdict:v,vehicles:vehs,
     gdNos:gds.map(function(x){return x.info.mn;}).filter(Boolean),
     containers:gds.map(function(x){return String(x.g.container||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();}).filter(Boolean)};
 }

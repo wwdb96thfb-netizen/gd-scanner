@@ -266,7 +266,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.4.1';
+var APPV = '1.4.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -470,12 +470,13 @@ async function shareText(text, btn, field) { try { if (navigator.share) await na
 async function loadPeople(quiet) { try { var j = await api('/api/people'), before = (S.requests || []).length; S.people = j.people; S.requests = j.requests || []; S.topic = j.topic; S.joinKey = j.joinKey; if (!quiet) setStatus('s-people', '');
     if (quiet && S.requests.length > before) toast(S.requests.length + (S.requests.length === 1 ? ' person is' : ' people are') + ' waiting for approval'); }
   catch (e) { if (!quiet) setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
-function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.requests || []).length; box.textContent = ''; rq.textContent = '';
+function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.requests || []).length, sig = JSON.stringify([S.people, S.requests, S.joinKey, S.server]);
+  if (sig === S.peopleSig) return; S.peopleSig = sig; box.textContent = ''; rq.textContent = '';
   $('req-box').hidden = !n; $('req-badge').hidden = !n; $('req-badge').textContent = n; $('join-link').value = S.joinKey ? joinLink() : '';
   (S.requests || []).forEach(function (r) { var act = async function (action, role) { try { await api('/api/requests/' + r.id, { method: 'POST', body: JSON.stringify({ action: action, role: role }) }); loadPeople(); } catch (e) { setStatus('s-people', 'Could not save. The server must be reachable.', true); } };
     rq.appendChild(h('div', { class: 'person' }, h('b', { text: r.name }), h('span', { class: 'note', text: 'Asked to join as ' + (r.role === 'admin' ? 'an admin' : 'ground staff') + ' · ' + when(r.at) }),
       h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as ground staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as admin', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
-  if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'Nobody has access yet apart from you.' }));
+  if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'No one else has been added yet.' }));
   S.people.forEach(function (p) { var link = linkFor(p.code), adm = p.role === 'admin', field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
     var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Scanner link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
     var role = h('button', { class: 'btn ghost small', text: adm ? 'Make ground staff' : 'Make admin', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: adm ? 'field' : 'admin' }) }); loadPeople(); } catch (e) {} } });
