@@ -302,7 +302,7 @@ details.case>summary.nopic>*{grid-column:1}
 
     <section id="p-people" hidden>
       <div class="chips" id="grp-chips" style="margin-bottom:14px">
-        <button data-g="sum" aria-pressed="true">Summary</button><button data-g="people" aria-pressed="false" id="chip-people">People</button><button data-g="watch" aria-pressed="false">Watchlist</button><button data-g="values" aria-pressed="false">Values</button><button data-g="alerts" aria-pressed="false">Alerts</button>
+        <button data-g="sum" aria-pressed="true">Summary</button><button data-g="people" aria-pressed="false" id="chip-people">People</button><button data-g="watch" aria-pressed="false">Watchlist</button><button data-g="alerts" aria-pressed="false">Alerts</button>
       </div>
       <div class="grp" data-g="sum">
       <h2 class="sec">Daily summary</h2>
@@ -323,18 +323,6 @@ details.case>summary.nopic>*{grid-column:1}
         </div>
         <button class="btn" id="b-watch">Add to watchlist</button>
         <div class="list" id="watch"></div>
-      </div>
-      </div>
-      <div class="grp" data-g="values" hidden>
-      <h2 class="sec">Minimum customs values</h2>
-      <div class="panel">
-        <p class="note">Enter figures from the official valuation rulings. A GD that declares less is flagged. Use an HS code (at least 4 digits) or a word from the goods description.</p>
-        <div class="form">
-          <label class="f">HS code or goods word<input type="text" id="v-match" maxlength="40" placeholder="e.g. 0802.3200 or walnut"></label>
-          <label class="f">Minimum value, US$ per kg<input type="number" id="v-min" inputmode="decimal" step="0.01" min="0"></label>
-        </div>
-        <button class="btn" id="b-value">Add minimum value</button>
-        <div class="list" id="values"></div>
       </div>
       </div>
       <div class="grp" data-g="alerts" hidden>
@@ -410,7 +398,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.0';
+var APPV = '2.3.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -750,11 +738,10 @@ function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Check
 async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf(new Date()); drawSummary();
   try { var j = await api('/api/admin'); S.adminOk = true; S.vapid = j.vapid || ''; drawPush();
     $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
-    var wb = $('watch'), vb = $('values'); wb.textContent = ''; vb.textContent = '';
+    var wb = $('watch'); wb.textContent = '';
     var item = function (box, title, sub, path) { var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function () { del.disabled = true; try { await api(path, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (e) { del.disabled = false; } } }); box.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, h('b', { text: title }), h('div', { class: 'meta', text: sub }), del))); };
     j.watch.forEach(function (w) { item(wb, w.value, (w.note ? w.note + ' · ' : '') + 'by ' + w.by + ', ' + when(w.at), '/api/watch/' + w.id); });
-    j.values.forEach(function (v) { item(vb, v.match + ': minimum $' + v.min + ' per kg', 'by ' + v.by + ', ' + when(v.at), '/api/values/' + v.id); });
-  } catch (e) { if (!e || !e.net) setStatus('s-admin', 'Watchlist, minimum values and alerts appear once the server has updated itself (within about 30 minutes).'); } }
+  } catch (e) { if (!e || !e.net) setStatus('s-admin', 'The watchlist and alerts appear once the server has updated itself (within about 30 minutes).'); } }
 $('sum-day').addEventListener('change', drawSummary);
 $('b-sumshare').addEventListener('click', async function () { var t = summaryText(false); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Summary copied'); } } catch (e) {} });
 $('b-sumcsv').addEventListener('click', function () { var a = h('a', { href: URL.createObjectURL(new Blob([summaryText(true)], { type: 'text/csv' })), download: 'gd-scanner-' + $('sum-day').value + '.csv' }); document.body.appendChild(a); a.click(); a.remove(); });
@@ -762,8 +749,6 @@ $('b-push2').addEventListener('click', async function () { $('b-push2').disabled
 $('b-push').addEventListener('click', async function () { $('b-push').disabled = true; setStatus('s-push', 'Turning on…'); var ok = await enablePush(true); $('b-push').disabled = false; if (ok) toast('Alerts are on. A test alert was sent to this phone.'); });
 $('b-watch').addEventListener('click', async function () { var v = $('w-value').value.trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) { setStatus('s-admin', 'Enter at least 4 letters or digits to watch for.', true); return; }
   try { await api('/api/watch', { method: 'POST', body: JSON.stringify({ value: v, note: $('w-note').value }) }); $('w-value').value = ''; $('w-note').value = ''; setStatus('s-admin', ''); toast('Added to watchlist'); S.ver = ''; loadAdmin(); refresh(); } catch (e) { setStatus('s-admin', 'Could not add. The server is not reachable or has not updated yet.', true); } });
-$('b-value').addEventListener('click', async function () { var m = $('v-match').value.trim(), n = parseFloat($('v-min').value); if (m.length < 3 || !(n > 0)) { setStatus('s-admin', 'Enter the HS code or goods word, and a minimum value above zero.', true); return; }
-  try { await api('/api/values', { method: 'POST', body: JSON.stringify({ match: m, min: n }) }); $('v-match').value = ''; $('v-min').value = ''; setStatus('s-admin', ''); toast('Minimum value added'); S.ver = ''; loadAdmin(); refresh(); } catch (e) { setStatus('s-admin', 'Could not add. The server is not reachable or has not updated yet.', true); } });
 async function loadPeople(quiet) { try { var j = await api('/api/people'), before = (S.requests || []).length; S.people = j.people; S.requests = j.requests || []; S.topic = j.topic; S.joinKey = j.joinKey; if (!quiet) setStatus('s-people', '');
     if (quiet && S.requests.length > before) toast(S.requests.length + (S.requests.length === 1 ? ' person is' : ' people are') + ' waiting for approval'); }
   catch (e) { if (!quiet) setStatus('s-people', 'People can only be managed while the server is reachable.', true); } drawPeople(); }
