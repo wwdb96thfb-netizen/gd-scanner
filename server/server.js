@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 10;
+const VERSION = 11;
 const CHECKS_V = 2;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -305,7 +305,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (!user.admin) return send(res, 403, { error: 'admin' });
     if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
-    if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (m) { index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
+    if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
       people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, files: [...index.values()].filter(m => m.by === x.code).length })),
       requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
