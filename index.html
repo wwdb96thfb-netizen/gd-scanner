@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>GD Scanner</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f2f7a">
@@ -28,6 +28,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
+html,body{touch-action:pan-y;overflow-x:hidden;max-width:100%;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--body);padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 img{max-width:100%}
 .wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;display:flex;flex-direction:column;gap:16px}
@@ -394,7 +395,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.2';
+var APPV = '2.3.3';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -822,6 +823,9 @@ $('b-chpin').addEventListener('click', async function () { var o = $('c-old').va
   if (r !== 'ok') { setStatus('s-pin', 'The PIN could not be changed. The server must be reachable and up to date.', true); return; }
   cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); setStatus('s-pin', 'PIN changed.'); });
 document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); }); });
+// keep the app fitted to the screen: no pinch or double-tap zoom
+['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
+document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
 function start() { var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); gate(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
 document.querySelectorAll('.legal .lv').forEach(function (e) { e.textContent = 'Version ' + APPV; });
 // ---- automatic update: when a newer version is published, reload onto it at a quiet moment
