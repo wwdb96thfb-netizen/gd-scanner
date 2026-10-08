@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 3;
+const VERSION = 4;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -27,6 +27,10 @@ const index = new Map();
 for (const id of fs.readdirSync(CAP)) { try { const m = JSON.parse(fs.readFileSync(path.join(CAP, id, 'meta.json'), 'utf8')); if (m.status === 'reading') m.status = 'queued'; index.set(m.id, m); } catch (e) {} }
 let xver = 0, xcache = null;
 const save = m => { xver++; const f = path.join(CAP, m.id, 'meta.json'); fs.writeFileSync(f + '.tmp', JSON.stringify(m)); fs.renameSync(f + '.tmp', f); };
+const idOf = code => crypto.createHash('sha256').update(String(code)).digest('hex').slice(0, 16);
+const ID = /^[a-z0-9-]{8,40}$/, BOOT = rnd(6);
+// A capture folder belongs to whoever uploaded its first page.
+const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8') === idOf(user.code); if (!create) return false; fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f, idOf(user.code)); return true; };
 const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: 'Admin', admin: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: false, code } : null; };
 
 function listFor(user) {
@@ -54,15 +58,27 @@ function promptFor(files) {
     'Do not use any tool other than reading these files. Reply with only one JSON object in this shape, and nothing else:\n' + SHAPE +
     '\nUse "gd" for a Goods Declaration (GD-I) and fill only "gd". Use "pq" for a Plant Protection / Biosecurity release order and fill only "pq". Use "inv" for a sales tax invoice or commercial sale invoice between two firms in Pakistan and fill only "inv". Otherwise use "other". Set the parts you do not fill to null.';
 }
-function readPage(dir, n) {
+// Mode A gives Claude no blanket file permission: it can only read inside the capture folder, and cannot run commands.
+// Mode B is the original setting. A is tried first; B is used only if A cannot read photos on this Mac.
+let readMode = null;
+async function readPage(dir, n) {
+  if (readMode) return readOnce(dir, n, readMode);
+  let a = null, errA = null;
+  try { a = await readOnce(dir, n, 'A'); } catch (e) { if (e.wait || e.stop) throw e; errA = e; }
+  if (a && a.type !== 'other') { readMode = 'A'; log('  reading in restricted mode'); return a; }
+  try { const b = await readOnce(dir, n, 'B'); if (b.type !== 'other') { readMode = 'B'; log('  restricted mode could not read photos here; using standard mode'); } return b; }
+  catch (e) { if (a) return a; throw (e.wait || e.stop) ? e : (errA || e); }
+}
+function readOnce(dir, n, mode) {
   return new Promise((resolve, reject) => {
     const files = ['p' + n + '-top.jpg', 'p' + n + '-bottom.jpg'].filter(f => fs.existsSync(path.join(dir, f)));
     if (!files.length) return reject(new Error('The photo did not arrive complete. Take it again.'));
     let out = '', err = '', done = false;
-    const ch = spawn(CLAUDE, ['-p', promptFor(files), '--output-format', 'json', '--allowedTools', 'Read', '--permission-mode', 'dontAsk', '--model', MODEL], { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] });
+    const args = mode === 'A' ? ['-p', promptFor(files), '--output-format', 'json', '--permission-mode', 'dontAsk', '--disallowedTools', 'Bash', '--model', MODEL] : ['-p', promptFor(files), '--output-format', 'json', '--allowedTools', 'Read', '--permission-mode', 'dontAsk', '--model', MODEL];
+    const ch = spawn(CLAUDE, args, { cwd: dir, stdio: ['ignore', 'pipe', 'pipe'] });
     const timer = setTimeout(() => { if (!done) { done = true; ch.kill('SIGKILL'); reject(new Error('Reading took too long on the server.')); } }, 5 * 60e3);
     ch.stdout.on('data', d => out += d); ch.stderr.on('data', d => err += d);
-    ch.on('error', e => { if (done) return; done = true; clearTimeout(timer); reject(new Error(e.code === 'ENOENT' ? 'Claude is not installed on the server.' : 'Claude could not be started on the server.')); });
+    ch.on('error', e => { if (done) return; done = true; clearTimeout(timer); const x = new Error(e.code === 'ENOENT' ? 'Claude is not installed on the server.' : 'Claude could not be started on the server.'); x.stop = true; reject(x); });
     ch.on('close', code => {
       if (done) return; done = true; clearTimeout(timer);
       let j = null; try { j = JSON.parse(out); } catch (e) {}
@@ -71,12 +87,13 @@ function readPage(dir, n) {
         const t = (text + ' ' + err).slice(0, 2000);
         log('  claude error:', t.slice(0, 300).replace(/\s+/g, ' '));
         if (/usage limit|rate limit|limit reached|quota|overloaded|too many requests|\b429\b|\b529\b/i.test(t)) { const e = new Error('Claude usage limit reached. The server will retry on its own.'); e.wait = true; return reject(e); }
-        if (/log ?in|authenticat|credential|api key|unauthori[sz]ed|\b401\b/i.test(t)) return reject(new Error('Claude is not signed in on the server.'));
+        if (/log ?in|authenticat|credential|api key|unauthori[sz]ed|\b401\b/i.test(t)) { const x = new Error('Claude is not signed in on the server.'); x.stop = true; return reject(x); }
         return reject(new Error('Reading failed on the server.'));
       }
       const a = text.indexOf('{'), b = text.lastIndexOf('}');
       let r = null; try { r = JSON.parse(text.slice(a, b + 1)); } catch (e) {}
-      if (!r || typeof r !== 'object') return reject(new Error('The page was not read cleanly. Take the photo again.'));
+      if (j && Array.isArray(j.permission_denials) && j.permission_denials.length) return reject(new Error('Reading was blocked on the server.'));
+      if (!r || typeof r !== 'object' || JSON.stringify(r).length > 60000) return reject(new Error('The page was not read cleanly. Take the photo again.'));
       if (r.type === 'gd' && r.gd) resolve({ type: 'gd', gd: r.gd });
       else if (r.type === 'pq' && r.pq) resolve({ type: 'pq', pq: r.pq });
       else if (r.type === 'inv' && r.inv) resolve({ type: 'inv', inv: r.inv });
@@ -108,7 +125,14 @@ async function work() {
     for (;;) {
       const m = [...index.values()].filter(x => x.status === 'queued' || (x.status === 'waiting' && Date.now() >= (x.retryAt || 0))).sort((a, b) => String(a.receivedAt).localeCompare(String(b.receivedAt)))[0];
       if (!m) break;
-      if (!(await vet(m))) break;
+      let ok;
+      try { ok = await vet(m); }
+      catch (e) {   // never leave a file stuck: retry twice, then finish it as unread
+        log('  could not process', m.id, '-', e.message); m.attempts = (m.attempts || 0) + 1;
+        if (m.attempts >= 3) { const pg = [{ type: 'unread', err: 'The server could not process this file. Send it again.' }]; Object.assign(m, { pages: pg, flags: runChecks(pg, {}).flags, status: 'done', doneAt: new Date().toISOString() }); } else m.status = 'queued';
+        try { save(m); } catch (x) {} ok = true;
+      }
+      if (!ok) break;
     }
   } catch (e) { log('worker error', e.message); } finally { busy = false; }
   applyUpdate();
@@ -151,23 +175,52 @@ const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x'), p = u.pathname.split('/').filter(Boolean);
   try {
     if (p[0] !== 'api') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('GD Scanner server is running.'); }
+    if (p[1] === 'hello') {   // lets the app confirm this is the real server before it sends its code
+      const n = u.searchParams.get('n') || '', uid = u.searchParams.get('u') || '', code = [cfg.adminCode].concat(cfg.people.map(x => x.code)).find(c => idOf(c) === uid);
+      if (!code || !/^[a-f0-9]{16,64}$/.test(n)) return send(res, 404, { error: 'unknown' });
+      return send(res, 200, { ok: true, proof: crypto.createHmac('sha256', code).update(n).digest('hex'), version: VERSION });
+    }
     const user = who(req.headers['x-code'] || u.searchParams.get('code'));
     if (!user) return send(res, 401, { error: 'code' });
     if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, version: VERSION });
 
+    if (p[1] === 'have' && p[2] && req.method === 'GET') {
+      if (!ID.test(p[2])) return send(res, 400, { error: 'id' });
+      if (index.has(p[2])) return send(res, 200, { ok: true, done: true, pages: [] });
+      const dir = path.join(CAP, p[2]); let pages = [];
+      if (fs.existsSync(dir) && claim(dir, user, false)) pages = [0, 1, 2, 3, 4, 5].filter(n => fs.existsSync(path.join(dir, 'p' + n + '.ok')));
+      return send(res, 200, { ok: true, done: false, pages });
+    }
+    if (p[1] === 'page' && req.method === 'POST') {
+      const b = await body(req), n = parseInt(b.n, 10);
+      if (!ID.test(b.id || '') || !(n >= 0 && n <= 5)) return send(res, 400, { error: 'id' });
+      if (index.has(b.id)) return send(res, 200, { ok: true, dup: true });
+      if (!jpg(b.top)) return send(res, 400, { error: 'photo' });
+      const dir = path.join(CAP, b.id); if (!claim(dir, user, true)) return send(res, 403, { error: 'owner' });
+      ['view', 'top', 'bottom'].forEach(k => { const buf = jpg(b[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); });
+      fs.writeFileSync(path.join(dir, 'p' + n + '.ok'), /^[0-9a-f]{16}$/.test(b.ph || '') ? b.ph : '');
+      return send(res, 200, { ok: true });
+    }
     if (p[1] === 'capture' && req.method === 'POST') {
       const b = await body(req);
-      if (!/^[a-z0-9-]{8,40}$/.test(b.id || '')) return send(res, 400, { error: 'id' });
+      if (!ID.test(b.id || '')) return send(res, 400, { error: 'id' });
       if (index.has(b.id)) return send(res, 200, { ok: true, dup: true });
-      const pages = Array.isArray(b.pages) ? b.pages.slice(0, 6) : [];
-      if (!pages.length) return send(res, 400, { error: 'pages' });
-      const dir = path.join(CAP, b.id); fs.mkdirSync(dir, { recursive: true });
-      pages.forEach((pg, n) => { ['view', 'top', 'bottom'].forEach(k => { const buf = jpg(pg && pg[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); }); });
-      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes: pages.map(pg => (pg && /^[0-9a-f]{16}$/.test(pg.ph || '')) ? pg.ph : null), nPages: pages.length, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
+      const dir = path.join(CAP, b.id); let nPages = 0, hashes = [];
+      if (Array.isArray(b.pages)) {   // older app versions send every page in one request
+        const pages = b.pages.slice(0, 6); if (!pages.length) return send(res, 400, { error: 'pages' });
+        if (!claim(dir, user, true)) return send(res, 403, { error: 'owner' });
+        pages.forEach((pg, n) => { ['view', 'top', 'bottom'].forEach(k => { const buf = jpg(pg && pg[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); }); });
+        nPages = pages.length; hashes = pages.map(pg => (pg && /^[0-9a-f]{16}$/.test(pg.ph || '')) ? pg.ph : null);
+      } else {
+        nPages = Math.min(6, parseInt(b.nPages, 10) || 0);
+        if (!nPages || !fs.existsSync(dir) || !claim(dir, user, false)) return send(res, 409, { error: 'missing' });
+        for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); }
+      }
+      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, nPages, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') return send(res, 200, { ok: true, name: user.name, admin: user.admin, list: listFor(user) });
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, list: listFor(user) }); }
     if (p[1] === 'photo' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const f = path.join(CAP, m.id, 'p' + (parseInt(p[3], 10) || 0) + '-view.jpg');
@@ -219,6 +272,9 @@ function tunnel() {
   ch.on('close', () => { publicUrl = ''; log('Tunnel stopped. Restarting in 15 seconds.'); setTimeout(tunnel, 15e3); });
   process.on('exit', () => { try { ch.kill(); } catch (e) {} });
 }
+// Half-uploaded captures that were never finished are removed after a week.
+try { for (const id of fs.readdirSync(CAP)) { const d = path.join(CAP, id); if (!fs.existsSync(path.join(d, 'meta.json')) && Date.now() - fs.statSync(d).mtimeMs > 7 * 864e5) fs.rmSync(d, { recursive: true, force: true }); } } catch (e) {}
+server.on('error', e => { if (e.code === 'EADDRINUSE') { log('Another GD Scanner server is already running on this Mac. This copy will stop.'); setTimeout(() => process.exit(1), 60e3); } else log('server error:', e.message); });
 process.on('SIGINT', () => process.exit(0)); process.on('SIGTERM', () => process.exit(0));
 
 server.listen(PORT, '127.0.0.1', () => {

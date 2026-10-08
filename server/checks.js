@@ -7,6 +7,8 @@ function near(a,b,abs,rel){ return Math.abs(a-b)<=Math.max(abs,rel*Math.max(Math
 function fmt(n){ return n==null?'—':Number(n).toLocaleString('en-US',{maximumFractionDigits:2}); }
 function dstr(ms){ if(ms==null) return '—'; var d=new Date(ms); return ('0'+d.getUTCDate()).slice(-2)+'-'+('0'+(d.getUTCMonth()+1)).slice(-2)+'-'+d.getUTCFullYear(); }
 
+function conf(s){ return String(s||'').toUpperCase().replace(/[1L]/g,'I').replace(/0/g,'O').replace(/5/g,'S').replace(/8/g,'B'); }
+
 function checkGD(g,add){
   var mn=String(g.machine_no||'').replace(/\s+/g,'').toUpperCase();
   var m=mn.match(/^([A-Z]{3,5})-([A-Z]{1,3})-(\d+)-(\d{2})-(\d{2})-(\d{4})$/);
@@ -19,7 +21,7 @@ function checkGD(g,add){
     if(gdDate==null) gdDate=inside; }
   var st=m?m[1]:null;
   if(st){ var refs=[['IGM number',g.igm_no],['BL / Index number',g.bl_no],['Payment number',g.cash_no]].filter(function(r){return r[1];});
-    var bad=refs.filter(function(r){return String(r[1]).toUpperCase().indexOf(st)<0;});
+    var bad=refs.filter(function(r){return conf(r[1]).indexOf(conf(st))<0;});
     if(!refs.length) add('skip',2,'Station code not compared','IGM, BL and payment numbers were not readable.');
     else if(bad.length) add('red',2,'Station code differs inside the same GD',bad.map(function(r){return r[0]+' '+r[1];}).join('; ')+' should carry '+st+'.');
     else add('ok',2,'Same station code on every reference',st); }
@@ -82,9 +84,11 @@ function checkGD(g,add){
 }
 
 function runChecks(pages,meta){
-  var flags=[], gds=[], pqs=[], invs=[];
+  var flags=[], gds=[], pqs=[], invs=[], seen={};
   pages.forEach(function(p,i){
     var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:i+1}); };
+    var key=p.type==='gd'&&p.gd?'gd:'+conf(String(p.gd.machine_no||'').replace(/\s+/g,'')):(p.type==='pq'&&p.pq?'pq:'+conf(String(p.pq.ro_no||'').replace(/\s+/g,''))+'|'+String(p.pq.gd_no||'').replace(/\D/g,''):'');
+    if(key.length>4){ if(seen[key]){ add('skip',0,'Page '+(i+1)+' is another photo of the same paper as page '+seen[key],'Only the first photo of each paper is checked.'); return; } seen[key]=i+1; }
     if(p.type==='gd'&&p.gd){ gds.push({g:p.gd,info:checkGD(p.gd,add),p:i+1}); }
     else if(p.type==='pq'&&p.pq){ pqs.push({q:p.pq,p:i+1}); if(!p.pq.gd_no) add('amber',19,'Release order does not show a GD number','Could not read the GD number on the release order.'); }
     else if(p.type==='inv'&&p.inv){ invs.push({v:p.inv,p:i+1}); }
@@ -142,11 +146,11 @@ function dbFlags(cases){
   var put=function(c,f){ var L=(out[c.key]=out[c.key]||[]); if(!L.some(function(x){return x.n===f.n&&x.t===f.t;})) L.push(f); };
   var others=function(L,c){ var o=L.filter(function(x){return x!==c;}).map(function(x){return x.label;}).filter(Boolean); return o.length?' Other file'+(o.length>1?'s':'')+': '+o.slice(0,3).join('; ')+(o.length>3?' and more':'')+'.':''; };
   var uniq=function(L){ return Array.from(new Set(L)); };
-  var byGd={}, byCt={}, byRo={}, byNtn={}, byName={}, byNear={}, byBand={};
+  var byGd={}, byCt={}, byRo={}, byNtn={}, byName={}, byNear={}, byBand={}, disp={}, D=function(k){ return disp[k]||k; };
   var add=function(map,k,v){ (map[k]=map[k]||[]).push(v); };
   cases.forEach(function(c){ c._gd=[]; var seen={};
     (c.pages||[]).forEach(function(p){
-      if(p.type==='gd'&&p.gd){ var g=p.gd, mn=String(g.machine_no||'').replace(/\s+/g,'').toUpperCase(); if(!mn||seen[mn]) return; seen[mn]=1;
+      if(p.type==='gd'&&p.gd){ var g=p.gd, mn=String(g.machine_no||'').replace(/\s+/g,'').toUpperCase(); var ck=conf(mn); if(!mn||seen[ck]) return; seen[ck]=1; disp[ck]=disp[ck]||mn; mn=ck;
         var items=Array.isArray(g.items)?g.items:[], q=0, ok=items.length>0; items.forEach(function(it){ var x=num(it.qty_kg); if(x==null) ok=false; else q+=x; });
         var m=mn.match(/-(\d{2})-(\d{2})-(\d{4})$/), date=pd(g.gd_date)||(m?pd(m[1]+'-'+m[2]+'-'+m[3]):null), ntn=String(g.ntn||'').replace(/\D/g,'').slice(0,7), ct=U(g.container);
         var G={mn:mn,qty:ok?q:null,date:date,ntn:ntn,name:g.importer}; c._gd.push(G); add(byGd,mn,c);
@@ -158,13 +162,13 @@ function dbFlags(cases){
         add(byRo,no+'|'+U(r.place_of_issue)+'|'+yr,{c:c,quoted:String(r.gd_no||'').replace(/\D/g,''),label:r.ro_no}); } });
     (c.hashes||[]).forEach(function(hh){ if(!/^[0-9a-f]{16}$/.test(hh||'')) return; for(var b=0;b<4;b++) add(byBand,b+':'+hh.substr(b*4,4),{c:c,h:hh}); });
   });
-  Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]); if(L.length<2) return; L.forEach(function(c){ put(c,{l:'red',n:23,t:'Same GD number appears in '+(L.length-1)+' other file'+(L.length>2?'s':''),d:k+'. One GD covers one consignment. Compare seller, goods and quantity.'+others(L,c),p:0}); }); });
-  Object.keys(byCt).forEach(function(k){ var L=byCt[k], gd=uniq(L.map(function(x){return x.mn;})); if(gd.length<2) return; uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:24,t:'Same container appears on different GDs',d:k+' is on '+gd.join(', ')+'.',p:0}); }); });
+  Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]); if(L.length<2) return; L.forEach(function(c){ put(c,{l:'red',n:23,t:'Same GD number appears in '+(L.length-1)+' other file'+(L.length>2?'s':''),d:D(k)+'. One GD covers one consignment. Compare seller, goods and quantity.'+others(L,c),p:0}); }); });
+  Object.keys(byCt).forEach(function(k){ var L=byCt[k], gd=uniq(L.map(function(x){return x.mn;})); if(gd.length<2) return; uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:24,t:'Same container appears on different GDs',d:k+' is on '+gd.map(D).join(', ')+'.',p:0}); }); });
   Object.keys(byGd).forEach(function(k){ var L=uniq(byGd[k]), qty=null; L.forEach(function(c){ c._gd.forEach(function(g){ if(g.mn===k&&g.qty!=null&&qty==null) qty=g.qty; }); });
     var offers=L.filter(function(c){ return num(c.offeredKg)>0; }); if(qty==null||offers.length<2) return; var sum=0; offers.forEach(function(c){ sum+=num(c.offeredKg); });
-    if(sum>qty*1.02) offers.forEach(function(c){ put(c,{l:'red',n:25,t:'This GD is oversold across files',d:offers.length+' files offer '+fmt(sum)+' kg in total under '+k+', which covers '+fmt(qty)+' kg.'+others(offers,c),p:0}); }); });
+    if(sum>qty*1.02) offers.forEach(function(c){ put(c,{l:'red',n:25,t:'This GD is oversold across files',d:offers.length+' files offer '+fmt(sum)+' kg in total under '+D(k)+', which covers '+fmt(qty)+' kg.'+others(offers,c),p:0}); }); });
   Object.keys(byRo).forEach(function(k){ var L=byRo[k], cs=uniq(L.map(function(x){return x.c;})); if(cs.length<2) return;
-    var quoted=uniq(L.map(function(x){return x.quoted;}).filter(Boolean)), sets=uniq(cs.map(function(c){ return c._gd.map(function(g){return g.mn;}).sort().join('+'); }).filter(Boolean));
+    var quoted=uniq(L.map(function(x){return x.quoted;}).filter(Boolean)), sets=uniq(cs.map(function(c){ return c._gd.map(function(g){return D(g.mn);}).sort().join('+'); }).filter(Boolean));
     cs.forEach(function(c){ var lab=L[0].label;
       if(quoted.length>1) put(c,{l:'red',n:26,t:'Same release order shows different GD numbers in different files',d:'Release order '+lab+' quotes GD '+quoted.join(' and ')+'. One of them has been altered or misread.'+others(cs,c),p:0});
       else if(sets.length>1) put(c,{l:'red',n:26,t:'Same release order is presented with different GDs',d:'Release order '+lab+' is filed with '+sets.join(' and ')+'.'+others(cs,c),p:0});
@@ -174,7 +178,7 @@ function dbFlags(cases){
   Object.keys(byName).forEach(function(k){ var L=byName[k], ns=uniq(L.map(function(x){return x.ntn;})); if(ns.length<2) return;
     uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:27,t:'Same importer name appears with different NTNs',d:ns.slice(0,4).join(' / ')+'.',p:0}); }); });
   Object.keys(byNear).forEach(function(k){ var L=byNear[k], gd=uniq(L.map(function(x){return x.mn;})); if(gd.length<2) return;
-    uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:28,t:'Near-duplicate of another file with a different GD number',d:'Same importer, same quantity and same date, but GD numbers '+gd.join(' and ')+'. Check whether one is an altered copy or a misread.',p:0}); }); });
+    uniq(L.map(function(x){return x.c;})).forEach(function(c){ put(c,{l:'amber',n:28,t:'Near-duplicate of another file with a different GD number',d:'Same importer, same quantity and same date, but GD numbers '+gd.map(D).join(' and ')+'. Check whether one is an altered copy or a misread.',p:0}); }); });
   var ham=function(a,b){ var d=0; for(var i=0;i<16;i+=4){ var x=parseInt(a.substr(i,4),16)^parseInt(b.substr(i,4),16); while(x){ d+=x&1; x>>=1; } } return d; }, done={};
   Object.keys(byBand).forEach(function(k){ var L=byBand[k]; if(L.length<2||L.length>60) return;
     for(var i=0;i<L.length;i++) for(var j=i+1;j<L.length;j++){ var A=L[i],B=L[j]; if(A.c===B.c) continue; var id=A.c.key<B.c.key?A.c.key+'|'+B.c.key:B.c.key+'|'+A.c.key; if(done[id]) continue; if(ham(A.h,B.h)>3) continue; done[id]=1;

@@ -6,6 +6,7 @@
 <title>GD Scanner</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1f2f7a">
+<meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GD Scanner">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -216,7 +217,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.2.0';
+var APPV = '1.3.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -230,7 +231,7 @@ var cfg = load('gd.cfg') || {};
 function takeLink(text) { text = String(text || '').trim(); var q = new URLSearchParams(), parts = text.split('#'), qi = parts[0].indexOf('?');
   [qi >= 0 ? parts[0].slice(qi + 1) : (parts.length === 1 && text.indexOf('=') > 0 && text.indexOf('://') < 0 ? text : ''), parts[1] || ''].forEach(function (seg) { new URLSearchParams(seg).forEach(function (v, k) { q.set(k, v); }); });
   if (!q.get('c')) return false;
-  cfg = { c: q.get('c'), t: q.get('t') || cfg.t || '', s: q.get('s') ? normS(q.get('s')) : (cfg.s || '') }; keep('gd.cfg', cfg); return true; }
+  cfg = { c: q.get('c'), t: q.get('t') || cfg.t || '', s: q.get('s') ? normS(q.get('s')) : (cfg.s || '') }; cfg.trusted = cfg.s; keep('gd.cfg', cfg); return true; }
 if ((location.hash.length > 1 || location.search.length > 1) && takeLink(location.href)) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
 
 var S = { server: null, finding: null, me: load('gd.me'), bad: false, list: load('gd.list') || [], outbox: [], syncing: false, files: [], filter: 'all', people: [], topic: '', tick: 0, seen: {} };
@@ -245,7 +246,18 @@ function outDel(id) { return tx('readwrite', function (s) { return s.delete(id);
 
 // ---- finding and talking to the server
 function fx(url, opts, ms) { var c = new AbortController(), t = setTimeout(function () { c.abort(); }, ms || 10000); return fetch(url, Object.assign({ signal: c.signal, cache: 'no-store' }, opts)).finally(function () { clearTimeout(t); }); }
-async function ping(url) { try { var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { S.bad = true; return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.bad = false; return true; } catch (e) { return false; } }
+if (cfg.c && cfg.trusted === undefined) { cfg.trusted = cfg.s || ''; keep('gd.cfg', cfg); }
+// Before the app sends its code anywhere, the server must prove it already knows that code.
+function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
+async function uidOf(code) { return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))).slice(0, 16); }
+async function proofOf(code, n) { var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(n))); }
+async function verify(url) { var a = new Uint8Array(16); crypto.getRandomValues(a); var n = hex(a);
+  var r = await fx(url + '/api/hello?u=' + (await uidOf(cfg.c)) + '&n=' + n + '&_=' + Date.now(), {}, 8000);
+  if (r.status === 401) return url === cfg.trusted;   // a server from before this check existed: only the address this phone already used
+  if (r.status === 404) { if (url === cfg.trusted) revoked(); return false; }
+  if (!r.ok) return false; var j = await r.json(); return !!(j && j.proof && j.proof === await proofOf(cfg.c, n)); }
+function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
+async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
   S.finding = (async function () {
@@ -259,7 +271,7 @@ async function findServer() {
 async function api(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
   try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
   catch (e) { S.server = null; drawConn(); throw { net: true }; }
-  if (r.status === 401) { S.bad = true; drawConn(); throw { code: true }; }
+  if (r.status === 401) { revoked(); drawConn(); throw { code: true }; }
   if (r.status >= 500) { S.server = null; drawConn(); throw { net: true }; }
   if (!r.ok) throw { status: r.status };
   return r.json(); }
@@ -276,7 +288,8 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
 async function refresh() {
-  try { var j = await api('/api/captures'); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me);
+  try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.ver = j.ver || '';
+    if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + (c.verdict === 'red' ? 'DOUBTFUL' : c.verdict === 'amber' ? 'needs a check' : 'clean')); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
     S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
   drawConn(); drawFiles(); }
@@ -285,7 +298,13 @@ async function sync() {
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
-      try { await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify({ id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg, pages: it.pages }) });
+      try { var meta = { id: it.id, takenAt: it.takenAt, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
+        try { have = await api('/api/have/' + it.id); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
+        if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
+        else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
+          for (var n = 0; n < it.pages.length; n++) { if (have.pages.indexOf(n) >= 0) continue; it.progress = 'Uploading page ' + (n + 1) + ' of ' + it.pages.length + '.'; drawFiles(); var pg = it.pages[n];
+            await api('/api/page', { method: 'POST', ms: 150000, body: JSON.stringify({ id: it.id, n: n, ph: pg.ph, view: pg.view, top: pg.top, bottom: pg.bottom }) }); }
+          await api('/api/capture', { method: 'POST', ms: 30000, body: JSON.stringify(Object.assign({ nPages: it.pages.length }, meta)) }); }
         await outDel(it.id); S.outbox = S.outbox.filter(function (x) { return x.id !== it.id; }); S.seen[it.id] = 'queued'; }
       catch (e) { it.sending = false; break; } }
   } catch (e) {} finally { S.syncing = false; }
@@ -348,7 +367,7 @@ function caseView(c) {
   var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, q = ((c.pages || []).filter(function (p) { return p.type === 'pq'; })[0] || {}).pq || {};
   var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : 'Unread file')) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : v === 'ok' ? 'Clean' : WORD[v];
-  var line = c.local ? (c.sending ? 'Uploading now.' : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
+  var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
   var meta = [g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
@@ -371,7 +390,7 @@ function caseView(c) {
   return d; }
 
 function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0; box.textContent = '';
-  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
+  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? c.verdict : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
