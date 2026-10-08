@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>GD Scanner</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2b3f94">
+<meta name="theme-color" content="#1f2f7a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GD Scanner">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
 :root{
@@ -31,6 +31,10 @@ body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.5 var(--b
 img{max-width:100%}
 .wrap{max-width:720px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;display:flex;flex-direction:column;gap:16px}
 h1{font:800 24px/1.1 var(--body);margin:0;letter-spacing:-.01em}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{border-radius:11px;box-shadow:0 2px 8px rgba(20,30,80,.22);flex:none}
+.tag{margin:3px 0 0;font:600 11px/1 var(--body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.conn{margin-top:12px!important}
 h2{font:700 17px/1.2 var(--body);margin:0}
 .sub{margin:6px 0 0;color:var(--muted)}
 .conn{margin:8px 0 0;font:500 12px/1.4 var(--mono);padding:7px 9px;border-radius:5px;background:var(--grey-soft);color:var(--muted)}
@@ -106,7 +110,13 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 <body>
 <div class="wrap">
   <header>
-    <h1>GD Scanner</h1>
+    <div class="brand">
+      <img src="icon-192.png" alt="" width="46" height="46">
+      <div>
+        <h1>GD Scanner</h1>
+        <p class="tag">Customs document check</p>
+      </div>
+    </div>
     <p class="conn" id="conn" role="status">Starting…</p>
   </header>
 
@@ -172,7 +182,7 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = 1;
+var APPV = 2;
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
