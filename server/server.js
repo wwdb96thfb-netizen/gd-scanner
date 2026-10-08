@@ -3,11 +3,11 @@
 // Receives captures from the phone app, stores them in ./data, has Claude read each page
 // (through the Claude Code command signed in with the owner's subscription), runs the
 // checklist and serves the results back. No external packages needed.
-const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
+const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto'), os = require('os');
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 2;
+const VERSION = 3;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -111,8 +111,30 @@ async function work() {
       if (!(await vet(m))) break;
     }
   } catch (e) { log('worker error', e.message); } finally { busy = false; }
+  applyUpdate();
 }
 setInterval(work, 30e3);
+
+// ---- self-update: fetch the published server files, check them, swap them in when idle, and restart
+const RAW = process.env.GD_UPDATE_URL || 'https://raw.githubusercontent.com/wwdb96thfb-netizen/gd-scanner/main/server/';
+let pendingUpdate = null;
+async function selfUpdate() {
+  if (process.env.GD_NO_UPDATE || pendingUpdate) return applyUpdate();
+  try {
+    const files = ['server.js', 'checks.js'], fresh = {}; let changed = false;
+    for (const f of files) { const r = await fetch(RAW + f + '?_=' + Date.now()); if (!r.ok) return; const t = await r.text(); if (t.length < 2000 || t.indexOf('GD Scanner') < 0) return; fresh[f] = t; if (t !== fs.readFileSync(path.join(ROOT, f), 'utf8')) changed = true; }
+    if (!changed) return;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gdu-')); for (const f of files) fs.writeFileSync(path.join(tmp, f), fresh[f]);
+    for (const f of files) { const ok = await new Promise(res => { const c = spawn(process.execPath, ['--check', path.join(tmp, f)], { stdio: 'ignore' }); c.on('close', code => res(code === 0)); c.on('error', () => res(false)); }); if (!ok) { log('An update was found but it failed its check. Keeping the current version.'); return; } }
+    pendingUpdate = fresh; log('An update is ready. It will be applied when no file is being read.'); applyUpdate();
+  } catch (e) {}
+}
+function applyUpdate() {
+  if (!pendingUpdate || busy) return;
+  try { for (const f of Object.keys(pendingUpdate)) { fs.writeFileSync(path.join(ROOT, f + '.tmp'), pendingUpdate[f]); fs.renameSync(path.join(ROOT, f + '.tmp'), path.join(ROOT, f)); } } catch (e) { log('Update could not be written:', e.message); pendingUpdate = null; return; }
+  log('Updated the server files. Restarting now.'); process.exit(0);
+}
+setInterval(selfUpdate, 30 * 60e3); setTimeout(selfUpdate, 45e3);
 
 // ---- web API
 const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
