@@ -185,7 +185,12 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
       <h2 class="sec">New consignment</h2>
       <div class="panel">
       <div class="form">
-        <label class="f">Location<input type="text" id="f-loc" placeholder="Sost, Gilgit, Karachi…" maxlength="80"></label>
+        <label class="f">Location<select id="f-locsel">
+          <option value="">Choose a post…</option>
+          <option>Super Highway</option><option>Hub Bypass</option><option>Juma Hadeed</option><option>Sona Pass</option>
+          <option>Hawksbay</option><option>Rehri</option><option>Lath Basti</option><option>Hassan Shah Mazar</option>
+          <option value="other">Other (type it)</option></select>
+          <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
         <label class="f">Seller offering the goods<input type="text" id="f-seller" placeholder="Name of person or firm" maxlength="120"></label>
         <label class="f">Quantity on offer (kg)<input type="text" id="f-qty" inputmode="decimal" placeholder="If known" maxlength="12"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Goods, quantity offered, anything odd" maxlength="300"></label>
@@ -266,7 +271,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.4.3';
+var APPV = '1.5.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -382,6 +387,12 @@ document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListe
 function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]').click(); }
 
 // ---- capture
+// ---- location: a fixed list of posts, with "Other" for anything else. The last choice is remembered on this phone.
+function getLoc() { var v = $('f-locsel').value; return v === 'other' ? $('f-loc').value.trim() : v; }
+function locChanged() { var other = $('f-locsel').value === 'other'; $('f-loc').hidden = !other; keep('gd.loc', { sel: $('f-locsel').value, text: $('f-loc').value }); }
+$('f-locsel').addEventListener('change', function () { locChanged(); if ($('f-locsel').value === 'other') $('f-loc').focus(); });
+$('f-loc').addEventListener('input', locChanged);
+(function () { var l = load('gd.loc'); if (l && typeof l.sel === 'string') { $('f-locsel').value = l.sel; if ($('f-locsel').value !== l.sel) $('f-locsel').value = ''; $('f-loc').value = l.text || ''; } $('f-loc').hidden = $('f-locsel').value !== 'other'; })();
 var picked = [];
 [['l-files', 'f-files', 'doc', 6], ['l-veh', 'f-veh', 'veh', 2]].forEach(function (d) {
   $(d[0]).addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(d[1]).click(); } });
@@ -404,7 +415,7 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), veh = picked[i].kind === 'veh', tall = !veh && im.naturalHeight >= im.naturalWidth;
       pages.push({ kind: veh ? 'veh' : 'doc', ph: fingerprint(im), view: draw(im, 0, 1, 1000, 0.5), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), location: $('f-loc').value.trim(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), offeredKg: parseFloat($('f-qty').value.replace(/,/g, '')) || null, pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), location: getLoc(), seller: $('f-seller').value.trim(), note: $('f-note').value.trim(), offeredKg: parseFloat($('f-qty').value.replace(/,/g, '')) || null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
   picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-seller').value = ''; $('f-note').value = ''; $('f-qty').value = '';
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
