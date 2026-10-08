@@ -377,8 +377,6 @@ details.case>summary.nopic>*{grid-column:1}
       <h2 class="sec">Location</h2>
       <div class="panel">
         <p class="note">Location sharing is on. It is recorded with every scan and cannot be switched off inside the app.</p>
-        <button class="btn ghost small" id="b-testloc">Test location now</button>
-        <p class="status" id="s-loc" role="status"></p>
       </div>
       <h2 class="sec">PIN</h2>
       <div class="panel">
@@ -410,7 +408,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.2.2';
+var APPV = '2.2.3';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -819,7 +817,6 @@ $('g-forgot').addEventListener('click', function () { cfg.ph = null; cfg.pinSync
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
 function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {};
   [['Name', me.name || '—'], ['Role', me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Post', getLoc() || 'Not chosen yet (choose on the Scan tab)'], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); box.appendChild(h('dd', { text: r[1] })); }); }
-$('b-testloc').addEventListener('click', async function () { setStatus('s-loc', 'Reading location…'); var g = await getGPS(); setStatus('s-loc', g ? 'Location is working' + (g.acc ? ', accurate to about ' + Math.round(g.acc) + ' metres.' : '.') : 'Location could not be read. Turn on Location (GPS) and allow it for this app.', !g); });
 $('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
 $('b-chpin').addEventListener('click', async function () { var o = $('c-old').value, n = $('c-new').value;
   if (!cfg.ph || (await sha(cfg.c + ':' + o)) !== cfg.ph) { setStatus('s-pin', 'The current PIN is wrong.', true); return; }
