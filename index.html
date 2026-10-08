@@ -150,7 +150,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 .badge{display:inline-block;min-width:18px;padding:2px 5px;border-radius:9px;background:var(--red);color:var(--card);font:700 11px/1.2 var(--body);margin-left:4px}
 .slots{grid-template-columns:repeat(3,1fr);gap:8px}
 @media (max-width:480px){.slots{grid-template-columns:repeat(3,1fr)}}
-.slots .drop{padding:12px 4px 10px;gap:3px;border-radius:10px}
+.slots .drop{padding:12px 4px 10px;gap:3px;border-radius:10px;min-height:142px;justify-content:flex-start}
 .slots .drop .art{width:64px;height:48px}
 .slots .drop b{font-size:14px}
 .slots .drop small{font-size:11px;line-height:1.25}
@@ -227,7 +227,7 @@ details.case>summary.nopic>*{grid-column:1}
         <div class="slot">
           <label class="drop goods" for="f-goods" id="l-goods" tabindex="0">
             <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><g fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="12" y="34" width="30" height="22"/><rect x="42" y="34" width="30" height="22"/><rect x="27" y="12" width="30" height="22"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M23 34v8M31 34v8M53 34v8M61 34v8M38 12v8M46 12v8"/></g><path d="M6 62h80" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
-            <b>Goods</b><small>The load itself</small></label>
+            <b>Goods</b><small>Cartons or the load</small></label>
           <input type="file" id="f-goods" accept="image/*" multiple hidden>
           <div class="thumbs" id="thumbs-goods"></div>
         </div>
@@ -291,7 +291,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.7.0';
+var APPV = '1.7.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
