@@ -95,6 +95,7 @@ function runChecks(pages,meta){
     else if(p.type==='veh'){ var reg=String((p.veh||{}).reg_no||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
+    else if(p.type==='goods'){ /* reference picture of the goods: nothing to check */ }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
   });

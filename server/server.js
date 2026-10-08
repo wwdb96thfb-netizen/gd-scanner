@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 8;
+const VERSION = 9;
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -34,6 +34,8 @@ const idOf = code => crypto.createHash('sha256').update(String(code)).digest('he
 const ID = /^[a-z0-9-]{8,40}$/, BOOT = rnd(6);
 // A capture folder belongs to whoever uploaded its first page.
 const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if (fs.existsSync(f)) return fs.readFileSync(f, 'utf8') === idOf(user.code); if (!create) return false; fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(f, idOf(user.code)); return true; };
+// The picture shown on a file's card: the goods if photographed, else any non-paper photo, else the vehicle, else page one.
+const thumbOf = m => { const P = m.pages || [], f = t => P.findIndex(p => p.type === t); for (const t of ['goods', 'other', 'veh']) { if (f(t) >= 0) return f(t); } return 0; };
 const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
 
 function listFor(user) {
@@ -43,7 +45,7 @@ function listFor(user) {
   return all.filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = (m.flags || []).concat(ex[m.id] || []);
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [] };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [] };
   });
 }
 
@@ -117,6 +119,7 @@ async function vet(m) {
   log('Reading', m.id, 'from', m.byName, '(' + m.nPages + ' page' + (m.nPages > 1 ? 's' : '') + ')');
   const pages = [];
   for (let n = 0; n < m.nPages; n++) {
+    if ((m.kinds || [])[n] === 'goods') { pages.push({ type: 'goods' }); continue; }   // a reference picture: kept, never sent for reading
     try { pages.push(await readPage(dir, n, (m.kinds || [])[n])); }
     catch (e) {
       if (e.wait) { m.status = 'waiting'; m.retryAt = Date.now() + 15 * 60e3; m.msg = e.message; save(m); log('  usage limit reached, retry in 15 min'); return false; }
@@ -234,17 +237,17 @@ const server = http.createServer(async (req, res) => {
       if (!ID.test(p[2])) return send(res, 400, { error: 'id' });
       if (index.has(p[2])) return send(res, 200, { ok: true, done: true, pages: [] });
       const dir = path.join(CAP, p[2]); let pages = [];
-      if (fs.existsSync(dir) && claim(dir, user, false)) pages = [0, 1, 2, 3, 4, 5, 6, 7].filter(n => fs.existsSync(path.join(dir, 'p' + n + '.ok')));
+      if (fs.existsSync(dir) && claim(dir, user, false)) pages = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].filter(n => fs.existsSync(path.join(dir, 'p' + n + '.ok')));
       return send(res, 200, { ok: true, done: false, pages });
     }
     if (p[1] === 'page' && req.method === 'POST') {
       const b = await body(req), n = parseInt(b.n, 10);
-      if (!ID.test(b.id || '') || !(n >= 0 && n <= 7)) return send(res, 400, { error: 'id' });
+      if (!ID.test(b.id || '') || !(n >= 0 && n <= 11)) return send(res, 400, { error: 'id' });
       if (index.has(b.id)) return send(res, 200, { ok: true, dup: true });
-      if (!jpg(b.top)) return send(res, 400, { error: 'photo' });
+      if (!jpg(b.top) && !jpg(b.view)) return send(res, 400, { error: 'photo' });
       const dir = path.join(CAP, b.id); if (!claim(dir, user, true)) return send(res, 403, { error: 'owner' });
-      ['view', 'top', 'bottom'].forEach(k => { const buf = jpg(b[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); });
-      fs.writeFileSync(path.join(dir, 'p' + n + '.kind'), b.kind === 'veh' ? 'veh' : 'doc');
+      ['view', 'top', 'bottom', 'thumb'].forEach(k => { const buf = jpg(b[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); });
+      fs.writeFileSync(path.join(dir, 'p' + n + '.kind'), b.kind === 'veh' ? 'veh' : b.kind === 'goods' ? 'goods' : 'doc');
       fs.writeFileSync(path.join(dir, 'p' + n + '.ok'), /^[0-9a-f]{16}$/.test(b.ph || '') ? b.ph : '');
       return send(res, 200, { ok: true });
     }
@@ -259,15 +262,21 @@ const server = http.createServer(async (req, res) => {
         pages.forEach((pg, n) => { ['view', 'top', 'bottom'].forEach(k => { const buf = jpg(pg && pg[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); }); });
         nPages = pages.length; hashes = pages.map(pg => (pg && /^[0-9a-f]{16}$/.test(pg.ph || '')) ? pg.ph : null);
       } else {
-        nPages = Math.min(8, parseInt(b.nPages, 10) || 0);
+        nPages = Math.min(12, parseInt(b.nPages, 10) || 0);
         if (!nPages || !fs.existsSync(dir) || !claim(dir, user, false)) return send(res, 409, { error: 'missing' });
-        for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); let k = 'doc'; try { k = fs.readFileSync(path.join(dir, 'p' + n + '.kind'), 'utf8') === 'veh' ? 'veh' : 'doc'; } catch (e) {} kinds.push(k); }
+        for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); let k = 'doc'; try { const t = fs.readFileSync(path.join(dir, 'p' + n + '.kind'), 'utf8'); k = t === 'veh' ? 'veh' : t === 'goods' ? 'goods' : 'doc'; } catch (e) {} kinds.push(k); }
       }
       const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, list: listFor(user) }); }
+    if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
+      if (!f) return send(res, 404, { error: 'none' });
+      res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=86400' }); return fs.createReadStream(f).pipe(res);
+    }
     if (p[1] === 'photo' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const f = path.join(CAP, m.id, 'p' + (parseInt(p[3], 10) || 0) + '-view.jpg');

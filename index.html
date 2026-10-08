@@ -148,6 +148,20 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 .role{display:inline-block;font:600 11px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:4px 6px;border-radius:3px;background:var(--grey-soft);color:var(--muted);margin-left:8px;vertical-align:middle}
 .role.admin{background:var(--stamp-soft);color:var(--stamp)}
 .badge{display:inline-block;min-width:18px;padding:2px 5px;border-radius:9px;background:var(--red);color:var(--card);font:700 11px/1.2 var(--body);margin-left:4px}
+.slots{grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:480px){.slots{grid-template-columns:repeat(3,1fr)}}
+.slots .drop{padding:12px 4px 10px;gap:3px;border-radius:10px}
+.slots .drop .art{width:64px;height:48px}
+.slots .drop b{font-size:14px}
+.slots .drop small{font-size:11px;line-height:1.25}
+.slots .thumbs{gap:6px}
+.slots .thumbs img{width:44px;height:58px}
+.drop.goods{border-color:var(--green);color:var(--green);background:var(--green-soft)}
+details.case>summary{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;align-items:start}
+details.case>summary>*{grid-column:2;min-width:0}
+details.case>summary>.pic{grid-column:1;grid-row:1 / span 4;width:64px;height:64px;border-radius:8px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:block}
+details.case>summary.nopic{grid-template-columns:1fr}
+details.case>summary.nopic>*{grid-column:1}
 </style>
 </head>
 <body>
@@ -199,16 +213,23 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
         <div class="slot">
           <label class="drop" for="f-files" id="l-files" tabindex="0">
             <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="27" y="4" width="38" height="52" rx="3" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M55 4v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M33 20h18M33 27h26M33 34h26M33 41h14"/></g><circle cx="55" cy="45" r="6" fill="none" stroke="#b3261e" stroke-width="2"/><path d="M51.5 45h7" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/><path d="M19 62h54" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
-            <b>Papers</b><small>GD, release order, sales tax invoice. One photo per page, flat and sharp.</small></label>
+            <b>Papers</b><small>GD, release order, invoice</small></label>
           <input type="file" id="f-files" accept="image/*" multiple hidden>
           <div class="thumbs" id="thumbs"></div>
         </div>
         <div class="slot">
           <label class="drop veh" for="f-veh" id="l-veh" tabindex="0">
             <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="6" y="14" width="50" height="34" rx="2" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M56 26h14l10 12v10H56z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M62 31h7l5 6H62z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity=".55"/><circle cx="22" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="66" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="17" y="27" width="28" height="11" rx="2" fill="#fff" stroke="#b3261e" stroke-width="2"/><path d="M22 32.5h18" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 2.4"/><path d="M4 62h84" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
-            <b>Vehicle</b><small>The truck carrying the goods, with the number plate clear.</small></label>
+            <b>Vehicle</b><small>Number plate clear</small></label>
           <input type="file" id="f-veh" accept="image/*" multiple hidden>
           <div class="thumbs" id="thumbs-veh"></div>
+        </div>
+        <div class="slot">
+          <label class="drop goods" for="f-goods" id="l-goods" tabindex="0">
+            <svg class="art" viewBox="0 0 92 68" aria-hidden="true"><g fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="12" y="34" width="30" height="22"/><rect x="42" y="34" width="30" height="22"/><rect x="27" y="12" width="30" height="22"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M23 34v8M31 34v8M53 34v8M61 34v8M38 12v8M46 12v8"/></g><path d="M6 62h80" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg>
+            <b>Goods</b><small>The load itself</small></label>
+          <input type="file" id="f-goods" accept="image/*" multiple hidden>
+          <div class="thumbs" id="thumbs-goods"></div>
         </div>
       </div>
       <button class="btn wide" id="b-send" disabled>Send for checking</button>
@@ -270,7 +291,7 @@ details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '1.6.0';
+var APPV = '1.7.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -364,7 +385,7 @@ async function sync() {
         if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
         else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
           for (var n = 0; n < it.pages.length; n++) { if (have.pages.indexOf(n) >= 0) continue; it.progress = 'Uploading photo ' + (n + 1) + ' of ' + it.pages.length + '.'; drawFiles(); var pg = it.pages[n];
-            await api('/api/page', { method: 'POST', ms: 150000, body: JSON.stringify({ id: it.id, n: n, kind: pg.kind, ph: pg.ph, view: pg.view, top: pg.top, bottom: pg.bottom }) }); }
+            await api('/api/page', { method: 'POST', ms: 150000, body: JSON.stringify({ id: it.id, n: n, kind: pg.kind, ph: pg.ph, thumb: pg.thumb, view: pg.view, top: pg.top, bottom: pg.bottom }) }); }
           await api('/api/capture', { method: 'POST', ms: 30000, body: JSON.stringify(Object.assign({ nPages: it.pages.length }, meta)) }); }
         await outDel(it.id); S.outbox = S.outbox.filter(function (x) { return x.id !== it.id; }); S.seen[it.id] = 'queued'; }
       catch (e) { it.sending = false; break; } }
@@ -393,26 +414,29 @@ $('f-locsel').addEventListener('change', function () { locChanged(); if ($('f-lo
 $('f-loc').addEventListener('input', locChanged);
 (function () { var l = load('gd.loc'); if (l && typeof l.sel === 'string') { $('f-locsel').value = l.sel; if ($('f-locsel').value !== l.sel) $('f-locsel').value = ''; $('f-loc').value = l.text || ''; } $('f-loc').hidden = $('f-locsel').value !== 'other'; })();
 var picked = [];
-[['l-files', 'f-files', 'doc', 6], ['l-veh', 'f-veh', 'veh', 2]].forEach(function (d) {
+[['l-files', 'f-files', 'doc', 6], ['l-veh', 'f-veh', 'veh', 2], ['l-goods', 'f-goods', 'goods', 3]].forEach(function (d) {
   $(d[0]).addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(d[1]).click(); } });
   $(d[1]).addEventListener('change', function (e) { Array.prototype.forEach.call(e.target.files, function (f) { if (picked.filter(function (x) { return x.kind === d[2]; }).length < d[3]) picked.push({ file: f, url: URL.createObjectURL(f), kind: d[2] }); }); e.target.value = ''; drawThumbs(); }); });
 function setStatus(id, msg, bad) { var e = $(id); e.textContent = msg || ''; e.className = 'status' + (bad ? ' bad' : ''); }
-function drawThumbs() { var nd = 0, nv = 0; $('thumbs').textContent = ''; $('thumbs-veh').textContent = '';
-  picked.forEach(function (f) { var veh = f.kind === 'veh', label = veh ? 'Vehicle photo ' + (++nv) : 'Page ' + (++nd);
-    $(veh ? 'thumbs-veh' : 'thumbs').appendChild(h('figure', null, h('img', { src: f.url, alt: label }), h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
-  $('b-send').disabled = !picked.length; setStatus('s-scan', picked.length ? nd + ' paper page' + (nd === 1 ? '' : 's') + ' and ' + nv + ' vehicle photo' + (nv === 1 ? '' : 's') + ' ready.' + (nd && !nv ? ' Add the vehicle if it is there.' : '') : ''); }
+function drawThumbs() { var n = { doc: 0, veh: 0, goods: 0 }, box = { doc: 'thumbs', veh: 'thumbs-veh', goods: 'thumbs-goods' }, word = { doc: 'Page', veh: 'Vehicle photo', goods: 'Goods photo' };
+  ['thumbs', 'thumbs-veh', 'thumbs-goods'].forEach(function (id) { $(id).textContent = ''; });
+  picked.forEach(function (f) { var label = word[f.kind] + ' ' + (++n[f.kind]);
+    $(box[f.kind]).appendChild(h('figure', null, h('img', { src: f.url, alt: label }), h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
+  $('b-send').disabled = !picked.length;
+  setStatus('s-scan', picked.length ? [n.doc + ' paper page' + (n.doc === 1 ? '' : 's'), n.veh + ' vehicle', n.goods + ' goods'].join(', ') + ' ready.' : ''); }
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
 function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
 function fingerprint(im) { try { var c = document.createElement('canvas'); c.width = 9; c.height = 8; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 9, 8); var d = x.getImageData(0, 0, 9, 8).data, g = [], hex = ''; for (var i = 0; i < 72; i++) g.push(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114);
     for (var r = 0; r < 8; r++) { var b = 0; for (var k = 0; k < 8; k++) b = (b << 1) | (g[r * 9 + k] > g[r * 9 + k + 1] ? 1 : 0); hex += ('0' + b.toString(16)).slice(-2); } return hex; } catch (e) { return null; } }
+function thumbOf(im) { var c = document.createElement('canvas'), d = Math.min(im.naturalWidth, im.naturalHeight); c.width = c.height = 160; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 160, 160); x.drawImage(im, (im.naturalWidth - d) / 2, (im.naturalHeight - d) / 2, d, d, 0, 0, 160, 160); var u = c.toDataURL('image/jpeg', 0.6); c.width = c.height = 0; return u; }
 function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 $('b-send').addEventListener('click', async function () {
   if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Preparing photos…');
   var pages = [];
-  picked.sort(function (a, b) { return (a.kind === 'veh' ? 1 : 0) - (b.kind === 'veh' ? 1 : 0); });
-  for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), veh = picked[i].kind === 'veh', tall = !veh && im.naturalHeight >= im.naturalWidth;
-      pages.push({ kind: veh ? 'veh' : 'doc', ph: fingerprint(im), view: draw(im, 0, 1, 1000, 0.5), top: tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
+  var ord = { doc: 0, veh: 1, goods: 2 }; picked.sort(function (a, b) { return ord[a.kind] - ord[b.kind]; });
+  for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = kind === 'doc' && im.naturalHeight >= im.naturalWidth;
+      pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
   var item = { id: newId(), takenAt: new Date().toISOString(), location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
@@ -484,7 +508,10 @@ function caseView(c) {
   var meta = [c.vehicles && c.vehicles.length ? 'Vehicle ' + c.vehicles.join(', ') : null, g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
-  d.appendChild(h('summary', null, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
+  var pic = null;
+  if (c.local) { var lp = (c.localPages || []), lt = (lp.filter(function (x) { return x.kind === 'goods'; })[0] || lp.filter(function (x) { return x.kind === 'veh'; })[0] || lp[0] || {}).thumb; if (lt) pic = h('img', { class: 'pic', src: lt, alt: '' }); }
+  else if (S.server && c.nPages) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); }
+  d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
@@ -503,7 +530,7 @@ function caseView(c) {
   return d; }
 
 function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0; box.textContent = '';
-  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
+  var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? c.verdict : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
