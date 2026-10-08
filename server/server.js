@@ -7,7 +7,8 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 9;
+const VERSION = 10;
+const CHECKS_V = 2;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -129,9 +130,28 @@ async function vet(m) {
   const res = runChecks(pages, { seller: m.seller, takenAt: m.takenAt || m.receivedAt, location: m.location, offeredKg: m.offeredKg });
   // With no quantity typed in, the quantity on the seller's invoice is what counts towards an oversold GD.
   m.invoiceKg = pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
+  m.checksV = CHECKS_V;
   Object.assign(m, { pages, flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, status: 'done', doneAt: new Date().toISOString(), msg: '' });
   save(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
   return true;
+}
+// Bring files checked by an older version up to date. Uses the readings already saved, so it costs no Claude usage.
+function recheckAll() {
+  let n = 0;
+  for (const m of index.values()) {
+    if (m.status !== 'done' || m.checksV === CHECKS_V || !Array.isArray(m.pages)) continue;
+    try {
+      if (!Array.isArray(m.kinds) || !m.kinds.length) {   // files from before the Papers / Vehicle / Goods boxes: a photo that is not a paper is a picture of the goods
+        m.pages = m.pages.map(p => p.type === 'other' ? { type: 'goods' } : p);
+        m.kinds = m.pages.map(p => p.type === 'veh' ? 'veh' : p.type === 'goods' ? 'goods' : 'doc');
+      }
+      const res = runChecks(m.pages, { seller: m.seller, takenAt: m.takenAt || m.receivedAt, location: m.location, offeredKg: m.offeredKg });
+      m.invoiceKg = m.pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
+      Object.assign(m, { flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, checksV: CHECKS_V });
+      save(m); n++;
+    } catch (e) { log('  could not re-check', m.id, '-', e.message); }
+  }
+  if (n) log('Re-checked ' + n + ' stored file(s) against the current checklist.');
 }
 let busy = false;
 async function work() {
@@ -345,5 +365,5 @@ process.on('SIGINT', () => process.exit(0)); process.on('SIGTERM', () => process
 
 server.listen(PORT, '127.0.0.1', () => {
   log('GD Scanner server v' + VERSION + ' started. ' + index.size + ' file(s) in the database.');
-  writeLinks(); if (!process.env.GD_NO_TUNNEL) tunnel(); work();
+  recheckAll(); writeLinks(); if (!process.env.GD_NO_TUNNEL) tunnel(); work();
 });
