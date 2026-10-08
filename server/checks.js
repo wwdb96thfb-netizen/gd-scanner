@@ -84,7 +84,7 @@ function checkGD(g,add){
 }
 
 function runChecks(pages,meta){
-  var flags=[], gds=[], pqs=[], invs=[], vehs=[], seen={};
+  var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], seen={};
   pages.forEach(function(p,i){
     var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:i+1}); };
     var key=p.type==='gd'&&p.gd?'gd:'+conf(String(p.gd.machine_no||'').replace(/\s+/g,'')):(p.type==='pq'&&p.pq?'pq:'+conf(String(p.pq.ro_no||'').replace(/\s+/g,''))+'|'+String(p.pq.gd_no||'').replace(/\D/g,''):'');
@@ -95,13 +95,27 @@ function runChecks(pages,meta){
     else if(p.type==='veh'){ var reg=String((p.veh||{}).reg_no||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
-    else if(p.type==='doc'){ add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
+    else if(p.type==='doc'){ docs.push({d:p.doc||{},p:i+1,name:String((p.doc||{}).title||p.what||'document')}); add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
     else if(p.type==='goods'){ /* reference picture of the goods: nothing to check */ }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
   });
   var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:0}); };
   var G=gds[0];
+  docs.forEach(function(x){ var d=x.d, at=function(l,n,t,dd){ flags.push({l:l,n:n,t:t,d:dd||'',p:x.p}); }, an=function(v){ return conf(String(v||'').replace(/[^A-Z0-9]/gi,'').toUpperCase()); };
+    var dv=an(d.vehicle_no);
+    if(dv.length>=4&&vehs.length){ if(vehs.some(function(v){ return an(v)===dv; })) at('ok',39,'Vehicle on the '+x.name+' is the vehicle photographed',String(d.vehicle_no)); else at('red',39,'Vehicle on the '+x.name+' is not the vehicle photographed','Document shows '+d.vehicle_no+'. Photographed: '+vehs.join(', ')+'.'); }
+    if(!G) return;
+    var dg=an(d.gd_no), dn=num(String(d.gd_no||'').replace(/\D/g,'')), mn=an(G.info.mn);
+    if(dg.length>=3){ var hit=gds.some(function(y){ var m=an(y.info.mn); return (m&&(dg.indexOf(m)>=0||m.indexOf(dg)>=0))||(dn!=null&&dn===y.info.serial); });
+      if(hit) at('ok',38,'The '+x.name+' quotes this GD',''); else at('red',38,'The '+x.name+' quotes a different GD','It quotes '+d.gd_no+'. The GD scanned is '+(G.info.mn||G.info.serial||'?')+'.'); }
+    var qs=String(d.quantity||''), qm=qs.replace(/,/g,'').match(/([\d.]+)\s*(kgs?|kilo\w*|m\.?t\.?|tons?|tonnes?)\b/i);
+    if(qm&&G.info.qty!=null){ var kg=parseFloat(qm[1])*(/^k/i.test(qm[2])?1:1000);
+      if(isFinite(kg)&&kg>0){ if(kg>G.info.qty*1.02) at('red',38,'The '+x.name+' shows more goods than the GD covers','Document '+fmt(kg)+' kg, GD '+fmt(G.info.qty)+' kg.'); else at('ok',38,'Quantity on the '+x.name+' is within the GD quantity',fmt(kg)+' kg'); } }
+    if(/bilty|builty|bill of lading|lorry|consignment|challan|delivery|packing|gate pass|invoice/i.test(x.name)&&d.parties&&G.g.importer){
+      var w=String(G.g.importer).toUpperCase().replace(/[^A-Z0-9 ]/g,' ').split(/\s+/).filter(function(t){ return t.length>2&&!/^(PVT|LTD|LIMITED|PRIVATE|AND|THE|CO|COMPANY|TRADERS|TRADING|ENTERPRISES|INTERNATIONAL)$/.test(t); }), P=String(d.parties).toUpperCase();
+      if(w.length&&!w.some(function(t){ return P.indexOf(t)>=0; })) at('amber',38,'Importer on the GD is not named on the '+x.name,'GD importer: '+G.g.importer+'. Document names: '+d.parties+'.'); }
+  });
   pqs.forEach(function(x){ var q=x.q; if(!G){ add('amber',19,'No GD scanned with this release order','Scan the GD it quotes: '+(q.gd_no||'?')+' dated '+(q.gd_date||'?')+'.'); return; }
     var hit=gds.filter(function(y){ var s=num(String(q.gd_no||'').replace(/\D/g,'')); return s!=null&&s===y.info.serial&&(pd(q.gd_date)==null||pd(q.gd_date)===y.info.gdDate); })[0];
     if(q.gd_no){ if(!hit) add('red',19,'Release order belongs to a different GD','It quotes GD '+q.gd_no+' dated '+(q.gd_date||'?')+'. The GD scanned is '+(G.info.serial||'?')+' dated '+dstr(G.info.gdDate)+'.'); else add('ok',19,'Release order quotes this GD',''); }
