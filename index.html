@@ -158,7 +158,8 @@ h2.sec{font:700 12px/1 var(--body);letter-spacing:.09em;text-transform:uppercase
 .btn{border-radius:10px;padding:13px 16px}
 .btn.small{border-radius:8px;padding:7px 10px}
 .btn.wide{width:100%}
-input[type=text],input[type=search]{border-radius:9px;padding:11px 12px}
+select,input[type=text],input[type=search],input[type=number],input[type=date]{font:400 16px var(--body);color:var(--ink);background-color:var(--card);border:1px solid var(--line);border-radius:9px;padding:0 12px;height:46px;line-height:44px;width:100%;box-sizing:border-box;margin:0;-webkit-appearance:none;appearance:none}
+select{padding-right:34px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%237a8499' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 details.case,.person{border-radius:10px;box-shadow:0 1px 2px rgba(20,30,60,.06)}
 .note b{color:var(--ink)}
 .flags .why{color:var(--ink);font-style:normal}
@@ -409,7 +410,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.2.0';
+var APPV = '2.2.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
