@@ -364,10 +364,6 @@ details.case>summary.nopic>*{grid-column:1}
     <section id="p-settings" hidden>
       <h2 class="sec">Your account</h2>
       <div class="panel"><dl class="kv" id="st-acct"></dl></div>
-      <h2 class="sec">Location</h2>
-      <div class="panel">
-        <p class="note">Location sharing is on. It is recorded with every scan and cannot be switched off inside the app.</p>
-      </div>
       <h2 class="sec">PIN</h2>
       <div class="panel">
         <p class="note">The PIN is asked every time the app is opened, and again after 5 minutes away. Your link does not work on another phone without it. If you forget it, an admin can reset it from the Admin tab.</p>
@@ -398,7 +394,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.1';
+var APPV = '2.3.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
