@@ -287,6 +287,7 @@ details.case>summary.nopic>*{grid-column:1}
         <span class="pill red">Detain / Hold</span><span class="pill amber">Ask / Question</span><span class="pill ok">Clear to go</span>
         <span>Open a file to see the action to take. Points marked Critical allow no compromise. A blurred photo can also cause red, so retake before you conclude.</span>
       </div>
+      <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span>Get an alert on this phone when a post gets a Detain result.</span><button class="btn small" id="b-push2">Turn on</button></div>
       <div id="admin-tools" hidden>
         <div class="chips" id="chips" style="margin-bottom:10px">
           <button data-f="all" aria-pressed="true">All</button>
@@ -339,8 +340,9 @@ details.case>summary.nopic>*{grid-column:1}
       <div class="grp" data-g="alerts" hidden>
       <h2 class="sec">Alerts on your phone</h2>
       <div class="panel">
-        <p class="note">While this app is open, admins get an alert here whenever a post receives a Detain result. To be alerted with the app closed, install the free "ntfy" app, tap subscribe, and enter this private topic name. Do not share it.</p>
-        <input class="linkbox" type="text" id="alert-topic" readonly aria-label="Alert topic">
+        <p class="note">Admins are told on their phone the moment any post gets a Detain result, even when the app is closed. Turn it on once on each phone you use.</p>
+        <button class="btn" id="b-push">Turn on alerts on this phone</button>
+        <p class="status" id="s-push" role="status"></p>
       </div>
       </div>
       <p class="status" id="s-admin" role="status"></p>
@@ -408,7 +410,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.2.3';
+var APPV = '2.3.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -491,9 +493,21 @@ async function refresh() {
   try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin }; keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ();
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
-    if (j.admin) detainAlert(j.list);
+    if (j.admin) { detainAlert(j.list); pushCheck(); }
     S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
   drawConn(); drawFiles(); }
+async function pushCheck() { if (!pushOK()) return; if (!S.vapid) { try { var j = await api('/api/admin'); S.vapid = j.vapid || ''; } catch (e) { return; } } if (!S.vapid) return;
+  var on = Notification.permission === 'granted' && load('gd.push') === S.vapid; $('push-ask').hidden = on || Notification.permission === 'denied'; if ($('push-ask').hidden) $('push-ask').style.display = 'none'; else $('push-ask').style.display = 'flex';
+  if (Notification.permission === 'granted' && !on && !S.pushTried) { S.pushTried = true; if (await enablePush(false)) { $('push-ask').hidden = true; $('push-ask').style.display = 'none'; } } }
+function pushOK() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function drawPush() { var on = pushOK() && Notification.permission === 'granted' && load('gd.push') === S.vapid && !!S.vapid; $('b-push').hidden = on || !pushOK();
+  setStatus('s-push', !pushOK() ? 'This phone cannot receive alerts in the browser. On iPhone, first add the app to the Home Screen and open it from there.' : on ? 'Alerts are on for this phone.' : Notification.permission === 'denied' ? 'Notifications are blocked for this app in the phone settings. Allow them there, then press the button.' : '', !pushOK()); }
+async function enablePush(test) { if (!pushOK() || !S.vapid) return false;
+  try { if ((await Notification.requestPermission()) !== 'granted') { drawPush(); return false; }
+    var reg = await navigator.serviceWorker.ready, raw = atob(S.vapid.replace(/-/g, '+').replace(/_/g, '/')), key = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) key[i] = raw.charCodeAt(i);
+    var sub = await reg.pushManager.getSubscription(); if (sub && load('gd.push') !== S.vapid) { await sub.unsubscribe(); sub = null; }
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    await api('/api/push', { method: 'POST', body: JSON.stringify({ sub: sub.toJSON(), test: !!test }) }); keep('gd.push', S.vapid); drawPush(); return true; } catch (e) { setStatus('s-push', 'Alerts could not be turned on. Check the connection and try again.', true); return false; } }
 function drawQ() { var q = S.q, e = $('q-note'), msg = '';
   if (q && q.waitUntil > Date.now()) msg = 'The server has reached its reading limit for now. Checking resumes at about ' + new Date(q.waitUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '. You can still send; ' + q.ahead + ' file' + (q.ahead === 1 ? ' is' : 's are') + ' waiting.';
   else if (q && q.ahead >= 3) msg = 'Server busy: ' + q.ahead + ' files are ahead of yours. Expect a delay of about ' + Math.ceil(q.ahead * 1.5) + ' minutes.';
@@ -734,7 +748,7 @@ function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Check
     L.push(csv ? [s.day, '"' + k.replace(/"/g, '""') + '"', r.n, r.clear, r.ask, r.hold, r.detain, r.acted, '"' + who.replace(/"/g, '""') + '"'].join(',') : k + ': ' + r.n + ' checked, ' + r.clear + ' clear, ' + r.ask + ' ask, ' + r.hold + ' hold, ' + r.detain + ' detain, ' + r.acted + ' actually detained'); });
   return L.join('\n'); }
 async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf(new Date()); drawSummary();
-  try { var j = await api('/api/admin'); S.adminOk = true; $('alert-topic').value = j.alertTopic || '';
+  try { var j = await api('/api/admin'); S.adminOk = true; S.vapid = j.vapid || ''; drawPush();
     $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
     var wb = $('watch'), vb = $('values'); wb.textContent = ''; vb.textContent = '';
     var item = function (box, title, sub, path) { var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function () { del.disabled = true; try { await api(path, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (e) { del.disabled = false; } } }); box.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, h('b', { text: title }), h('div', { class: 'meta', text: sub }), del))); };
@@ -744,6 +758,8 @@ async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf
 $('sum-day').addEventListener('change', drawSummary);
 $('b-sumshare').addEventListener('click', async function () { var t = summaryText(false); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Summary copied'); } } catch (e) {} });
 $('b-sumcsv').addEventListener('click', function () { var a = h('a', { href: URL.createObjectURL(new Blob([summaryText(true)], { type: 'text/csv' })), download: 'gd-scanner-' + $('sum-day').value + '.csv' }); document.body.appendChild(a); a.click(); a.remove(); });
+$('b-push2').addEventListener('click', async function () { $('b-push2').disabled = true; var ok = await enablePush(true); $('b-push2').disabled = false; if (ok) { toast('Alerts are on. A test alert was sent to this phone.'); $('push-ask').hidden = true; $('push-ask').style.display = 'none'; } else toast('Alerts could not be turned on on this phone.'); });
+$('b-push').addEventListener('click', async function () { $('b-push').disabled = true; setStatus('s-push', 'Turning on…'); var ok = await enablePush(true); $('b-push').disabled = false; if (ok) toast('Alerts are on. A test alert was sent to this phone.'); });
 $('b-watch').addEventListener('click', async function () { var v = $('w-value').value.trim(); if (v.replace(/[^a-z0-9]/gi, '').length < 4) { setStatus('s-admin', 'Enter at least 4 letters or digits to watch for.', true); return; }
   try { await api('/api/watch', { method: 'POST', body: JSON.stringify({ value: v, note: $('w-note').value }) }); $('w-value').value = ''; $('w-note').value = ''; setStatus('s-admin', ''); toast('Added to watchlist'); S.ver = ''; loadAdmin(); refresh(); } catch (e) { setStatus('s-admin', 'Could not add. The server is not reachable or has not updated yet.', true); } });
 $('b-value').addEventListener('click', async function () { var m = $('v-match').value.trim(), n = parseFloat($('v-min').value); if (m.length < 3 || !(n > 0)) { setStatus('s-admin', 'Enter the HS code or goods word, and a minimum value above zero.', true); return; }

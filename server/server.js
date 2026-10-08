@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 16;
+const VERSION = 17;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -22,7 +22,8 @@ let cfg;
 try { cfg = JSON.parse(fs.readFileSync(CFG, 'utf8')); } catch (e) { cfg = { topic: 'gd' + rnd(22), adminCode: rnd(10), people: [] }; }
 if (!cfg.joinKey) cfg.joinKey = rnd(20);
 if (!Array.isArray(cfg.requests)) cfg.requests = [];
-if (!cfg.alertTopic) cfg.alertTopic = 'gdalert' + rnd(20);
+if (!cfg.vapid) { const k = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' }), j = k.publicKey.export({ format: 'jwk' }); cfg.vapid = { priv: k.privateKey.export({ format: 'jwk' }), pub: Buffer.concat([Buffer.from([4]), Buffer.from(j.x, 'base64url'), Buffer.from(j.y, 'base64url')]).toString('base64url') }; }
+if (!Array.isArray(cfg.subs)) cfg.subs = [];
 if (!Array.isArray(cfg.watch)) cfg.watch = [];
 if (!cfg.pins || typeof cfg.pins !== 'object') cfg.pins = {};
 if (!Array.isArray(cfg.values)) cfg.values = [];
@@ -100,13 +101,35 @@ function listFor(user) {
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
 const today = () => new Date().toLocaleDateString('en-CA');
 const countPage = () => { if (cfg.usage.day !== today()) { cfg.usage.day = today(); cfg.usage.pages = 0; } cfg.usage.pages++; };
-// Tell the admins at once when a file comes out as "detain". Goes to a private ntfy topic; carries no codes and no document details.
+// ---- phone notifications (standard Web Push). The message is encrypted for the one phone it goes to; the push service cannot read it.
+const PUSH_HOSTS = /(^|\.)(fcm\.googleapis\.com|push\.apple\.com|notify\.windows\.com|push\.services\.mozilla\.com)$/;
+const hmac = (k, d) => crypto.createHmac('sha256', k).update(d).digest();
+function pushBody(sub, text) {
+  const ua = Buffer.from(sub.p256dh, 'base64url'), auth = Buffer.from(sub.auth, 'base64url'), e = crypto.createECDH('prime256v1'), as = e.generateKeys(), salt = crypto.randomBytes(16);
+  const ikm = hmac(hmac(auth, e.computeSecret(ua)), Buffer.concat([Buffer.from('WebPush: info\0'), ua, as, Buffer.from([1])]));
+  const prk = hmac(salt, ikm), cek = hmac(prk, 'Content-Encoding: aes128gcm\0\x01').subarray(0, 16), nonce = hmac(prk, 'Content-Encoding: nonce\0\x01').subarray(0, 12);
+  const c = crypto.createCipheriv('aes-128-gcm', cek, nonce), ct = Buffer.concat([c.update(Buffer.concat([Buffer.from(text), Buffer.from([2])])), c.final(), c.getAuthTag()]);
+  const head = Buffer.alloc(21); salt.copy(head); head.writeUInt32BE(4096, 16); head[20] = 65;
+  return Buffer.concat([head, as, ct]);
+}
+function vapidAuth(endpoint) {
+  const b = o => Buffer.from(JSON.stringify(o)).toString('base64url'), data = b({ typ: 'JWT', alg: 'ES256' }) + '.' + b({ aud: new URL(endpoint).origin, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: APP_URL });
+  const sig = crypto.sign('sha256', Buffer.from(data), { key: crypto.createPrivateKey({ key: cfg.vapid.priv, format: 'jwk' }), dsaEncoding: 'ieee-p1363' }).toString('base64url');
+  return 'vapid t=' + data + '.' + sig + ', k=' + cfg.vapid.pub;
+}
+async function pushTo(sub, msg) {
+  const r = await fetch(sub.endpoint, { method: 'POST', headers: { 'Content-Encoding': 'aes128gcm', 'Content-Type': 'application/octet-stream', TTL: '3600', Urgency: 'high', Authorization: vapidAuth(sub.endpoint) }, body: pushBody(sub, JSON.stringify(msg)), signal: AbortSignal.timeout(15000) });
+  if (r.status === 404 || r.status === 410) { cfg.subs = cfg.subs.filter(x => x.endpoint !== sub.endpoint); saveCfg(); }
+  return r.status;
+}
+// Tell the admins at once when a file comes out as "detain".
 async function alertAdmins(m) {
   try { const fl = live().flags.get(m.id) || []; if (resultOf(fl) !== 'detain' || m.alerted) return; m.alerted = true; save(m);
     const why = fl.find(f => f.l === 'red' && CRIT.has(f.n));
-    log('  ALERT: detain at', m.location || '?', (m.vehicles || []).join(' '));
-    const r = await fetch('https://ntfy.sh/' + cfg.alertTopic, { method: 'POST', headers: { Title: 'DETAIN: ' + clip(String(m.location || 'post').replace(/[^\x20-\x7e]/g, ''), 60), Priority: 'high', Tags: 'rotating_light' }, body: 'Vehicle: ' + ((m.vehicles || []).join(', ') || 'not read') + '\nReason: ' + (why ? why.t : '') + '\nSent by: ' + m.byName + '\nOpen GD Scanner for the file.' });
-    if (!r.ok) throw new Error('status ' + r.status);
+    const subs = cfg.subs.filter(x => { const u = [cfg.adminCode].concat(cfg.people.filter(y => y.role === 'admin').map(y => y.code)).some(c => idOf(c) === x.who); return u; });
+    log('  ALERT: detain at', m.location || '?', (m.vehicles || []).join(' '), '- notifying', subs.length, 'admin phone(s)');
+    const msg = { title: 'DETAIN: ' + (m.location || 'a post'), body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (why ? why.t + '. ' : '') + 'Sent by ' + m.byName + '.' };
+    for (const x of subs) { try { const st = await pushTo(x, msg); if (st >= 300) log('  alert not delivered to one phone (status ' + st + ')'); } catch (e) { log('  alert not delivered to one phone (' + e.message + ')'); } }
   } catch (e) { log('  could not send the admin alert (' + e.message + ')'); }
 }
 // ---- reading a page with Claude
@@ -385,7 +408,12 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (!user.admin) return send(res, 403, { error: 'admin' });
-    if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, alertTopic: cfg.alertTopic, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
+    if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, vapid: cfg.vapid.pub, phones: cfg.subs.filter(x => x.who === idOf(user.code)).length, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
+    if (p[1] === 'push' && req.method === 'POST') { const b = await body(req), x = b.sub || {}, k = x.keys || {}; let host = ''; try { const e = new URL(x.endpoint); if (e.protocol === 'https:') host = e.hostname; } catch (e) {}
+      if (!PUSH_HOSTS.test(host) || !/^[\w-]{80,100}$/.test(k.p256dh || '') || !/^[\w-]{16,30}$/.test(k.auth || '')) return send(res, 400, { error: 'form' });
+      cfg.subs = cfg.subs.filter(y => y.endpoint !== x.endpoint); cfg.subs.push({ who: idOf(user.code), endpoint: String(x.endpoint).slice(0, 600), p256dh: k.p256dh, auth: k.auth, at: new Date().toISOString() }); if (cfg.subs.length > 200) cfg.subs.shift(); saveCfg(); log(user.name, 'turned on phone alerts');
+      if (b.test) { try { await pushTo(cfg.subs[cfg.subs.length - 1], { title: 'GD Scanner alerts are on', body: 'You will be told here when a post gets a Detain result.' }); } catch (e) {} }
+      return send(res, 200, { ok: true }); }
     if (p[1] === 'watch' && !p[2] && req.method === 'POST') { const b = await body(req), value = clip(b.value, 60).trim(); if (AN(value).length < 4) return send(res, 400, { error: 'form' }); if (cfg.watch.length >= 500) return send(res, 429, { error: 'full' }); cfg.watch.push({ id: rnd(8), value, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added to watchlist:', value); return send(res, 200, { ok: true }); }
     if (p[1] === 'watch' && p[2] && req.method === 'DELETE') { const x = cfg.watch.find(y => y.id === p[2]); cfg.watch = cfg.watch.filter(y => y.id !== p[2]); saveCfg(); xver++; if (x) log(user.name, 'removed from watchlist:', x.value); return send(res, 200, { ok: true }); }
     if (p[1] === 'values' && !p[2] && req.method === 'POST') { const b = await body(req), match = clip(b.match, 40).trim().replace(/^(\d{4})\.(\d+)$/, '$1$2'), min = +b.min; if (match.length < 3 || !(min > 0) || !isFinite(min)) return send(res, 400, { error: 'form' }); if (cfg.values.length >= 500) return send(res, 429, { error: 'full' }); cfg.values.push({ id: rnd(8), match, min, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added minimum value:', match, min); return send(res, 200, { ok: true }); }
