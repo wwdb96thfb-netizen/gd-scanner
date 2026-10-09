@@ -116,7 +116,7 @@ var HS_RULES=[
 ];
 function hsRule(desc){ for(var i=0;i<HS_RULES.length;i++){ var r=HS_RULES[i]; if(r[0].test(desc)&&!(r[1]&&r[1].test(desc))) return {hs:r[2],say:r[3]}; } return null; }
 function runChecks(pages,meta){
-  var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], seen={};
+  var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], labels=[], seen={};
   pages.forEach(function(p,i){
     var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:i+1}); };
     var key=p.type==='gd'&&p.gd?'gd:'+conf(String(p.gd.machine_no||'').replace(/\s+/g,'')):(p.type==='pq'&&p.pq?'pq:'+conf(String(p.pq.ro_no||'').replace(/\s+/g,''))+'|'+String(p.pq.gd_no||'').replace(/\D/g,''):'');
@@ -128,12 +128,27 @@ function runChecks(pages,meta){
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
     else if(p.type==='doc'){ docs.push({d:p.doc||{},p:i+1,name:String((p.doc||{}).title||p.what||'document')}); add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
-    else if(p.type==='goods'){ /* reference picture of the goods: nothing to check */ }
+    else if(p.type==='goods'){ var gl=p.goods||{}; if(String(gl.product||gl.label_text||'').trim().length>=4) labels.push({g:gl,p:i+1}); }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
   });
   var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:0}); };
   var G=gds[0];
+  // What is printed on the packing, compared with what the GD says the goods are.
+  if(G&&labels.length){ var LSTOP=/^(super|export|quality|premium|best|brand|product|produce|made|china|pakistan|iran|india|weight|gross|kilogram|grams?|fresh|natural|pure|special|grade|class|packed|packing|carton|cartons|bags?|company|trading|traders|enterprises|limited|private|store|keep|handle|care|fragile|this|side|with|from|100)$/;
+    var ltok=function(t){ return String(t||'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(function(x){ return x.length>=4; }).map(function(x){ return x.replace(/(ies)$/,'y').replace(/s$/,''); }).filter(function(x){ return !LSTOP.test(x); }); };
+    var KERN=/kern|kernal|shelled|giri|magaz/i, INSH=/in\s*-?\s*shells?|unshelled|with\s+shell|whole/i, kind=function(t){ return INSH.test(t)?'S':(KERN.test(t)?'K':''); };
+    var its=(Array.isArray(G.g.items)?G.g.items:[]).map(function(it){ var d=String(it.description||''); return {d:d,t:ltok(d),k:kind(d)}; }), doneL={};
+    labels.forEach(function(L){ var name=String(L.g.product||'').trim()||String(L.g.label_text||'').trim().slice(0,60), key=name.toLowerCase(); if(doneL[key]) return; doneL[key]=1;
+      var lt=ltok(L.g.product).concat(ltok(L.g.label_text)).filter(function(x){ return !/^(shell|shelled|kernel|kernal)$/.test(x); }), lk=kind(String(L.g.product||'')+' '+String(L.g.label_text||''));
+      if(!lt.length||!its.length) return;
+      var share=its.filter(function(it){ return lt.some(function(x){ return it.t.indexOf(x)>=0; }); });
+      var good=share.filter(function(it){ return !(lk&&it.k&&lk!==it.k); });
+      var extra=(L.g.net_wt_each?' Each package is marked '+L.g.net_wt_each+'.':'');
+      if(good.length) flags.push({l:'ok',n:45,t:'Printing on the packing agrees with the GD',d:'Packing says "'+name+'". GD lists "'+good[0].d.split('=')[0].trim()+'".'+extra,p:L.p});
+      else if(share.length) flags.push({l:'amber',n:45,t:'Packing is marked '+(lk==='K'?'shelled (kernel)':'in shell')+' but the GD lists it '+(lk==='K'?'in shell':'shelled'),d:'Packing says "'+name+'". GD lists "'+share[0].d.split('=')[0].trim()+'". Open the packages and enter what is inside.'+extra,p:L.p});
+      else flags.push({l:'amber',n:45,t:'Printing on the packing does not match the goods on the GD',d:'Packing says "'+name+'". GD lists: '+its.map(function(it){ return it.d.split('=')[0].trim(); }).join('; ')+'. Packing can be reused, so open the packages and enter what is inside.'+extra,p:L.p}); });
+  }
   docs.forEach(function(x){ var d=x.d, at=function(l,n,t,dd){ flags.push({l:l,n:n,t:t,d:dd||'',p:x.p}); }, an=function(v){ return conf(String(v||'').replace(/[^A-Z0-9]/gi,'').toUpperCase()); };
     var dv=an(d.vehicle_no);
     if(dv.length>=4&&vehs.length){ if(vehs.some(function(v){ return an(v)===dv; })) at('ok',39,'Vehicle on the '+x.name+' is the vehicle photographed',String(d.vehicle_no)); else at('red',39,'Vehicle on the '+x.name+' is not the vehicle photographed','Document shows '+d.vehicle_no+'. Photographed: '+vehs.join(', ')+'.'); }
