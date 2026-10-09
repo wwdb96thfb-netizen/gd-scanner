@@ -321,16 +321,16 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 @media (max-width:370px){.appbar .tag{letter-spacing:.1em;font-size:10.5px}.appbar h1{font-size:22px}.appbar .flag{width:50px}}
 button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 @media (prefers-reduced-motion: reduce){#main>section:not([hidden]),#p-people .grp:not([hidden]){animation:none}}
-.stamp{position:absolute;left:50%;top:50%;z-index:1;pointer-events:none;display:inline-flex;flex-direction:column;align-items:center;gap:1px;margin:0;padding:5px 12px 4px;border:2.5px solid currentColor;border-radius:7px;outline:1px solid currentColor;outline-offset:2px;transform:translate(-50%,-50%) rotate(-14deg);text-align:center;opacity:.72;max-width:92%;-webkit-mask-image:radial-gradient(circle at 22% 30%,rgba(0,0,0,.72) 0 9%,#000 26%),radial-gradient(circle at 78% 72%,rgba(0,0,0,.75) 0 8%,#000 24%);-webkit-mask-composite:source-in;mask-image:radial-gradient(circle at 22% 30%,rgba(0,0,0,.72) 0 9%,#000 26%),radial-gradient(circle at 78% 72%,rgba(0,0,0,.75) 0 8%,#000 24%);mask-composite:intersect}
-.stamp b{font:700 21px/1 var(--head);letter-spacing:.12em;text-transform:uppercase;white-space:nowrap}
-.stamp i{font:700 11px/1.25 var(--mono);font-style:normal;letter-spacing:.04em;border-top:1.5px solid currentColor;padding-top:3px;margin-top:3px;align-self:stretch}
-.stamp u{font:600 10px/1.2 var(--body);text-decoration:none;letter-spacing:.03em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
+.stamp{display:block;flex:none;width:86px;height:86px;transform:rotate(-11deg);opacity:.9;-webkit-mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);-webkit-mask-composite:source-in;mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);mask-composite:intersect}
+.stamp svg{display:block;width:100%;height:100%;overflow:visible}.stamp text{fill:currentColor;font-family:var(--head);font-weight:700;text-anchor:middle}.stamp .ln{fill:none;stroke:currentColor}
 .stamp.red{color:var(--red)}.stamp.green{color:var(--green)}.stamp.amber{color:var(--amber)}
-.stamp.long b{font-size:16px;letter-spacing:.08em}
-details.case>summary{position:relative}details.case>summary.stamped{min-height:108px}
+.stamp.big{width:190px;height:190px;margin:4px auto 8px}
+details.case>summary>.side{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:9px}
+details.case>summary>.side>.pic{width:68px;height:68px;border-radius:11px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:block}
+details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:5px;min-width:0}details.case>summary.nopic>.main{grid-column:1}
 .case .meta.gl{color:var(--ink);font-size:13.5px}.case .cinfo{display:flex;flex-direction:column;gap:5px;padding-bottom:4px;border-bottom:1px solid var(--line)}
 .relwho{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}.relwho>span{flex-basis:100%;font-weight:600;font-size:13px}.relwho label{display:flex;gap:6px;align-items:center}.relwho input[type=radio]{width:18px;height:18px;accent-color:var(--stamp)}.relwho input[type=text]{flex-basis:100%}
-#print .stamp{position:static;transform:rotate(-5deg);float:right;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
+#print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
 <body>
@@ -577,7 +577,7 @@ details.case>summary{position:relative}details.case>summary.stamped{min-height:1
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.19.0';
+var APPV = '2.20.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1008,7 +1008,23 @@ function stampOf(c) { if (!c || c.local || c.status !== 'done') return null; var
   if (d && d.action === 'held') return S1('Held', 'amber', d.at, d.byName);
   if (advise(c).a === 'detain') return S1('Decision pending', 'amber', c.receivedAt || c.takenAt, 'Awaiting admin');
   return null; }
-function stampEl(c) { var s = stampOf(c); if (!s) return null; return h('div', { class: 'stamp ' + s.col + (s.w.length > 9 ? ' long' : '') }, h('b', { text: s.w }), h('i', { text: stampWhen(s.at) }), s.by ? h('u', { text: s.by }) : null); }
+var STN = 0;
+// An official-looking round seal: service name round the top, the authority round the bottom, status with date and time in the middle.
+function stampEl(c, big) { var s = stampOf(c); if (!s) return null; var NS = 'http://www.w3.org/2000/svg', id = 'st' + (++STN);
+  var E = function (t, a, txt) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
+  var sv = E('svg', { viewBox: '0 0 200 200', role: 'img', 'aria-label': s.w + ', ' + stampWhen(s.at) + (s.by ? ', ' + s.by : '') }), defs = E('defs', {});
+  defs.appendChild(E('path', { id: id + 't', d: 'M 32 100 A 68 68 0 0 1 168 100' })); defs.appendChild(E('path', { id: id + 'b', d: 'M 20 100 A 80 80 0 0 0 180 100' })); sv.appendChild(defs);
+  sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 96, 'stroke-width': 5 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 89, 'stroke-width': 1.4 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 59, 'stroke-width': 1.6 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 55, 'stroke-width': .8, 'stroke-dasharray': '2 3' }));
+  var arc = function (pid, txt, max) { txt = String(txt || '').toUpperCase(); if (txt.length > 30) txt = txt.slice(0, 29).trim() + '…'; var fs = Math.min(15, max / (txt.length * .6)); var t = E('text', { 'font-size': fs.toFixed(1), 'letter-spacing': txt.length < 22 ? '1.2' : '.3' }), tp = E('textPath', { href: '#' + id + pid, startOffset: '50%' }, txt); tp.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + id + pid); t.appendChild(tp); sv.appendChild(t); };
+  arc('t', 'Pakistan Coast Guards', 196); arc('b', s.by || 'Bn HQ', 215);
+  sv.appendChild(E('text', { x: 14, y: 106, 'font-size': 15 }, '★')); sv.appendChild(E('text', { x: 186, y: 106, 'font-size': 15 }, '★'));
+  var dt = stampWhen(s.at).split(' · '), w = s.w.toUpperCase(), W = w.length > 10 && w.indexOf(' ') > 0 ? (function () { var p = w.split(' '), h2 = Math.ceil(p.length / 2); return w === 'RELEASED ON PAYMENT' ? ['RELEASED', 'ON PAYMENT'] : w === 'RELEASED BY COURT' ? ['RELEASED', 'BY COURT'] : [p.slice(0, h2).join(' '), p.slice(h2).join(' ')]; })() : [w];
+  var fit = function (t, max) { var fs = Math.min(max, 100 / (t.length * .56)); return fs.toFixed(1); };
+  sv.appendChild(E('text', { x: 100, y: 68, 'font-size': 12.5, 'letter-spacing': '.6' }, dt[0] || ''));
+  if (W.length === 1) { sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 78, x2: 155, y2: 78, 'stroke-width': 1.6 })); sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 121, x2: 155, y2: 121, 'stroke-width': 1.6 })); sv.appendChild(E('text', { x: 100, y: 110, 'font-size': fit(W[0], 30), 'letter-spacing': '1' }, W[0])); }
+  else { sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 75, x2: 155, y2: 75, 'stroke-width': 1.6 })); sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 124, x2: 155, y2: 124, 'stroke-width': 1.6 })); sv.appendChild(E('text', { x: 100, y: 96, 'font-size': fit(W[0], 20), 'letter-spacing': '.6' }, W[0])); sv.appendChild(E('text', { x: 100, y: 117, 'font-size': fit(W[1], 20), 'letter-spacing': '.6' }, W[1])); }
+  sv.appendChild(E('text', { x: 100, y: 140, 'font-size': 13, 'letter-spacing': '.6' }, dt[1] ? dt[1] + ' HRS' : 'BN HQ'));
+  var d = h('div', { class: 'stamp ' + s.col + (big ? ' big' : '') }); d.appendChild(sv); return d; }
 function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', adv = done ? advise(c) : null, v = done ? adv.k : 'busy', fl = c.flags || [];
   var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
@@ -1033,10 +1049,10 @@ function caseView(c) {
   if (done && c.found && (Array.isArray(c.found) ? c.found.length : 1)) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'Found: ' }), h('span', { text: foundText(c.found) })));
   if (done) { var its = Array.isArray(g.items) ? g.items : [], kg = its.reduce(function (t, it) { return t + (Number(it.qty_kg) || 0); }, 0) || (g.net_wt_mt ? Number(g.net_wt_mt) * 1000 : 0), parts = [kg ? fmt(kg) + ' kg' : null, g.packages ? fmt(g.packages) + ' ' + String(g.package_type || 'packages').toLowerCase() : null].filter(Boolean);
     if (parts.length) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'On GD: ' }), h('span', { text: parts.join(' · ') }))); }
-  var sum = h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), !done ? h('div', { class: 'meta', text: line }) : null, c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null);
-  gl.forEach(function (x) { sum.appendChild(x); }); var st = stampEl(c); if (st) { sum.appendChild(st); sum.classList.add('stamped'); } d.appendChild(sum);
+  var st = stampEl(c), side = pic || st ? h('div', { class: 'side' }, pic, st) : null, main = h('div', { class: 'main' }, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), !done ? h('div', { class: 'meta', text: line }) : null, c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null);
+  gl.forEach(function (x) { main.appendChild(x); }); var sum = h('summary', side ? null : { class: 'nopic' }, side, main); d.appendChild(sum);
   var info = done ? h('div', { class: 'cinfo' }, h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR ADMIN DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Admin decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Hold', check: 'result was Ask / question', clear: 'result was Clear to go' }[c.already.result] || '') + (c.already.order ? ' · admin decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })) : null;
-  var body = h('div', { class: 'body' }); d.appendChild(body); if (info) body.appendChild(info);
+  var body = h('div', { class: 'body' }); d.appendChild(body); var bst = stampEl(c, 1); if (bst) body.appendChild(bst); if (info) body.appendChild(info);
   if (c.seller || c.note || c.offeredKg || c.driver) body.appendChild(kv([['Driver', c.driver ? [c.driver.name, c.driver.idn].filter(Boolean).join(' · ') : null], ['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   if (done && !c.local && !c.driver && !(c.release && !(S.me && S.me.owner))) body.appendChild(driverBox(c));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
