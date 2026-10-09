@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 36;
+const VERSION = 37;
 const CHECKS_V = 9;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -477,7 +477,7 @@ const server = http.createServer(async (req, res) => {
     if (cfg.pins[pinKey] && cfg.pins[pinKey] !== sentPin) return send(res, 401, { error: 'pin' });
     // A release ordered by an admin is a permanent record: once made, only the Owner can change it, undo it or delete the file.
     const LOCK = m => !!(m && m.release && !user.owner);
-    const ordered = (m, via, remark, by) => { by = clip(by, 60).replace(/\s+/g, ' ').trim(); m.release = { byName: by || user.name, enteredBy: user.name, at: new Date().toISOString(), via, remark: clip(remark, 300).trim() }; log(user.name, 'RECORDED RELEASE of', m.id, 'on the order of', m.release.byName, '(' + via + ')'); };
+    const ordered = (m, via, remark, by, on) => { by = clip(by, 60).replace(/\s+/g, ' ').trim(); const od = new Date(String(on || '')), okOn = on && !isNaN(od) && od.getTime() < Date.now() + 864e5 && od.getTime() > Date.now() - 3 * 365 * 864e5; m.release = { byName: by || user.name, enteredBy: user.name, at: new Date().toISOString(), ...(okOn ? { on: od.toISOString() } : {}), via, remark: clip(remark, 300).trim() }; log(user.name, 'RECORDED RELEASE of', m.id, 'on the order of', m.release.byName, '(' + via + ')'); };
     if (p[1] === 'me' && req.method === 'POST') {   // the Owner sets the name shown for him; everyone else's name is set by an admin in People
       if (!user.owner) return send(res, 403, { error: 'owner' }); const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
       cfg.ownerName = name; saveCfg(); xver++; log('Owner name set to', name); return send(res, 200, { ok: true, name });
@@ -553,7 +553,7 @@ const server = http.createServer(async (req, res) => {
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || !m.report) return send(res, 404, { error: 'none' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
-      if (b.result === 'release') ordered(m, 'on re-verification of the seizure report', b.remark, b.orderedBy); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
+      if (b.result === 'release') ordered(m, 'on re-verification of the seizure report', b.remark, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); if (b.result === 'release') { cfg.watch = cfg.watch.filter(w => !(w.auto && w.src === m.id)); saveCfg(); xver++; } else if (b.result === 'confirmed') autoWatch(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
       return send(res, 200, { ok: true });
     }
@@ -573,7 +573,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req); if (['released', 'held', 'detained', 'seized', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       if (!user.admin && resultOf(live().flags.get(m.id) || []) === 'detain') return send(res, 403, { error: 'await' });   // critical: the admin decides
-      if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark, b.orderedBy); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
+      if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); autoWatch(m); log(user.name, 'recorded', b.action, 'for', m.id);
       return send(res, 200, { ok: true });
     }
@@ -588,7 +588,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req), act = { release: 'released', detain: 'seized', seize: 'seized', docs: 'held' }[b.order]; if (!act) return send(res, 400, { error: 'form' });
       const o = { order: b.order, note: clip(b.note, 300).trim(), byName: user.name, at: new Date().toISOString() };
       m.orders = (m.orders || []).concat([o]).slice(-20); m.order = o; m.ack = null;
-      if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note, b.orderedBy); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
+      if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); autoWatch(m); log(user.name, 'decided', b.order, 'for', m.id);
       const W = { release: 'RELEASE the vehicle', detain: 'SEIZE the goods', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
       for (const x of cfg.subs.filter(y => y.who === idOf(m.by))) { try { await pushTo(x, { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (o.note ? o.note + '. ' : '') + 'By ' + user.name + '.' }); } catch (e) {} }
