@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 27;
+const VERSION = 28;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -535,7 +535,7 @@ const server = http.createServer(async (req, res) => {
       saveCfg(); writeLinks(); return send(res, 200, { ok: true });
     }
     return send(res, 404, { error: 'none' });
-  } catch (e) { log('request error', e.message); try { send(res, 500, { error: 'server' }); } catch (x) {} }
+  } catch (e) { const bad = e instanceof SyntaxError || /too large/.test(e.message); if (!bad) log('request error', e.message); try { send(res, bad ? 400 : 500, { error: bad ? 'form' : 'server' }); } catch (x) {} }
 });
 
 // ---- public address: Cloudflare quick tunnel, announced on a private ntfy topic so phones can find it
