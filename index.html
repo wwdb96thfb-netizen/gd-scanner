@@ -403,7 +403,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.5';
+var APPV = '2.3.6';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -713,12 +713,17 @@ function caseView(c) {
     bar.appendChild(again); bar.appendChild(ask); bar.appendChild(yes); bar.appendChild(no); body.appendChild(bar); }
   return d; }
 
-function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0; box.textContent = '';
+function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0;
+  // Redraw only when something really changed, and keep whatever the reader has opened.
+  var sig = JSON.stringify([S.list, S.outbox.map(function (o) { return [o.id, o.sending, o.progress]; }), S.filter, term, adm, !!S.server, cfg.ph || '']); if (sig === S.filesSig && box.firstChild) return; S.filesSig = sig;
+  var openMore = {}; box.querySelectorAll('details.case').forEach(function (d) { var L = []; d.querySelectorAll('details.more').forEach(function (m, i) { if (m.open) L.push(i); }); if (L.length) openMore[d.dataset.id] = L; });
+  var y = window.scrollY; box.textContent = '';
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
-    n++; box.appendChild(caseView(c)); });
+    n++; var cv = caseView(c); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
+  if (y) window.scrollTo(0, y);
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
 document.querySelectorAll('#chips button').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
 $('q').addEventListener('input', drawFiles);
