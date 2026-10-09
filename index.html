@@ -1,9 +1,12 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="boot">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>GD Scanner</title>
+<link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-700.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/barlow-600.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#01411C">
 <meta name="referrer" content="no-referrer">
@@ -12,9 +15,9 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
-@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
-@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-600.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-700.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-600.woff2) format("woff2");font-weight:600;font-style:normal;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-700.woff2) format("woff2");font-weight:700;font-style:normal;font-display:block}
 :root{
   --paper:#f2f4f8; --card:#ffffff; --ink:#18202e; --muted:#586478; --line:#d3dae5;
   --stamp:#0b6b41; --stamp-soft:#e4f2ea; --on-stamp:#ffffff;
@@ -29,6 +32,9 @@
   --stamp:#74d6a4; --stamp-soft:#16301f; --on-stamp:#0c1510;
   --red:#ff8a80; --red-soft:#3a1c1a; --amber:#f2c063; --amber-soft:#3a2e12;
   --green:#7fd49b; --green-soft:#15301f; --grey-soft:#232b39; color-scheme:dark } }
+/* nothing is shown until the fonts are in, so the first screen never redraws itself */
+html.boot body{opacity:0}
+body{transition:opacity .18s ease-out}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
@@ -544,7 +550,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.12.0';
+var APPV = '2.12.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1138,6 +1144,7 @@ try { if (sessionStorage.getItem('gd.updtried') === APPV) { sessionStorage.remov
 setTimeout(checkUpdate, 4000); setInterval(function () { if (!document.hidden) checkUpdate(); }, 10 * 60e3);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) checkUpdate(); });
 start();
+(function () { var show = function () { document.documentElement.classList.remove('boot'); }, t = setTimeout(show, 900); try { Promise.all([document.fonts.load('400 15px Inter'), document.fonts.load('700 16px "Barlow Semi Condensed"'), document.fonts.load('600 12px "Barlow Semi Condensed"')]).then(function () { clearTimeout(t); show(); }, function () { clearTimeout(t); show(); }); } catch (e) { clearTimeout(t); show(); } })();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
 </script>
 </body>
