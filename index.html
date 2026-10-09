@@ -328,8 +328,9 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 details.case>summary>.side{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:9px}
 details.case>summary>.side>.pic{width:68px;height:68px;border-radius:11px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:block}
 details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:5px;min-width:0}details.case>summary.nopic>.main{grid-column:1}
-.case .meta.gl{color:var(--ink);font-size:13.5px}.case .cinfo{display:flex;flex-direction:column;gap:5px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.case .meta.gl{color:var(--ink);font-size:13.5px}.case .cinfo{display:flex;flex-direction:column;gap:5px}
 .relwho{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}.relwho>span{flex-basis:100%;font-weight:600;font-size:13px}.relwho label{display:flex;gap:6px;align-items:center}.relwho input[type=radio]{width:18px;height:18px;accent-color:var(--stamp)}.relwho input[type=text],.relwho input[type=datetime-local]{flex-basis:100%;width:100%}.relwho small{flex-basis:100%;color:var(--muted);font-size:12px}
+.case .csec{display:flex;align-items:center;gap:8px;margin:14px 0 2px;padding-top:12px;border-top:1px solid var(--line);font:700 13px/1.2 var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}.case .body>.csec:first-child{margin-top:0;padding-top:0;border-top:0}.case .csec i{flex:none;font:700 12px/20px var(--head);font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--stamp);color:var(--on-stamp);text-align:center;letter-spacing:0}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -575,7 +576,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.22.1';
+var APPV = '2.23.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1054,23 +1055,27 @@ function caseView(c) {
   var st = stampEl(c), side = pic || st ? h('div', { class: 'side' }, pic, st) : null, main = h('div', { class: 'main' }, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), !done ? h('div', { class: 'meta', text: line }) : null, c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null);
   gl.forEach(function (x) { main.appendChild(x); }); var sum = h('summary', side ? null : { class: 'nopic' }, side, main); d.appendChild(sum);
   var info = done ? h('div', { class: 'cinfo' }, h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR ADMIN DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Admin decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Hold', check: 'result was Ask / question', clear: 'result was Clear to go' }[c.already.result] || '') + (c.already.order ? ' · admin decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })) : null;
-  var body = h('div', { class: 'body' }); d.appendChild(body); var bst = stampEl(c, 1); if (bst) body.appendChild(bst); if (info) body.appendChild(info);
-  if (c.seller || c.note || c.offeredKg || c.driver) body.appendChild(kv([['Driver', c.driver ? [c.driver.name, c.driver.idn].filter(Boolean).join(' · ') : null], ['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
-  if (done && !c.local && !c.driver && !(c.release && !(S.me && S.me.owner))) body.appendChild(driverBox(c));
+  var body = h('div', { class: 'body' }); d.appendChild(body);
+  // The opened file reads top to bottom in the order the work happens: what it is, what was found, what to do, what was decided, then the records.
+  var secN = 0, sec = function (t) { body.appendChild(h('h3', { class: 'csec' }, h('i', { text: String(++secN) }), h('span', { text: t }))); }, put = function (x) { if (x) body.appendChild(x); };
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
-  var locked = !!c.release && !(S.me && S.me.owner);
-  if (adv) body.appendChild(actBox(adv));
-  if (c.notified && c.notified.length) body.appendChild(h('div', { class: 'meta', style: 'background:var(--grey-soft);border-radius:9px;padding:8px 10px;color:var(--ink)' }, h('b', { text: 'On the notified list (S.R.O. 566(I)/2005): ' }), h('span', { text: c.notified.join('; ') + '. For notified goods the holder is expected to show lawful import: a GD, or the sales tax invoices leading back to one.' })));
-  if (c.release) body.appendChild(h('div', { class: 'act ok relbox' }, h('b', { text: 'RELEASED ON THE ORDER OF ' + String(c.release.byName || '').toUpperCase() }), h('span', { text: when(c.release.on || c.release.at) + (c.release.on ? ' · recorded ' + when(c.release.at) : '') + ' · ' + (c.release.via || '') + (c.release.remark ? ' · ' + c.release.remark : '') + (c.release.enteredBy && c.release.enteredBy !== c.release.byName ? ' · entered by ' + c.release.enteredBy : '') }), h('small', { text: S.me && S.me.owner ? 'Permanent record. Only you, the Owner, can change or remove it.' : 'Permanent record. It cannot be changed or removed, and this file cannot be deleted, except by the Owner.' })));
-  if (done && !c.local) body.appendChild(foundBox(c));
-  var crit = done && !c.local && ((adv && adv.a === 'detain') || !!c.order);
-  if (crit) body.appendChild(orderBox(c)); else if (done && !c.local) body.appendChild(decBox(c));
-  if (done && !c.local && rptState(c)) body.appendChild(reportBox(c));
-  if (done && !c.local && (c.courtCase || rptState(c) === 'confirmed')) body.appendChild(courtBox(c));
-  if (c.history && c.history.length) body.appendChild(histBox(c));
-  if (adm && !c.local) body.appendChild(h('div', { class: 'meta' }, c.gps ? h('a', { href: 'https://maps.google.com/?q=' + c.gps.lat + ',' + c.gps.lon, target: '_blank', rel: 'noopener', text: 'Where it was sent from (map)' + (c.gps.acc ? ', within ' + c.gps.acc + ' m' : '') }) : h('span', { text: 'Phone location was not shared for this file.' })));
-  if (hot.length) body.appendChild(flagList(hot));
+  var locked = !!c.release && !(S.me && S.me.owner), real = done && !c.local;
+  if (info) { var wy = info.querySelector('.why'); if (wy) wy.remove(); info.lastChild.remove(); }
+  sec('Case details'); put(stampEl(c, 1));
+  put(kv([['Goods', done ? title : null], ['Vehicle', c.vehicles && c.vehicles.length ? c.vehicles.join(', ') : null], ['GD number', gdRef], ['Importer', g.importer || q.importer], ['Checked at', c.location], ['Date and time', when(c.takenAt)], ['Scanned by', adm ? c.byName : null], ['Driver', c.driver ? [c.driver.name, c.driver.idn].filter(Boolean).join(' · ') : null], ['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
+  if (adm && !c.local) put(h('div', { class: 'meta' }, c.gps ? h('a', { href: 'https://maps.google.com/?q=' + c.gps.lat + ',' + c.gps.lon, target: '_blank', rel: 'noopener', text: 'Where it was sent from (map)' + (c.gps.acc ? ', within ' + c.gps.acc + ' m' : '') }) : h('span', { text: 'Phone location was not shared for this file.' })));
+  if (real && !c.driver && !(c.release && !(S.me && S.me.owner))) put(driverBox(c));
+  if (real) { sec('Goods found on the vehicle'); put(foundBox(c)); }
+  if (adv || info) { sec('Result of the check'); if (adv) put(actBox(adv)); put(info);
+    if (c.notified && c.notified.length) put(h('div', { class: 'meta', style: 'background:var(--grey-soft);border-radius:9px;padding:8px 10px;color:var(--ink)' }, h('b', { text: 'On the notified list (S.R.O. 566(I)/2005): ' }), h('span', { text: c.notified.join('; ') + '. For notified goods the holder is expected to show lawful import: a GD, or the sales tax invoices leading back to one.' })));
+    if (hot.length) put(flagList(hot)); }
+  var crit = real && ((adv && adv.a === 'detain') || !!c.order);
+  if (real) { sec('Decision'); if (c.release) put(h('div', { class: 'act ok relbox' }, h('b', { text: 'RELEASED ON THE ORDER OF ' + String(c.release.byName || '').toUpperCase() }), h('span', { text: when(c.release.on || c.release.at) + (c.release.on ? ' · recorded ' + when(c.release.at) : '') + ' · ' + (c.release.via || '') + (c.release.remark ? ' · ' + c.release.remark : '') + (c.release.enteredBy && c.release.enteredBy !== c.release.byName ? ' · entered by ' + c.release.enteredBy : '') }), h('small', { text: S.me && S.me.owner ? 'Permanent record. Only you, the Owner, can change or remove it.' : 'Permanent record. It cannot be changed or removed, and this file cannot be deleted, except by the Owner.' }))); if (crit) put(orderBox(c)); else put(decBox(c)); }
+  var hasRpt = real && rptState(c), hasCourt = real && (c.courtCase || rptState(c) === 'confirmed');
+  if (hasRpt || hasCourt) { sec('Seizure report and court case'); if (hasRpt) put(reportBox(c)); if (hasCourt) put(courtBox(c)); }
+  if (c.history && c.history.length) { sec('Earlier scans of this vehicle'); put(histBox(c)); }
   var ok = fl.filter(function (f) { return f.l === 'ok'; }), sk = fl.filter(function (f) { return f.l === 'skip'; });
+  if (!c.local && (ok.length || sk.length || (c.pages || []).length || c.nPages)) sec('Records: checks, papers read and photos');
   if (ok.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: ok.length + ' checks passed' }), flagList(ok)));
   if (sk.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: sk.length + ' not checked' }), flagList(sk)));
   (c.pages || []).forEach(function (p, i) { if (c.local) return; var pv = pageView(p, i); if (pv) body.appendChild(pv); });
