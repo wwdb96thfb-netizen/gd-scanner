@@ -527,7 +527,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.11.4';
+var APPV = '2.11.5';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -915,9 +915,10 @@ function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(
 
 // The card picture is kept on the phone after its first load, so it still shows when the server cannot be reached.
 var TH = load('gd.th') || {};
-async function keepThumb(k, url) { try { var r = await fx(url, {}, 15000); if (!r.ok) return; var b = await r.blob(); if (b.size > 40000) return;
-    var d = await new Promise(function (res, rej) { var f = new FileReader(); f.onload = function () { res(f.result); }; f.onerror = rej; f.readAsDataURL(b); });
-    TH[k] = d; var ks = Object.keys(TH); while (ks.length > 80) delete TH[ks.shift()]; keep('gd.th', TH); } catch (e) {} }
+async function keepThumb(k, url) { try { var r = await fx(url, {}, 20000); if (!r.ok) return; var b = await r.blob(), u = URL.createObjectURL(b), d = null;
+    try { d = thumbOf(await loadImg(u)); } finally { URL.revokeObjectURL(u); }   // always shrunk to a small square, so even a full-size photo can be kept
+    if (!d || d.length > 60000) return; TH[k] = d; var ks = Object.keys(TH); while (ks.length > 80) delete TH[ks.shift()];
+    try { localStorage.setItem('gd.th', JSON.stringify(TH)); } catch (e) { ks = Object.keys(TH); ks.slice(0, Math.ceil(ks.length / 2)).forEach(function (x) { delete TH[x]; }); keep('gd.th', TH); } } catch (e) {} }
 function goodsName(t) { t = String(t || '').split(/[=;\n]/)[0].replace(/\s+/g, ' ').replace(/[\s.,:-]+$/, '').trim(); if (t.length < 3) return ''; if (t.length > 34) t = t.slice(0, 32).replace(/\s+\S*$/, '') + '…'; return t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t; }
 function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', adv = done ? advise(c) : null, v = done ? adv.k : 'busy', fl = c.flags || [];
