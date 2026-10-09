@@ -128,19 +128,28 @@ function runChecks(pages,meta){
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
     else if(p.type==='doc'){ docs.push({d:p.doc||{},p:i+1,name:String((p.doc||{}).title||p.what||'document')}); add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
-    else if(p.type==='goods'){ var gl=p.goods||{}; if(String(gl.product||gl.label_text||'').trim().length>=4) labels.push({g:gl,p:i+1}); }
+    else if(p.type==='goods'){ var gl=p.goods||{}; if(String(gl.product||gl.label_text||'').trim().length>=4||gl.made_in||gl.mfg_date) labels.push({g:gl,p:i+1}); }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
     else add('skip',0,'Page is not a GD, a release order or a sales tax invoice',p.what||'');
   });
   var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:0}); };
   var G=gds[0];
   // What is printed on the packing, compared with what the GD says the goods are.
+  // Marks on the packing that the paper cannot fake: where it says it was made, and when.
+  if(G&&labels.length){ var seenMk={}, itsO=(Array.isArray(G.g.items)?G.g.items:[]).map(function(it){ return String(it.origin||''); }).filter(Boolean);
+    labels.forEach(function(L){ var mi=String(L.g.made_in||'').trim(), md=String(L.g.mfg_date||'').trim();
+      if(mi.length>=3&&itsO.length&&!seenMk['o'+mi.toLowerCase()]){ seenMk['o'+mi.toLowerCase()]=1; var okO=itsO.some(function(o){ return same(mi,o)||(/prc|china/i.test(mi)&&/china/i.test(o)); });
+        if(okO) flags.push({l:'ok',n:47,t:'Country printed on the packing agrees with the GD',d:'Packing says "'+mi+'".',p:L.p}); else flags.push({l:'amber',n:47,t:'Packing says made in '+mi+', the GD says origin '+itsO[0],d:'Goods of another country are being carried under this GD, or the packing has been reused. Open the packages and check the goods themselves.',p:L.p}); }
+      if(md&&G.info.gdDate!=null&&!seenMk['d'+md]){ seenMk['d'+md]=1; var t=pd(md); if(t==null){ var mm=md.match(/(\d{1,2})\D{1,3}(\d{4})/); if(mm) t=Date.UTC(+mm[2],+mm[1]-1,1); }
+        if(t!=null){ if(t>G.info.gdDate+864e5) flags.push({l:'red',n:48,t:'Goods were made after the GD was filed',d:'Packing shows manufacture or packing date '+md+'. The GD is dated '+dstr(G.info.gdDate)+'. Goods made after the GD cannot have been imported under it.',p:L.p}); else flags.push({l:'ok',n:48,t:'Date on the packing is before the GD date',d:'Packing date '+md+', GD '+dstr(G.info.gdDate)+'.',p:L.p}); } } });
+  }
   if(G&&labels.length){ var LSTOP=/^(super|export|quality|premium|best|brand|product|produce|made|china|pakistan|iran|india|weight|gross|kilogram|grams?|fresh|natural|pure|special|grade|class|packed|packing|carton|cartons|bags?|company|trading|traders|enterprises|limited|private|store|keep|handle|care|fragile|this|side|with|from|100)$/;
     var ltok=function(t){ return String(t||'').toLowerCase().replace(/[^a-z ]/g,' ').split(/\s+/).filter(function(x){ return x.length>=4; }).map(function(x){ return x.replace(/(ies)$/,'y').replace(/s$/,''); }).filter(function(x){ return !LSTOP.test(x); }); };
     var KERN=/kern|kernal|shelled|giri|magaz/i, INSH=/in\s*-?\s*shells?|unshelled|with\s+shell|whole/i, kind=function(t){ return INSH.test(t)?'S':(KERN.test(t)?'K':''); };
     var its=(Array.isArray(G.g.items)?G.g.items:[]).map(function(it){ var d=String(it.description||''); return {d:d,t:ltok(d),k:kind(d)}; }), doneL={};
     labels.forEach(function(L){ var name=String(L.g.product||'').trim()||String(L.g.label_text||'').trim().slice(0,60), key=name.toLowerCase(); if(doneL[key]) return; doneL[key]=1;
       var lt=ltok(L.g.product).concat(ltok(L.g.label_text)).filter(function(x){ return !/^(shell|shelled|kernel|kernal)$/.test(x); }), lk=kind(String(L.g.product||'')+' '+String(L.g.label_text||''));
+      if(String(L.g.product||L.g.label_text||'').trim().length<4) return;
       if(!lt.length||!its.length) return;
       var share=its.filter(function(it){ return lt.some(function(x){ return it.t.indexOf(x)>=0; }); });
       var good=share.filter(function(it){ return !(lk&&it.k&&lk!==it.k); });
@@ -184,7 +193,7 @@ function runChecks(pages,meta){
   if(G){ var gi=G.info, g0=G.g, taken=meta&&meta.takenAt?Date.parse(meta.takenAt):NaN;
     if(gi.gdDate!=null&&!isNaN(taken)){ var days=Math.floor((taken-gi.gdDate)/864e5);
       if(days<-1) add('red',30,'GD is dated after the day it was photographed','GD date '+dstr(gi.gdDate)+'.');
-      else if(days>30) add('amber',30,'GD is '+days+' days old','Goods normally leave the port soon after clearance. An old GD shown with fresh stock may have been used before. Ask when and how the goods travelled.');
+      else if(days>90) add('amber',30,'GD is '+days+' days old','Importers do sell stock over weeks, so an older GD is not wrong in itself. After three months, ask for the sales tax invoice for this load and check the running total on the GD. Ask when and how the goods travelled.');
       else add('ok',30,'GD is recent',days+' day'+(days===1?'':'s')+' old'); }
     var its=Array.isArray(g0.items)?g0.items:[], paid={}; its.forEach(function(it){ (Array.isArray(it.levies)?it.levies:[]).forEach(function(x){ var c=String(x.code||'').toUpperCase(); paid[c]=(paid[c]||0)+(num(x.amount_pkr)||0); }); });
     if((/^GBS/.test(gi.mn)||/sust|sost/i.test(String(g0.customs_office||'')))&&its.length){
