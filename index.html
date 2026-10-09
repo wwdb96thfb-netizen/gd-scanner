@@ -608,7 +608,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.26.1';
+var APPV = '2.26.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
