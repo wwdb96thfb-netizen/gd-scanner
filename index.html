@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>GD Scanner</title>
+<title>GD Verification System</title>
 <link rel="preload" href="fonts/inter.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/barlow-700.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/barlow-600.woff2" as="font" type="font/woff2" crossorigin>
@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#01411C">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="GD Scanner">
+<meta name="apple-mobile-web-app-title" content="GD Verify">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
@@ -238,7 +238,7 @@ body{font-family:var(--body);font-size:15px;letter-spacing:-.003em;-webkit-font-
 .appbar .brand{gap:13px}
 .appbar .brand img{border-radius:13px;box-shadow:0 0 0 1.5px rgba(255,255,255,.35),0 4px 12px rgba(0,0,0,.3)}
 .appbar .bt{flex:1;min-width:0}
-.appbar h1{font:700 25px/1 var(--head);letter-spacing:.035em;text-transform:uppercase;color:#fff}
+.appbar h1{font:700 20px/1.05 var(--head);letter-spacing:.03em;text-transform:uppercase;color:#fff}
 .appbar .tag{margin-top:5px;font:600 11.5px/1 var(--head);letter-spacing:.2em;color:#cfe8da}
 .appbar .flag{flex:none;width:58px;height:auto;border-radius:5px;box-shadow:0 0 0 1.5px rgba(255,255,255,.85),0 5px 14px rgba(0,0,0,.4);margin-right:2px}
 .dec select,.dec input,.dec textarea{border:1px solid var(--line);border-radius:10px}
@@ -318,7 +318,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 .tabs button:active svg{transform:scale(.92)}
 .wrap{min-height:calc(100vh - 120px)}
 .appbar .tag{white-space:nowrap}
-@media (max-width:370px){.appbar .tag{letter-spacing:.1em;font-size:10.5px}.appbar h1{font-size:22px}.appbar .flag{width:50px}}
+@media (max-width:370px){.appbar .tag{letter-spacing:.1em;font-size:10.5px}.appbar h1{font-size:16.5px}.appbar .flag{width:50px}}
 button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 @media (prefers-reduced-motion: reduce){#main>section:not([hidden]),#p-people .grp:not([hidden]){animation:none}}
 .stamp{display:block;flex:none;width:86px;height:86px;transform:rotate(-11deg);opacity:.9;-webkit-mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);-webkit-mask-composite:source-in;mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);mask-composite:intersect}
@@ -355,7 +355,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
   <div class="brand">
     <img src="icon-192.png" alt="" width="48" height="48">
     <div class="bt">
-      <h1>GD Scanner</h1>
+      <h1>GD Verification System</h1>
       <p class="tag">Pakistan Coast Guards</p>
     </div>
     <svg class="flag" viewBox="0 0 90 60" role="img" aria-label="Flag of Pakistan"><rect width="90" height="60" fill="#01411C"/><rect width="22.5" height="60" fill="#fff"/><circle cx="56.25" cy="30" r="18" fill="#fff"/><circle cx="60.9" cy="25.4" r="16.4" fill="#01411C"/><polygon points="71.93,15.47 69.81,19.62 73.10,22.91 68.51,22.18 66.40,26.32 65.67,21.73 61.08,21.00 65.22,18.89 64.49,14.30 67.78,17.59" fill="#fff"/></svg>
@@ -386,7 +386,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
   <div id="gate" hidden>
     <div class="intro" id="g-intro" hidden>
       <img src="logo.svg" alt="" width="84" height="84">
-      <h1>GD Scanner</h1>
+      <h1>GD Verification System</h1>
       <p class="tag">Pakistan Coast Guards</p>
       <ol>
         <li><b>Photograph</b><span>Take photos of the papers, the vehicle and the goods, in any order.</span></li>
@@ -400,7 +400,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
     </div>
     <div class="panel" id="g-loc" hidden>
       <h2 class="sec">Location sharing is required</h2>
-      <p class="note">GD Scanner records where each scan is sent from, so that every check can be tied to its post. Your location is read only at the moment you press Send. The app does not work without it.</p>
+      <p class="note">GD Verification System records where each scan is sent from, so that every check can be tied to its post. Your location is read only at the moment you press Send. The app does not work without it.</p>
       <label class="tick"><input type="checkbox" id="g-agree"><span>I agree to share this phone's location with every scan.</span></label>
       <button class="btn wide" id="g-allow">Allow location and continue</button>
       <p class="status" id="s-gloc" role="status"></p>
@@ -566,7 +566,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
       </div>
       <h2 class="sec">About this app</h2>
       <div class="panel">
-        <p class="note"><b>GD Scanner</b> helps Pakistan Coast Guards posts check goods moving on the roads against their customs papers, quickly and in the same way at every post.</p>
+        <p class="note"><b>GD Verification System</b> helps Pakistan Coast Guards posts check goods moving on the roads against their customs papers, quickly and in the same way at every post.</p>
         <p class="note"><b>What it does:</b> the post photographs the Goods Declaration (GD), other papers, the vehicle and the goods. The server reads them, checks the papers against each other, against the goods found, and against every earlier file, and tells the post what to do.</p>
         <p class="note"><b>What it catches:</b> a GD used again and again, papers that belong to another consignment, wrong HS codes, goods that are not on the GD, more goods than the GD covers, edited figures, and vehicles or firms on the watchlist.</p>
         <p class="note"><b>Who decides:</b> on ordinary files the post decides and it is recorded. On critical files an admin at Bn HQ decides: release, seize, or ask for more documents. Every seizure needs a report, is re-verified, and is followed through to the Customs Court.</p>
@@ -593,7 +593,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
         <p class="note"><b>Seizure:</b> the goods are seized and kept in the warehouse, a seizure report is sent for re-verification, and a case is filed in Customs Court.</p>
         <p class="note">After acting, record what you did under "What did you do with this vehicle?" in the file.</p>
       </div>
-      <footer class="legal"><b>GD Scanner</b><span class="lv"></span><span>Specially designed for use by Pakistan Coast Guards</span><span>&copy; 2026 &middot; All rights reserved &middot; Authorised official use only</span></footer>
+      <footer class="legal"><b>GD Verification System</b><span class="lv"></span><span>Specially designed for use by Pakistan Coast Guards</span><span>&copy; 2026 &middot; All rights reserved &middot; Authorised official use only</span></footer>
     </section>
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/></svg><span>Scan</span></button>
@@ -609,7 +609,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.24.0';
+var APPV = '2.25.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -954,8 +954,8 @@ function caseOpen(c) { var k = c.courtCase; return k ? (k.status === 'prep' || k
 function rptState(c) { var d = c.decision; if (!d || (d.action !== 'detained' && d.action !== 'handed' && d.action !== 'seized')) return c.report ? (c.review ? c.review.result : 'sent') : ''; if (!c.report) return 'due'; return c.review ? c.review.result : 'sent'; }
 function rptRows(c) { var r = c.report || {}, g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, adv = advise(c);
   return [['Post', c.location], ['Scanned', when(c.takenAt)], ['Action taken', c.decision ? DEC[c.decision.action] + (c.decision.remark ? ' (' + c.decision.remark + ')' : '') : '']].concat(RPTF.map(function (f) { return [f[1], r[f[0]]]; }), [['GD number', (c.gdNos || []).join(', ')], ['Importer on the GD', g.importer], ['Goods on the GD', (Array.isArray(g.items) ? g.items : []).map(function (it) { return it.description; }).filter(Boolean).join('; ')], ['Goods found (entered)', c.found ? foundText(c.found) : ''], ['App result', adv.head + (adv.items.length ? ': ' + adv.items.join('; ') : '')], ['Place of scan', c.gps ? c.gps.lat + ', ' + c.gps.lon : ''], ['Reported by', (r.byName || '') + (r.at ? ', ' + when(r.at) : '')], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' (' + c.review.remark + ')' : '') + ' by ' + c.review.byName + ', ' + when(c.review.at) : 'Pending'], ['Released on the order of', c.release ? c.release.byName + ', ' + when(c.release.at) + (c.release.remark ? ' (' + c.release.remark + ')' : '') : ''], ['Court case', c.courtCase ? CST[c.courtCase.status] + (c.courtCase.caseNo ? ', case ' + c.courtCase.caseNo : '') + (c.courtCase.court ? ', ' + c.courtCase.court : '') : '']]).filter(function (x) { return x[1]; }); }
-function rptText(c) { return 'SEIZURE REPORT\nGD Scanner, Pakistan Coast Guards\n\n' + rptRows(c).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n'); }
-function rptPrint(c) { var P = $('print'); P.textContent = ''; var se = stampEl(c); if (se) P.appendChild(se); P.appendChild(h('h1', { text: 'Seizure Report' })); P.appendChild(h('div', { text: 'GD Scanner · Pakistan Coast Guards · For re-verification and filing in Customs Court' })); var t = h('table'); rptRows(c).forEach(function (x) { var tr = h('tr'); tr.appendChild(h('td', { text: x[0] })); tr.appendChild(h('td', { text: x[1] })); t.appendChild(tr); }); P.appendChild(h('h2', { text: 'Particulars' })); P.appendChild(t); P.appendChild(h('div', { class: 'sig' }, h('span', { text: 'Reporting official: ____________________' }), h('span', { text: 'Verifying officer: ____________________' }))); window.print(); }
+function rptText(c) { return 'SEIZURE REPORT\nGD Verification System, Pakistan Coast Guards\n\n' + rptRows(c).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n'); }
+function rptPrint(c) { var P = $('print'); P.textContent = ''; var se = stampEl(c); if (se) P.appendChild(se); P.appendChild(h('h1', { text: 'Seizure Report' })); P.appendChild(h('div', { text: 'GD Verification System · Pakistan Coast Guards · For re-verification and filing in Customs Court' })); var t = h('table'); rptRows(c).forEach(function (x) { var tr = h('tr'); tr.appendChild(h('td', { text: x[0] })); tr.appendChild(h('td', { text: x[1] })); t.appendChild(tr); }); P.appendChild(h('h2', { text: 'Particulars' })); P.appendChild(t); P.appendChild(h('div', { class: 'sig' }, h('span', { text: 'Reporting official: ____________________' }), h('span', { text: 'Verifying officer: ____________________' }))); window.print(); }
 function courtBox(c) { var box = h('div', { class: 'dec' }), k = c.courtCase, adm = !!(S.me && S.me.admin);
   var view = function () { box.textContent = ''; box.appendChild(h('b', { text: 'Customs Court case' }));
     if (k) box.appendChild(kv([['Status', CST[k.status]], ['Warehouse', k.warehouse], ['Case number', k.caseNo], ['Filed on', k.filedOn], ['Court', k.court], ['Next hearing', k.hearing], ['Decided on', k.decidedOn], ['Remark', k.remark], ['Updated by', k.byName + ', ' + when(k.at)]])); else box.appendChild(h('span', { text: adm ? 'No case details entered yet.' : 'The goods stay in the warehouse until the court decides. An admin will enter the case details here.' }));
@@ -1165,7 +1165,7 @@ $('q').addEventListener('input', runSearch); $('q').addEventListener('search', r
 // ---- people (admin)
 function linkFor(code) { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 function joinLink() { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&j=' + (S.joinKey || '') + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
-async function shareText(text, btn, field) { try { if (navigator.share) await navigator.share({ title: 'GD Scanner', text: text }); else { await navigator.clipboard.writeText(field.value); btn.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } }
+async function shareText(text, btn, field) { try { if (navigator.share) await navigator.share({ title: 'GD Verification System', text: text }); else { await navigator.clipboard.writeText(field.value); btn.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } }
 function dayOf(s) { var d = new Date(s); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function summary() { var day = $('sum-day').value, rows = {}, tot = { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} };
   S.list.forEach(function (c) { if (c.status !== 'done' || dayOf(c.takenAt || c.receivedAt) !== day) return; var k = c.location || 'No post given', r = rows[k] = rows[k] || { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} }, a = advise(c).a, col = a === 'detain' ? 'detain' : a === 'hold' ? 'hold' : a === 'clear' ? 'clear' : 'ask';
@@ -1175,7 +1175,7 @@ function drawSummary() { var s = summary(), box = $('sum-box'), sg = JSON.string
   var line = function (name, r) { var tr = h('tr'); [name, r.n, r.clear, r.ask, r.hold, r.detain, r.acted].forEach(function (x) { tr.appendChild(h('td', { text: String(x) })); }); t.appendChild(tr); };
   Object.keys(s.rows).sort().forEach(function (k) { line(k, s.rows[k]); }); line('All posts', s.tot);
   box.appendChild(s.tot.n ? t : h('p', { class: 'note', text: 'No checked files on this day.' })); }
-function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Checked', 'Clear to go', 'Ask or question', 'Hold', 'Detain', 'Seized', 'Staff'].join(',')] : ['GD Scanner summary for ' + s.day];
+function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Checked', 'Clear to go', 'Ask or question', 'Hold', 'Detain', 'Seized', 'Staff'].join(',')] : ['GD Verification System summary for ' + s.day];
   Object.keys(s.rows).sort().concat(['All posts']).forEach(function (k) { var r = k === 'All posts' ? s.tot : s.rows[k], who = Object.keys(r.people).join('; ');
     L.push(csv ? [s.day, '"' + k.replace(/"/g, '""') + '"', r.n, r.clear, r.ask, r.hold, r.detain, r.acted, '"' + who.replace(/"/g, '""') + '"'].join(',') : k + ': ' + r.n + ' checked, ' + r.clear + ' clear, ' + r.ask + ' ask, ' + r.hold + ' hold, ' + r.detain + ' detain, ' + r.acted + ' seized'); });
   return L.join('\n'); }
@@ -1205,13 +1205,13 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
       h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as post staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as admin', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
   if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'No one else has been added yet.' }));
   S.people.forEach(function (p) { var link = linkFor(p.code), adm = p.role === 'admin', field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
-    var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Scanner link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
+    var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Verification System link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
     var role = h('button', { class: 'btn ghost small', text: adm ? 'Make post staff' : 'Make admin', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: adm ? 'field' : 'admin' }) }); loadPeople(); } catch (e) {} } });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
     var yes = h('button', { class: 'btn danger small', text: 'Yes, cancel this link', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
     box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Post staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.pin ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); }); }
 $('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
-$('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Scanner: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
+$('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Verification System: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
 $('join-link').addEventListener('focus', function (e) { e.target.select(); });
 
 // ---- asking to join
@@ -1232,7 +1232,7 @@ async function checkApproval() { if (!cfg.pending || document.hidden) return;
 setInterval(checkApproval, 10000);
 
 // ---- start
-$('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Scanner link.', true); });
+$('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Verification System link.', true); });
 // ---- location consent and PIN lock
 var locOK = !!load('gd.locok');
 function pinq() { return cfg.ph ? '&pin=' + cfg.ph : ''; }

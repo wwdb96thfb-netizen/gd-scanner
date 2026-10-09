@@ -1,6 +1,6 @@
 {
-  "name": "GD Scanner",
-  "short_name": "GD Scanner",
+  "name": "GD Verification System",
+  "short_name": "GD Verify",
   "description": "Photograph customs papers and get red flags back",
   "start_url": "./",
   "scope": "./",

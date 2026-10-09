@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 38;
+const VERSION = 39;
 const CHECKS_V = 9;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -451,7 +451,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const u = new URL(req.url, 'http://x'), p = u.pathname.split('/').filter(Boolean);
   try {
-    if (p[0] !== 'api') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('GD Scanner server is running.'); }
+    if (p[0] !== 'api') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('GD Verification System server is running.'); }
     if (p[1] === 'hello') {   // lets the app confirm this is the real server before it sends its code
       const n = u.searchParams.get('n') || '', uid = u.searchParams.get('u') || '', code = [cfg.adminCode, cfg.joinKey].concat(cfg.people.map(x => x.code), cfg.requests.map(x => x.code)).find(c => idOf(c) === uid);
       if (!code || !/^[a-f0-9]{16,64}$/.test(n)) return send(res, 404, { error: 'unknown' });
@@ -584,7 +584,7 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'push' && req.method === 'POST') { const b = await body(req), x = b.sub || {}, k = x.keys || {}; let host = ''; try { const e = new URL(x.endpoint); if (e.protocol === 'https:') host = e.hostname; } catch (e) {}
       if (!PUSH_HOSTS.test(host) || !/^[\w-]{80,100}$/.test(k.p256dh || '') || !/^[\w-]{16,30}$/.test(k.auth || '')) return send(res, 400, { error: 'form' });
       cfg.subs = cfg.subs.filter(y => y.endpoint !== x.endpoint); cfg.subs.push({ who: idOf(user.code), endpoint: String(x.endpoint).slice(0, 600), p256dh: k.p256dh, auth: k.auth, at: new Date().toISOString() }); if (cfg.subs.length > 200) cfg.subs.shift(); saveCfg(); log(user.name, 'turned on phone alerts');
-      if (b.test) { try { await pushTo(cfg.subs[cfg.subs.length - 1], { title: 'GD Scanner alerts are on', body: 'You will be told here when a post gets a Detain result.' }); } catch (e) {} }
+      if (b.test) { try { await pushTo(cfg.subs[cfg.subs.length - 1], { title: 'GD Verification System alerts are on', body: 'You will be told here when a post gets a Detain result.' }); } catch (e) {} }
       return send(res, 200, { ok: true }); }
     if (p[1] === 'order' && p[2] && req.method === 'POST') {   // a critical file: the admin decides and the post is told
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || m.status !== 'done') return send(res, 404, { error: 'none' });
@@ -634,7 +634,7 @@ const server = http.createServer(async (req, res) => {
 let publicUrl = '', opened = false, tunnelProc = null;
 const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : '');
 function writeLinks() {
-  const L = ['GD Scanner links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
+  const L = ['GD Verification System links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
   L.push('JOIN LINK (anyone who opens it can ask for access; an admin must approve them):', APP_URL + '?t=' + cfg.topic + '&j=' + cfg.joinKey + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : ''), '');
   cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (admin):' : ':'), link(x.code), ''); });
   fs.writeFileSync(path.join(ROOT, 'LINKS.txt'), L.join('\n'));
@@ -657,7 +657,7 @@ function tunnel() {
     if (m && m[0] !== publicUrl) {
       publicUrl = m[0]; writeLinks(); log('Public address:', publicUrl);
       announce().then(ok => { if (ok) log('Phones have been told the new address.'); });
-      console.log('\n==============================================================\n  GD Scanner is running. Leave this window open.\n\n  Your admin link (also saved in LINKS.txt):\n  ' + link(cfg.adminCode) + '\n==============================================================\n');
+      console.log('\n==============================================================\n  GD Verification System is running. Leave this window open.\n\n  Your admin link (also saved in LINKS.txt):\n  ' + link(cfg.adminCode) + '\n==============================================================\n');
       if (!opened && process.platform === 'darwin' && !process.env.GD_NO_OPEN) { opened = true; spawn('open', [link(cfg.adminCode)], { stdio: 'ignore' }).on('error', () => {}); }
     }
   };
@@ -679,10 +679,10 @@ setInterval(async () => {
 }, 2 * 60e3);
 // Half-uploaded captures that were never finished are removed after a week.
 try { for (const id of fs.readdirSync(CAP)) { const d = path.join(CAP, id); if (!fs.existsSync(path.join(d, 'meta.json')) && Date.now() - fs.statSync(d).mtimeMs > 7 * 864e5) fs.rmSync(d, { recursive: true, force: true }); } } catch (e) {}
-server.on('error', e => { if (e.code === 'EADDRINUSE') { log('Another GD Scanner server is already running on this Mac. This copy will stop.'); setTimeout(() => process.exit(1), 60e3); } else log('server error:', e.message); });
+server.on('error', e => { if (e.code === 'EADDRINUSE') { log('Another GD Verification System server is already running on this Mac. This copy will stop.'); setTimeout(() => process.exit(1), 60e3); } else log('server error:', e.message); });
 process.on('SIGINT', () => process.exit(0)); process.on('SIGTERM', () => process.exit(0));
 
 server.listen(PORT, '127.0.0.1', () => {
-  log('GD Scanner server v' + VERSION + ' started. ' + index.size + ' file(s) in the database.');
+  log('GD Verification System server v' + VERSION + ' started. ' + index.size + ' file(s) in the database.');
   recheckAll(); writeLinks(); if (!process.env.GD_NO_TUNNEL) tunnel(); work();
 });
