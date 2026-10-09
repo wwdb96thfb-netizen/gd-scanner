@@ -460,6 +460,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
       <h2 class="sec">Watchlist</h2>
       <div class="panel">
         <p class="note">Enter a vehicle number, importer name, NTN, GD number or container number. Any file that matches is marked Critical and the post is told to detain.</p>
+        <p class="note">When goods are seized, the vehicle that carried them is added here automatically. Those entries tell the post to check the vehicle thoroughly next time and alert the admins; they do not order a detention by themselves.</p>
         <div class="form">
           <label class="f">Watch for<input type="text" id="w-value" maxlength="60" placeholder="e.g. TKA-123 or a firm name"></label>
           <label class="f">Reason<input type="text" id="w-note" maxlength="120" placeholder="Optional"></label>
@@ -564,7 +565,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.15.1';
+var APPV = '2.16.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -796,7 +797,7 @@ var WHY = {
   37: 'The number plate was dirty, at an angle or too far away.',
   17: 'Under-invoicing: a low value was declared to pay less duty and tax.',
   40: 'A repeat offender, or a vehicle used again after an earlier problem.',
-  41: 'An admin asked for this vehicle, firm or number to be stopped.',
+  41: 'On the watchlist: put there by an admin, or automatically because goods were seized from this vehicle before.',
   42: 'The scan was sent from somewhere else, or the wrong post was selected.',
   23: 'Usually normal trade: one GD, several part loads on copies. It matters only if the total goes over the GD.',
   49: 'Repacking after import is common. It can also mean other goods have been put under this GD.',
@@ -818,6 +819,7 @@ function advise(c) {
   if (!has('gd')) put(ask, GD);
   amb.forEach(function (f) {
     if (f.n === 23) put(ask, 'Enter the goods found on this vehicle: this GD is being used for part loads, and the total must stay within it');
+    else if (f.n === 41) put(why, 'Goods were seized from this vehicle before: open the packages and match every paper');
     else if (f.n === 46) put(ask, 'The sales tax invoice or delivery challan from the importer for this part load, and the bilty');
     else if (f.n === 47) put(ask, 'Open the packages: the country printed on the packing differs from the GD');
     else if (f.n === 19) put(ask, /No GD/.test(f.t) ? GD : /different consignment/.test(f.t) ? 'Which consignment the goods come from: the release order shown is for another importer\'s GD. Ask for the invoice of the importer they were bought from' : 'The plant quarantine release order that quotes this GD');

@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 33;
+const VERSION = 34;
 const CHECKS_V = 9;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -84,7 +84,9 @@ function live() {
   done.forEach(m => {
     let fl = (m.flags || []).concat(ex[m.id] || []);
     const F = fieldsOf(m);
-    cfg.watch.forEach(w => { const k = AN(w.value); if (k.length >= 4 && F.some(x => x.indexOf(k) >= 0)) fl.push({ l: 'red', n: 41, t: 'On the watchlist: ' + w.value, d: (w.note ? w.note + '. ' : '') + 'Added by ' + (w.by || 'an admin') + ' on ' + String(w.at).slice(0, 10) + '.', p: 0 }); });
+    cfg.watch.forEach(w => { const k = AN(w.value); if (w.src === m.id || (w.auto && tOf(m) <= String(w.at))) return;   // not the seizure file itself, nor scans from before it
+      if (k.length >= 4 && w.auto) { if ((m.vehicles || []).some(v => AN(v) === k)) fl.push({ l: 'amber', n: 41, t: 'Watchlist: goods were seized from this vehicle before', d: (w.note ? w.note + '. ' : '') + 'The vehicle is not at fault by that alone, but check this load thoroughly: open the packages and match every paper.', p: 0 }); return; }
+      if (k.length >= 4 && F.some(x => x.indexOf(k) >= 0)) fl.push({ l: 'red', n: 41, t: 'On the watchlist: ' + w.value, d: (w.note ? w.note + '. ' : '') + 'Added by ' + (w.by || 'an admin') + ' on ' + String(w.at).slice(0, 10) + '.', p: 0 }); });
     if (cfg.values.length) { let hit = false;
       (m.pages || []).forEach((p, i) => { if (p.type !== 'gd' || !p.gd || !Array.isArray(p.gd.items)) return; p.gd.items.forEach((it, k) => {
         const hs = String(it.hs_code || '').replace(/\D/g, ''), desc = String(it.description || '').toLowerCase(), dec = parseFloat(it.unit_declared), asd = parseFloat(it.unit_assessed);
@@ -151,7 +153,7 @@ function live() {
       H.push({ at: tOf(x), location: x.location, gd: (x.gdNos || [])[0] || '', result: resultOf(fl), why: top ? top.t : '', taken: x.decision ? x.decision.action : '' }); }));
     H.sort((a, b) => b.at.localeCompare(a.at)); hist.set(m.id, H.slice(0, 20));
     const bad = H.filter(x => x.at < tOf(m) && (x.result === 'detain' || x.taken === 'detained' || x.taken === 'seized' || x.taken === 'handed'));
-    if (bad.length) flags.get(m.id).push({ l: 'amber', n: 40, t: 'This vehicle was stopped before', d: bad.slice(0, 3).map(x => x.at.slice(0, 10) + ' at ' + (x.location || '?') + (x.why ? ': ' + x.why : '')).join('; ') + '.', p: 0 });
+    if (bad.length && !flags.get(m.id).some(f => f.n === 41)) flags.get(m.id).push({ l: 'amber', n: 40, t: 'This vehicle was stopped before', d: bad.slice(0, 3).map(x => x.at.slice(0, 10) + ' at ' + (x.location || '?') + (x.why ? ': ' + x.why : '')).join('; ') + '.', p: 0 });
   });
   return xcache = { ver: xver, flags, hist, again };
 }
@@ -200,6 +202,12 @@ function search(text) {
 const NOTIFIED = [[/tyre|tire|\btubes?\b/, 'Tyres and tubes'], [/auto\s*parts?|spare parts?/, 'Auto parts'], [/diesel|petrol|kerosene|lubricant|\blpg\b|bitumen|petroleum/, 'Petroleum products'], [/cigarette|filter rod|tipping paper|acetate tow/, 'Cigarette raw materials'], [/\btea\b/, 'Black tea'], [/cloth|fabric|yarn|cotton|polyester|silk|wool/, 'Cotton, man-made, wool and silk yarn and fabrics'], [/mobile|cell\s*phone|smart\s*phone/, 'Mobile phone sets'], [/vehicle|motor\s*cycle|motorbike|\bcar\b|truck/, 'Vehicles of all kinds'], [/liquor|whisky|vodka|beer|wine|alcohol/, 'Alcoholic drinks'], [/hashish|charas|heroin|opium|crystal|meth/, 'Narcotics'], [/\barms?\b|ammunition|pistol|rifle/, 'Arms and ammunition'], [/currency|dollar/, 'Currency'], [/\bgold\b|silver/, 'Gold and silver'], [/fertili[sz]er|urea|\bdap\b/, 'Fertilizers'], [/ghee|cooking oil|edible oil|palm oil|soya/, 'Edible oils and ghee'], [/television|\btv\b|\bled\b/, 'Televisions'], [/refrigerator|fridge|freezer/, 'Refrigerators'], [/air\s*condition/, 'Air conditioners'], [/soap|shampoo/, 'Soaps and shampoos'], [/bearing/, 'Ball bearings'], [/bicycle/, 'Bicycles'], [/microwave/, 'Microwave ovens'], [/dye|chemical/, 'Dyes and chemicals'], [/jewel/, 'Artificial jewellery'], [/walnut|almond|pistachio|cashew|raisin|dates?\b|dry fruit|betel|areca|supari|sugar|wheat|flour|atta|rice|pulse|daal|spice|cumin|cardamom|milk|biscuit|juice|honey|\bfood/, 'Foodgrains and food items']];
 const notifiedOf = m => { const out = [], seen = t => { const d = String(t || '').toLowerCase(); if (!d) return; NOTIFIED.forEach(n => { if (n[0].test(d) && out.indexOf(n[1]) < 0) out.push(n[1]); }); };
   (m.pages || []).forEach(p => { if (p.gd && Array.isArray(p.gd.items)) p.gd.items.forEach(it => seen(it.description)); }); foundList(m).forEach(f => seen(f.what)); return out.slice(0, 4); };
+// When goods are seized, the vehicle that carried them goes on the watchlist by itself. If the seizure is later undone, it comes off again.
+function autoWatch(m) { const seized = m.decision && ['seized', 'detained', 'handed'].indexOf(m.decision.action) >= 0, before = JSON.stringify(cfg.watch);
+  cfg.watch = cfg.watch.filter(w => !(w.auto && w.src === m.id));
+  if (seized) (m.vehicles || []).forEach(v => { if (AN(v).length < 4) return; cfg.watch.push({ id: rnd(8), value: v, note: 'Goods seized from this vehicle at ' + (m.location || 'a post') + ' on ' + tOf(m).slice(0, 10) + (foundList(m).length ? ' (' + foundList(m).map(f => f.what).filter(Boolean).join(', ').slice(0, 60) + ')' : ''), by: 'Automatic', at: new Date().toISOString(), auto: true, src: m.id }); log('Watchlist: added', v, 'after a seizure'); });
+  if (cfg.watch.length > 500) cfg.watch = cfg.watch.slice(-500);
+  if (JSON.stringify(cfg.watch) !== before) { saveCfg(); xver++; } }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
 const today = () => new Date().toLocaleDateString('en-CA');
 const countPage = () => { if (cfg.usage.day !== today()) { cfg.usage.day = today(); cfg.usage.pages = 0; } cfg.usage.pages++; };
@@ -229,7 +237,9 @@ const adminSubs = () => cfg.subs.filter(x => [cfg.adminCode].concat(cfg.people.f
 async function notifyAdmins(msg) { for (const x of adminSubs()) { try { await pushTo(x, msg); } catch (e) {} } }
 // Tell the admins at once when a file comes out as "detain".
 async function alertAdmins(m) {
-  try { const fl = live().flags.get(m.id) || []; if (resultOf(fl) !== 'detain' || m.alerted) return; m.alerted = true; save(m);
+  try { const fl = live().flags.get(m.id) || [], wl = fl.find(f => f.n === 41); if (m.alerted) return;
+    if (resultOf(fl) !== 'detain') { if (wl) { m.alerted = true; save(m); log('  ALERT: watchlist vehicle at', m.location || '?', (m.vehicles || []).join(' ')); await notifyAdmins({ title: 'Watchlist vehicle: ' + (m.location || 'a post'), body: 'Vehicle ' + ((m.vehicles || []).join(', ') || '?') + '. ' + wl.d.split('. ')[0] + '. Scanned by ' + m.byName + '.' }); } return; }
+    m.alerted = true; save(m);
     const why = fl.find(f => f.l === 'red' && CRIT.has(f.n));
     const subs = cfg.subs.filter(x => { const u = [cfg.adminCode].concat(cfg.people.filter(y => y.role === 'admin').map(y => y.code)).some(c => idOf(c) === x.who); return u; });
     log('  ALERT: detain at', m.location || '?', (m.vehicles || []).join(' '), '- notifying', subs.length, 'admin phone(s)');
@@ -534,7 +544,7 @@ const server = http.createServer(async (req, res) => {
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
       if (b.result === 'release') ordered(m, 'on re-verification of the seizure report', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
-      m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
+      m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); if (b.result === 'release') { cfg.watch = cfg.watch.filter(w => !(w.auto && w.src === m.id)); saveCfg(); xver++; } else if (b.result === 'confirmed') autoWatch(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'case' && p[2] && req.method === 'POST') {   // the court case that follows a detention
@@ -550,7 +560,7 @@ const server = http.createServer(async (req, res) => {
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       if (!user.admin && resultOf(live().flags.get(m.id) || []) === 'detain') return send(res, 403, { error: 'await' });   // critical: the admin decides
       if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
-      m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'recorded', b.action, 'for', m.id);
+      m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); autoWatch(m); log(user.name, 'recorded', b.action, 'for', m.id);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'push' && req.method === 'POST') { const b = await body(req), x = b.sub || {}, k = x.keys || {}; let host = ''; try { const e = new URL(x.endpoint); if (e.protocol === 'https:') host = e.hostname; } catch (e) {}
@@ -565,7 +575,7 @@ const server = http.createServer(async (req, res) => {
       const o = { order: b.order, note: clip(b.note, 300).trim(), byName: user.name, at: new Date().toISOString() };
       m.orders = (m.orders || []).concat([o]).slice(-20); m.order = o; m.ack = null;
       if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
-      m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); log(user.name, 'decided', b.order, 'for', m.id);
+      m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); autoWatch(m); log(user.name, 'decided', b.order, 'for', m.id);
       const W = { release: 'RELEASE the vehicle', detain: 'SEIZE the goods', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
       for (const x of cfg.subs.filter(y => y.who === idOf(m.by))) { try { await pushTo(x, { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (o.note ? o.note + '. ' : '') + 'By ' + user.name + '.' }); } catch (e) {} }
       return send(res, 200, { ok: true });
