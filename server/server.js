@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 18;
+const VERSION = 19;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -121,7 +121,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, report: m.report || null, review: m.review || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -148,6 +148,9 @@ async function pushTo(sub, msg) {
   if (r.status === 404 || r.status === 410) { cfg.subs = cfg.subs.filter(x => x.endpoint !== sub.endpoint); saveCfg(); }
   return r.status;
 }
+const RPT = ['vehicle', 'driver', 'contact', 'owner', 'goods', 'packages', 'weight', 'marks', 'from', 'to', 'kept', 'reason', 'remarks'], RPT_MUST = ['vehicle', 'driver', 'goods', 'packages', 'kept', 'reason'];
+const adminSubs = () => cfg.subs.filter(x => [cfg.adminCode].concat(cfg.people.filter(y => y.role === 'admin').map(y => y.code)).some(c => idOf(c) === x.who));
+async function notifyAdmins(msg) { for (const x of adminSubs()) { try { await pushTo(x, msg); } catch (e) {} } }
 // Tell the admins at once when a file comes out as "detain".
 async function alertAdmins(m) {
   try { const fl = live().flags.get(m.id) || []; if (resultOf(fl) !== 'detain' || m.alerted) return; m.alerted = true; save(m);
@@ -430,6 +433,20 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'found' && p[2] && req.method === 'POST') {   // what was actually found on the vehicle; can be entered or corrected after the scan
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const f = cleanFound(await body(req)); if (!f) return send(res, 400, { error: 'form' }); m.found = Object.assign(f, { byName: user.name, at: new Date().toISOString() }); m.alerted = false; save(m); log(user.name, 'entered goods found for', m.id, '-', f.what, f.kg || '', 'kg'); if (m.status === 'done') alertAdmins(m);
+      return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'report' && p[2] && req.method === 'POST') {   // the post's detention report, sent up for re-verification
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      const b = await body(req), r = {}; RPT.forEach(k => { r[k] = clip(b[k], k === 'remarks' || k === 'reason' ? 500 : 120).trim(); });
+      if (RPT_MUST.some(k => !r[k])) return send(res, 400, { error: 'form' });
+      m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); log(user.name, 'submitted the detention report for', m.id);
+      notifyAdmins({ title: 'Detention report: ' + (m.location || 'a post'), body: 'Vehicle ' + r.vehicle + '. ' + r.goods + '. Sent by ' + user.name + ' for re-verification.' });
+      return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'review' && p[2] && req.method === 'POST') {   // an admin's decision on the report
+      if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || !m.report) return send(res, 404, { error: 'none' });
+      const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
+      m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle

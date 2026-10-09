@@ -135,6 +135,11 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 #zoom-tip{position:absolute;left:0;right:0;bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:12px;opacity:.8;pointer-events:none}
 .photos img{cursor:zoom-in}
 .qnote{background:var(--amber-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--amber);border-radius:8px;padding:9px 11px;font-size:13px;margin:0}
+.case .meta.rpt{font-weight:700;color:var(--ink)}.case .meta.rpt.due,.case .meta.rpt.redo{color:var(--red)}.case .meta.rpt.confirmed,.case .meta.rpt.release{color:var(--green)}
+.rptf{display:grid;grid-template-columns:1fr 1fr;gap:8px}.rptf label{display:flex;flex-direction:column;gap:3px;font:600 11.5px var(--body);color:var(--muted);min-width:0}.rptf .wide{grid-column:1/-1}
+.rptf textarea{font:400 15px var(--body);padding:9px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:70px;resize:vertical;width:100%;box-sizing:border-box}
+#print{display:none}
+@media print{body>*{display:none!important}#print{display:block!important;color:#000;font:13px/1.5 Arial,sans-serif;padding:10mm}#print h1{font-size:18px;margin:0 0 2px}#print h2{font-size:13px;margin:14px 0 4px;border-bottom:1px solid #000}#print table{width:100%;border-collapse:collapse}#print td{padding:3px 6px;border:1px solid #999;vertical-align:top}#print td:first-child{width:34%;font-weight:bold}#print .sig{margin-top:28px;display:flex;justify-content:space-between}}
 .hist{margin:8px 0;font-size:12.5px}.hist b{display:block;margin-bottom:4px}.hist div{padding:5px 0;border-top:1px solid var(--grey-soft)}
 .dec{margin:8px 0;padding:10px;border-radius:8px;background:var(--grey-soft);font-size:13px;display:flex;flex-direction:column;gap:8px}
 .dec select,.dec input{font:inherit;padding:8px;border-radius:6px;border:1px solid var(--muted);background:var(--card);color:var(--ink);min-width:0}
@@ -306,6 +311,8 @@ details.case>summary.nopic>*{grid-column:1}
           <button data-f="red" aria-pressed="false">Detain / Hold</button>
           <button data-f="amber" aria-pressed="false">Ask / Question</button>
           <button data-f="ok" aria-pressed="false">Clear to go</button>
+          <button data-f="due" aria-pressed="false">Report due</button>
+          <button data-f="rev" aria-pressed="false">To verify</button>
         </div>
         <input type="search" id="q" placeholder="Search GD number, vehicle, importer, container, seller, person">
       </div>
@@ -404,10 +411,11 @@ details.case>summary.nopic>*{grid-column:1}
   </div>
 </div>
 <div id="zoom" hidden><div id="zoom-in"><img id="zoom-img" alt="Enlarged photo"></div><button id="zoom-x" aria-label="Close photo">Close</button><span id="zoom-tip">Tap the photo to enlarge. Drag to move.</span></div>
+<div id="print"></div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.4.0';
+var APPV = '2.5.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -679,6 +687,30 @@ function foundBox(c) { var box = h('div', { class: 'dec' }), f = c.found;
     [h('b', { text: 'What was found on the vehicle?' }), w, p, e, btn, msg].forEach(function (x) { box.appendChild(x); }); };
   if (f) { box.appendChild(h('span', null, h('b', { text: 'Goods found: ' }), h('span', { text: foundText(f) + (f.byName ? ' · entered by ' + f.byName : '') }))); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
   return box; }
+// ---- detention report: required from the post whenever a vehicle is detained or handed to Customs; an admin then re-verifies it
+var RPTF = [['vehicle', 'Vehicle number', 1], ['driver', 'Driver name', 1], ['contact', 'Driver phone or CNIC', 0], ['owner', 'Owner or party claiming the goods', 0], ['goods', 'Cargo: what it is', 1, 1], ['packages', 'Number and kind of packages', 1], ['weight', 'Total weight, kg', 0], ['marks', 'Brand or marks on the packages', 0, 1], ['from', 'Coming from', 0], ['to', 'Going to', 0], ['kept', 'Where the vehicle and cargo are now', 1, 1], ['reason', 'Reason for detention', 1, 2], ['remarks', 'Other details and remarks', 0, 2]];
+var REV = { confirmed: 'Detention confirmed', release: 'Release ordered', redo: 'Sent back for correction' };
+function rptState(c) { var d = c.decision; if (!d || (d.action !== 'detained' && d.action !== 'handed')) return c.report ? (c.review ? c.review.result : 'sent') : ''; if (!c.report) return 'due'; return c.review ? c.review.result : 'sent'; }
+function rptRows(c) { var r = c.report || {}, g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, adv = advise(c);
+  return [['Post', c.location], ['Scanned', when(c.takenAt)], ['Action taken', c.decision ? DEC[c.decision.action] + (c.decision.remark ? ' (' + c.decision.remark + ')' : '') : '']].concat(RPTF.map(function (f) { return [f[1], r[f[0]]]; }), [['GD number', (c.gdNos || []).join(', ')], ['Importer on the GD', g.importer], ['Goods on the GD', (Array.isArray(g.items) ? g.items : []).map(function (it) { return it.description; }).filter(Boolean).join('; ')], ['Goods found (entered)', c.found ? foundText(c.found) : ''], ['App result', adv.head + (adv.items.length ? ': ' + adv.items.join('; ') : '')], ['Place of scan', c.gps ? c.gps.lat + ', ' + c.gps.lon : ''], ['Reported by', (r.byName || '') + (r.at ? ', ' + when(r.at) : '')], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' (' + c.review.remark + ')' : '') + ' by ' + c.review.byName + ', ' + when(c.review.at) : 'Pending']]).filter(function (x) { return x[1]; }); }
+function rptText(c) { return 'DETENTION REPORT\nGD Scanner, Pakistan Coast Guards\n\n' + rptRows(c).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n'); }
+function rptPrint(c) { var P = $('print'); P.textContent = ''; P.appendChild(h('h1', { text: 'Detention Report' })); P.appendChild(h('div', { text: 'GD Scanner · Pakistan Coast Guards · For re-verification' })); var t = h('table'); rptRows(c).forEach(function (x) { var tr = h('tr'); tr.appendChild(h('td', { text: x[0] })); tr.appendChild(h('td', { text: x[1] })); t.appendChild(tr); }); P.appendChild(h('h2', { text: 'Particulars' })); P.appendChild(t); P.appendChild(h('div', { class: 'sig' }, h('span', { text: 'Reporting official: ____________________' }), h('span', { text: 'Verifying officer: ____________________' }))); window.print(); }
+function reportBox(c) { var box = h('div', { class: 'dec' }), r = c.report, adm = !!(S.me && S.me.admin), st = rptState(c);
+  var form = function () { box.textContent = ''; var adv = advise(c), g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, f = c.found || {};
+    var pre = r || { vehicle: (c.vehicles || [])[0] || '', goods: f.what || '', packages: f.pkgs ? String(f.pkgs) : '', weight: f.kg ? String(f.kg) : '', owner: g.importer || '', reason: adv.items.join('; ') }, inp = {}, grid = h('div', { class: 'rptf' }), msg = h('span');
+    RPTF.forEach(function (d) { var el = d[3] === 2 ? h('textarea', { maxlength: '500' }) : h('input', { type: 'text', maxlength: '120' }); el.value = pre[d[0]] || ''; inp[d[0]] = el; grid.appendChild(h('label', d[3] ? { class: 'wide' } : null, h('span', { text: d[1] + (d[2] ? ' *' : '') }), el)); });
+    var btn = h('button', { class: 'btn', text: 'Submit report for re-verification', onclick: async function () { var out = {}, miss = []; RPTF.forEach(function (d) { out[d[0]] = inp[d[0]].value.trim(); if (d[2] && !out[d[0]]) miss.push(d[1]); });
+      if (miss.length) { msg.textContent = 'Still needed: ' + miss.join(', ') + '.'; return; } btn.disabled = true;
+      try { await api('/api/report/' + c.id, { method: 'POST', body: JSON.stringify(out) }); toast('Report submitted. The admins have been told.'); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not submit. The server is not reachable or has not updated yet. Your entries are still here; try again.'; } } });
+    [h('b', { text: st === 'redo' ? 'Detention report: correct and resend' : 'Detention report (required)' }), h('span', { text: 'A detained vehicle needs a full report for re-verification. Boxes marked * must be filled.' + (st === 'redo' && c.review && c.review.remark ? ' Admin says: ' + c.review.remark : '') }), grid, btn, msg].forEach(function (x) { box.appendChild(x); }); };
+  if (!r || st === 'redo') { form(); return box; }
+  box.appendChild(h('b', { text: 'Detention report' })); box.appendChild(kv(RPTF.map(function (d) { return [d[1], r[d[0]]]; }).concat([['Reported by', r.byName + ', ' + when(r.at)], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' · ' + c.review.remark : '') + ' · ' + c.review.byName + ', ' + when(c.review.at) : 'Waiting for an admin']])));
+  box.appendChild(h('div', { class: 'row' }, h('button', { class: 'btn ghost small', text: 'Share report', onclick: async function () { var t = rptText(c); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Report copied'); } } catch (e) {} } }), h('button', { class: 'btn ghost small', text: 'Print or save as PDF', onclick: function () { rptPrint(c); } }), !c.review ? h('button', { class: 'btn ghost small', text: 'Edit', onclick: form }) : null));
+  if (adm) { var sel = h('select', { 'aria-label': 'Re-verification decision' }); sel.appendChild(h('option', { value: '', text: 'Re-verification decision…' })); Object.keys(REV).forEach(function (k) { var o = h('option', { value: k, text: REV[k] }); if (c.review && c.review.result === k) o.selected = true; sel.appendChild(o); });
+    var rem = h('input', { type: 'text', maxlength: '300', placeholder: 'Remark or instruction to the post', value: c.review ? c.review.remark || '' : '' }), m2 = h('span');
+    var b2 = h('button', { class: 'btn small', text: 'Save re-verification', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } b2.disabled = true; try { await api('/api/review/' + c.id, { method: 'POST', body: JSON.stringify({ result: sel.value, remark: rem.value }) }); toast('Saved: ' + REV[sel.value]); S.ver = ''; refresh(); } catch (e) { b2.disabled = false; m2.textContent = 'Could not save.'; } } });
+    [h('b', { text: 'Re-verification (admin)' }), sel, rem, b2, m2].forEach(function (x) { box.appendChild(x); }); }
+  return box; }
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); Object.keys(DEC).forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && d.action === k) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span');
@@ -706,6 +738,7 @@ function caseView(c) {
   var item = names.length ? names.slice(0, 2).join(' + ') + (names.length > 2 ? ' + ' + (names.length - 2) + ' more' : '') : goodsName(q.goods), gdRef = (c.gdNos && c.gdNos[0]) || '';
   var title = done ? (item || (c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : ACT[adv.a];
+  var RS = { due: 'DETENTION REPORT DUE', redo: 'REPORT SENT BACK: CORRECT AND RESEND', sent: 'Report submitted, waiting for re-verification', confirmed: 'Detention confirmed on re-verification', release: 'Release ordered on re-verification' }, rst = done && !c.local ? rptState(c) : '';
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
   var top3 = fl.filter(function (f) { return f.l === 'red'; }).concat(fl.filter(function (f) { return f.l === 'amber'; })).filter(function (f, i, L) { return L.findIndex(function (x) { return x.t === f.t; }) === i; });
   var reasons = done && top3.length ? 'Why: ' + top3.slice(0, 3).map(function (f) { return f.t; }).join('; ') + (top3.length > 3 ? '; and ' + (top3.length - 3) + ' more' : '') + '.' : '';
@@ -717,13 +750,14 @@ function caseView(c) {
   else if (c.nPages) { var tk = c.id + ':' + (c.thumbN || 0), saved = TH[tk];
     if (saved) pic = h('img', { class: 'pic', alt: '', src: saved });
     else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
-  d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
+  d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, rst ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   if (adv) body.appendChild(actBox(adv));
   if (done && !c.local) body.appendChild(foundBox(c));
   if (done && !c.local) body.appendChild(decBox(c));
+  if (done && !c.local && rptState(c)) body.appendChild(reportBox(c));
   if (c.history && c.history.length) body.appendChild(histBox(c));
   if (adm && !c.local) body.appendChild(h('div', { class: 'meta' }, c.gps ? h('a', { href: 'https://maps.google.com/?q=' + c.gps.lat + ',' + c.gps.lon, target: '_blank', rel: 'noopener', text: 'Where it was sent from (map)' + (c.gps.acc ? ', within ' + c.gps.acc + ' m' : '') }) : h('span', { text: 'Phone location was not shared for this file.' })));
   if (hot.length) body.appendChild(flagList(hot));
@@ -742,12 +776,14 @@ function caseView(c) {
 
 function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term = adm ? $('q').value.trim().toLowerCase() : '', n = 0;
   // Redraw only when something really changed, and keep whatever the reader has opened.
-  var sig = JSON.stringify([S.list, S.outbox.map(function (o) { return [o.id, o.sending, o.progress]; }), S.filter, term, adm, !!S.server, cfg.ph || '']); if (sig === S.filesSig && box.firstChild) return; S.filesSig = sig;
+  var sig = JSON.stringify([S.list, S.outbox.map(function (o) { return [o.id, o.sending, o.progress]; }), S.filter, term, adm, !!S.server, cfg.ph || '']); if (sig === S.filesSig && box.firstChild) return;
+  var ae = document.activeElement; if (ae && box.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) && box.firstChild) { clearTimeout(S.redrawT); S.redrawT = setTimeout(drawFiles, 4000); return; }   // never wipe a form someone is filling in
+  S.filesSig = sig;
   var openMore = {}; box.querySelectorAll('details.case').forEach(function (d) { var L = []; d.querySelectorAll('details.more').forEach(function (m, i) { if (m.open) L.push(i); }); if (L.length) openMore[d.dataset.id] = L; });
   var y = window.scrollY; box.textContent = '';
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
-    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy'; if (S.filter !== 'all' && v !== S.filter) return;
+    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : (S.filter !== 'all' && v !== S.filter)) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
     n++; var cv = caseView(c); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
   if (y) window.scrollTo(0, y);
