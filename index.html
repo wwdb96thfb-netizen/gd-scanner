@@ -527,7 +527,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.11.2';
+var APPV = '2.11.3';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -664,7 +664,7 @@ document.addEventListener('visibilitychange', function () { if (!document.hidden
 // ---- tabs
 document.querySelectorAll('.tabs button').forEach(function (b) { b.addEventListener('click', function () {
   document.querySelectorAll('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
-  ['scan', 'files', 'people', 'settings'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; });
+  ['scan', 'files', 'people', 'settings'].forEach(function (p) { $('p-' + p).hidden = p !== b.dataset.p; }); window.scrollTo(0, 0); document.documentElement.scrollTop = 0; document.body.scrollTop = 0;
   if (b.dataset.p === 'people') { loadPeople(); loadAdmin(); } if (b.dataset.p === 'settings') drawSettings(); if (b.dataset.p === 'files') refresh(); }); });
 function showTab(p) { document.querySelector('.tabs button[data-p="' + p + '"]').click(); }
 
@@ -1098,7 +1098,7 @@ $('b-chpin').addEventListener('click', async function () { var o = $('c-old').va
   var H = await sha(cfg.c + ':' + n), r = await pinPost(H, cfg.ph);
   if (r !== 'ok') { setStatus('s-pin', 'The PIN could not be changed. The server must be reachable and up to date.', true); return; }
   cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); pinForm(false); setStatus('s-pin', 'PIN changed.'); });
-document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); }); });
+document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); window.scrollTo(0, 0); }); });
 // tap a photo in a file to see it full screen; tap again to enlarge, drag to move
 document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { $('zoom-img').src = t.src; $('zoom').classList.remove('big'); $('zoom').hidden = false; } });
 $('zoom-img').addEventListener('click', function (e) { var z = $('zoom'), box = $('zoom-in'), r = e.target.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; z.classList.toggle('big');
