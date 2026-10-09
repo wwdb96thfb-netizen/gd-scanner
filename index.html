@@ -83,7 +83,7 @@ details.case.busy{border-left-color:var(--stamp)}
 details.case>summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;flex-direction:column;gap:5px}
 details.case>summary::-webkit-details-marker{display:none}
 .case .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.case .gdno{font:500 14px var(--mono);overflow-wrap:anywhere;min-width:0}
+.case .gdno{font:600 15px var(--body);overflow-wrap:anywhere;min-width:0}
 .case .meta{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
 .case .body{border-top:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:14px}
 .flags{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
@@ -403,7 +403,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.6';
+var APPV = '2.3.7';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -676,21 +676,30 @@ function actBox(a) { return h('div', { class: 'act ' + a.k }, h('b', { text: a.h
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
 
+// The card picture is kept on the phone after its first load, so it still shows when the server cannot be reached.
+var TH = load('gd.th') || {};
+async function keepThumb(k, url) { try { var r = await fx(url, {}, 15000); if (!r.ok) return; var b = await r.blob(); if (b.size > 40000) return;
+    var d = await new Promise(function (res, rej) { var f = new FileReader(); f.onload = function () { res(f.result); }; f.onerror = rej; f.readAsDataURL(b); });
+    TH[k] = d; var ks = Object.keys(TH); while (ks.length > 80) delete TH[ks.shift()]; keep('gd.th', TH); } catch (e) {} }
+function goodsName(t) { t = String(t || '').split(/[=;\n]/)[0].replace(/\s+/g, ' ').replace(/[\s.,:-]+$/, '').trim(); if (t.length < 3) return ''; if (t.length > 48) t = t.slice(0, 46).replace(/\s+\S*$/, '') + '…'; return t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t; }
 function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', adv = done ? advise(c) : null, v = done ? adv.k : 'busy', fl = c.flags || [];
   var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
   var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, q = ((c.pages || []).filter(function (p) { return p.type === 'pq'; })[0] || {}).pq || {};
-  var title = done ? ((c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
+  var item = goodsName((Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods), gdRef = (c.gdNos && c.gdNos[0]) || '';
+  var title = done ? (item || (c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : ACT[adv.a];
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
   var top3 = fl.filter(function (f) { return f.l === 'red'; }).concat(fl.filter(function (f) { return f.l === 'amber'; })).filter(function (f, i, L) { return L.findIndex(function (x) { return x.t === f.t; }) === i; });
   var reasons = done && top3.length ? 'Why: ' + top3.slice(0, 3).map(function (f) { return f.t; }).join('; ') + (top3.length > 3 ? '; and ' + (top3.length - 3) + ' more' : '') + '.' : '';
-  var meta = [c.vehicles && c.vehicles.length ? 'Vehicle ' + c.vehicles.join(', ') : null, g.importer || q.importer, (Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
+  var meta = [c.vehicles && c.vehicles.length ? 'Vehicle ' + c.vehicles.join(', ') : null, item && gdRef ? 'GD ' + gdRef : null, g.importer || q.importer, c.location, when(c.takenAt), adm && c.byName ? 'by ' + c.byName : null].filter(Boolean).join(' · ');
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
   var pic = null;
   if (c.local) { var lp = (c.localPages || []), lt = (lp.filter(function (x) { return x.kind === 'goods'; })[0] || lp.filter(function (x) { return x.kind === 'veh'; })[0] || lp[0] || {}).thumb; if (lt) pic = h('img', { class: 'pic', src: lt, alt: '' }); }
-  else if (S.server && c.nPages) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); }
+  else if (c.nPages) { var tk = c.id + ':' + (c.thumbN || 0), saved = TH[tk];
+    if (saved) pic = h('img', { class: 'pic', alt: '', src: saved });
+    else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
   d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
