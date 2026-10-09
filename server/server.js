@@ -7,8 +7,8 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 32;
-const CHECKS_V = 8;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
+const VERSION = 33;
+const CHECKS_V = 9;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -114,6 +114,8 @@ function live() {
       if (doneItem[fi]) return; doneItem[fi] = 1;
       if (kg > q * 1.02) { fl.push({ l: 'red', n: 43, t: 'More goods found than the GD covers: ' + name, d: 'Found ' + F(kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 }); return; }
       if (kg < q * 0.9 && !(m.pages || []).some(p => p.type === 'inv' || p.type === 'doc') && !fl.some(f => f.n === 46)) fl.push({ l: 'amber', n: 46, t: 'Part load with no invoice or delivery paper', d: 'This vehicle carries ' + F(kg) + ' kg of the ' + F(q) + ' kg on the GD. A part load normally travels with the importer\'s sales tax invoice or delivery challan for that quantity, and a bilty.', p: 0 });
+      { const kindOf = t => /bag|sack|bori/i.test(t) ? 'bags' : /carton|box|ctn/i.test(t) ? 'cartons' : /drum|barrel/i.test(t) ? 'drums' : /bale|roll/i.test(t) ? 'bales' : '', gk = kindOf(X.g.package_type || ''), fk = kindOf(fd.unit || '');
+        if (gk && fk && gk !== fk && !fl.some(f => f.n === 49)) fl.push({ l: 'amber', n: 49, t: 'Packing differs from the GD: ' + fk + ' found, ' + gk + ' declared', d: 'Goods are often repacked for sale after import, so this is not a fault in itself. Ask where they were repacked; the importer\'s invoice should describe this packing.', p: 0 }); }
       fl.push({ l: 'ok', n: 43, t: 'Goods found are within the GD: ' + name, d: 'Found ' + F(kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 });
       const U = used[AN((m.gdNos || [])[0] || '') + '#' + fi] || {}, loads = Object.keys(U).length, tot = Object.values(U).reduce((a, b) => a + b.kg, 0), tm = Date.parse(tOf(m)) || 0, cum = Object.values(U).filter(x => x.t <= tm).reduce((a, b) => a + b.kg, 0);
       // Only the load that takes the GD past its quantity, and those after it, are at fault. Earlier loads were within the GD when they passed.

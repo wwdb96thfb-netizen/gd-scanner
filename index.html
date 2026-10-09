@@ -564,7 +564,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.15.0';
+var APPV = '2.15.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -799,6 +799,7 @@ var WHY = {
   41: 'An admin asked for this vehicle, firm or number to be stopped.',
   42: 'The scan was sent from somewhere else, or the wrong post was selected.',
   23: 'Usually normal trade: one GD, several part loads on copies. It matters only if the total goes over the GD.',
+  49: 'Repacking after import is common. It can also mean other goods have been put under this GD.',
   46: 'Goods bought from the importer travel with his invoice. Without it, the link between this load and the GD is only a claim.',
   47: 'Goods from another country moved under a GD for different goods, or reused packing.',
   48: 'Fresh stock is being moved under an old GD that it was never part of.',
@@ -819,7 +820,7 @@ function advise(c) {
     if (f.n === 23) put(ask, 'Enter the goods found on this vehicle: this GD is being used for part loads, and the total must stay within it');
     else if (f.n === 46) put(ask, 'The sales tax invoice or delivery challan from the importer for this part load, and the bilty');
     else if (f.n === 47) put(ask, 'Open the packages: the country printed on the packing differs from the GD');
-    else if (f.n === 19) put(ask, /No GD/.test(f.t) ? GD : 'The plant quarantine release order that quotes this GD');
+    else if (f.n === 19) put(ask, /No GD/.test(f.t) ? GD : /different consignment/.test(f.t) ? 'Which consignment the goods come from: the release order shown is for another importer\'s GD. Ask for the invoice of the importer they were bought from' : 'The plant quarantine release order that quotes this GD');
     else if (f.n === 31) put(ask, GD);
     else if (f.n === 37) put(ask, 'A sharp photo of the vehicle number plate');
     else if (f.n === 22 || f.n === 32) put(ask, 'Sales tax invoices that link the seller to the importer on the GD');

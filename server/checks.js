@@ -41,7 +41,7 @@ function checkGD(g,add){
   var info={mn:mn,serial:m?+m[3]:null,gdDate:gdDate,qty:null,plant:false};
   if(!items.length){ add('amber',9,'No item lines could be read','Retake the photo with the item section in focus.'); return info; }
   var rate=num(g.exchange_rate), ins=num(g.insurance_pct), land=num(g.landing_pct); if(ins==null) ins=1; if(land==null) land=1;
-  var hsN=0,hsP=[],orP=[],orN=0,unN=0,unP=[],re=[],pkN=0,pkP=[],txN=0,txP=[],sum={},sQ=0,sT=0,sC=0,qOk=true,tOk=true,cOk=true;
+  var dSum=0,hsN=0,hsP=[],orP=[],orN=0,unN=0,unP=[],re=[],pkN=0,pkP=[],txN=0,txP=[],sum={},sQ=0,sT=0,sC=0,qOk=true,tOk=true,cOk=true;
   items.forEach(function(it,i){
     var L='Item '+(it.no||i+1), desc=String(it.description||'').toLowerCase(), hs=String(it.hs_code||'').replace(/\D/g,'');
     if(/^(0[6-9]|1[0-4])/.test(hs)) info.plant=true;
@@ -52,7 +52,7 @@ function checkGD(g,add){
     var q=num(it.qty_kg),ud=num(it.unit_declared),ua=num(it.unit_assessed),td=num(it.total_declared),ta=num(it.total_assessed),cv=num(it.customs_value_assessed_pkr);
     if(q==null) qOk=false; else sQ+=q; if(ta==null) tOk=false; else sT+=ta; if(cv==null) cOk=false; else sC+=cv;
     if(q!=null&&ua!=null&&ta!=null){ unN++; if(!near(q*ua,ta,0.5,0.001)) unP.push(L+': '+fmt(q)+' × $'+ua+' = $'+fmt(q*ua)+', GD shows $'+fmt(ta)); }
-    if(q!=null&&ud&&td!=null){ var dq=td/ud; if(!near(dq,q,1,0.01)) re.push(L+': declared value equals '+fmt(dq)+' kg, duty charged on '+fmt(q)+' kg'); }
+    if(q!=null&&ud&&td!=null){ var dq=td/ud; dSum+=dq; if(!near(dq,q,1,0.01)) re.push(L+': declared value equals '+fmt(dq)+' kg, duty charged on '+fmt(q)+' kg'); }
     if(ud!=null&&ua!=null&&!near(ud,ua,0.0001,0.001)) re.push(L+': unit value changed from $'+ud+' to $'+ua);
     if(ta!=null&&rate&&cv!=null){ pkN++; var e=ta*rate*(1+ins/100)*(1+land/100); if(!near(e,cv,5,0.0003)) pkP.push(L+': worked out Rs '+fmt(Math.round(e))+', GD shows Rs '+fmt(cv)); }
     var lv=Array.isArray(it.levies)?it.levies:[], A=function(c){ var s=0; lv.forEach(function(x){ if(String(x.code||'').toUpperCase()===c) s+=num(x.amount_pkr)||0; }); return s; };
@@ -65,11 +65,15 @@ function checkGD(g,add){
   if(!hsN) add('skip',7,'HS code not compared with the description','No HS rule is loaded for this product yet.'); else if(hsP.length) add('red',7,'HS code does not match the goods',hsP.join('; ')+'.'); else add('ok',7,'HS code matches the description','');
   if(!orN) add('skip',8,'Origin not compared','Origin or exporter country not readable.'); else if(orP.length) add('red',8,'Origin differs from the exporter country',orP.join('; ')+'.'); else add('ok',8,'Origin matches the exporter country','');
   var net=num(g.net_wt_mt), gross=num(g.gross_wt_mt);
-  if(qOk&&net!=null){ if(!near(sQ,net*1000,1,0.01)) add('red',9,'Item quantities do not add up to the net weight','Items total '+fmt(sQ)+' kg. Net weight box says '+fmt(net*1000)+' kg.'); else add('ok',9,'Item quantities equal the net weight',fmt(sQ)+' kg'); }
+  if(qOk&&net!=null){ if(!near(sQ,net*1000,1,0.01)){
+      // Customs often finds more at examination than was declared and charges duty on the higher figure. The weight box then still shows the declared weight. That is not tampering.
+      if(re.length&&net*1000<sQ&&dSum>0&&near(dSum,net*1000,1,0.06)) add('ok',9,'Weight box shows the declared weight; Customs assessed more','Declared about '+fmt(Math.round(dSum))+' kg (weight box '+fmt(net*1000)+' kg). Duty was charged on '+fmt(sQ)+' kg, which is what this GD covers.');
+      else if(re.length&&net*1000<sQ) add('amber',9,'Items add up to more than the weight box','Items total '+fmt(sQ)+' kg, weight box '+fmt(net*1000)+' kg. Customs changed the declared figures on this GD, which may explain it.');
+      else add('red',9,'Item quantities do not add up to the net weight','Items total '+fmt(sQ)+' kg. Net weight box says '+fmt(net*1000)+' kg.'); } else add('ok',9,'Item quantities equal the net weight',fmt(sQ)+' kg'); }
   else add('skip',9,'Weights not compared','Could not read every quantity and the net weight.');
   if(gross!=null&&net!=null&&gross<net-0.0005) add('red',9,'Gross weight is less than net weight','Gross '+gross+' MT, net '+net+' MT.');
   var pk=num(g.packages); if(pk&&qOk){ var per=sQ/pk; if(per<1||per>100) add('amber',10,'Package count looks odd for the weight','About '+fmt(per)+' kg per '+(g.package_type||'package')+'.'); else add('ok',10,'Package count fits the weight','About '+fmt(per)+' kg per '+(g.package_type||'package')+'. Compare with the physical stock.'); }
-  if(re.length) add('amber',11,'Customs changed what was declared',re.join('; ')+'. Ask the seller why.'); else add('ok',11,'Declared and assessed figures agree','');
+  if(re.length) add('ok',11,'Customs raised the declared figures at examination',re.join('; ')+'. Duty was charged on the assessed figures, and those are what the GD covers. It does show the importer first declared less.'); else add('ok',11,'Declared and assessed figures agree','');
   if(!unN) add('skip',12,'Unit value arithmetic not checked',''); else if(unP.length) add('red',12,'Unit value × quantity does not equal the total',unP.join('; ')+'.'); else add('ok',12,'Unit value × quantity equals the total','');
   var cfr=num(g.cfr_usd); if(tOk&&cfr!=null){ if(!near(sT,cfr,1,0.001)) add('red',13,'Item values do not add up to the CFR value','Items total $'+fmt(sT)+'. CFR box says $'+fmt(cfr)+'.'); else add('ok',13,'Item values equal the CFR value','$'+fmt(cfr)); } else add('skip',13,'CFR total not compared','');
   if(!pkN) add('skip',14,'Rupee value not checked','Exchange rate or customs value not readable.'); else if(pkP.length) add('red',14,'Rupee customs value does not follow from the dollar value',pkP.join('; ')+'.'); else add('ok',14,'Rupee customs value follows from the dollar value','');
@@ -174,7 +178,9 @@ function runChecks(pages,meta){
   });
   pqs.forEach(function(x){ var q=x.q; if(!G){ add('amber',19,'No GD scanned with this release order','Scan the GD it quotes: '+(q.gd_no||'?')+' dated '+(q.gd_date||'?')+'.'); return; }
     var hit=gds.filter(function(y){ var s=num(String(q.gd_no||'').replace(/\D/g,'')); return s!=null&&s===y.info.serial&&(pd(q.gd_date)==null||pd(q.gd_date)===y.info.gdDate); })[0];
-    if(q.gd_no){ if(!hit) add('red',19,'Release order belongs to a different GD','It quotes GD '+q.gd_no+' dated '+(q.gd_date||'?')+'. The GD scanned is '+(G.info.serial||'?')+' dated '+dstr(G.info.gdDate)+'.'); else add('ok',19,'Release order quotes this GD',''); }
+    if(q.gd_no&&!hit){ // A release order for some other consignment proves nothing about this GD either way. It is set aside, and the holder is asked which consignment the goods belong to.
+      add('amber',19,'Release order is for a different consignment','It quotes GD '+q.gd_no+' dated '+(q.gd_date||'?')+(q.importer?', importer '+q.importer:'')+'. The GD scanned is '+(G.info.serial||'?')+' dated '+dstr(G.info.gdDate)+(G.g.importer?', importer '+G.g.importer:'')+'. This paper does not support this GD. Ask which consignment the goods come from, and for the invoice of the importer they were bought from.'); return; }
+    if(q.gd_no) add('ok',19,'Release order quotes this GD','');
     var g=(hit||G).g, inf=(hit||G).info, mis=[], cmp=0;
     [['Importer',q.importer,g.importer],['Exporter',q.exporter,g.exporter]].forEach(function(r){ var s=same(r[1],r[2]); if(s===null) return; cmp++; if(!s) mis.push(r[0]+': "'+r[1]+'" on the release order, "'+r[2]+'" on the GD'); });
     var c1=String(q.container||'').replace(/[^A-Z0-9]/gi,'').toUpperCase(), c2=String(g.container||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
@@ -187,7 +193,7 @@ function runChecks(pages,meta){
     if(insp!=null&&arr!=null&&insp<arr) tl.push('inspection is dated before arrival');
     if(tl.length) add('amber',21,'Timeline needs an explanation',tl.join('; ')+'.'); else if(arr!=null||insp!=null) add('ok',21,'Arrival, GD and inspection dates are in order','');
   });
-  if(G&&!pqs.length&&G.info.plant) add('amber',19,'No plant quarantine release order scanned','These are plant or food goods. Ask for the release order that quotes this GD.');
+  if(G&&!pqs.length&&G.info.plant) add('skip',19,'Plant quarantine release order not shown','It is needed to clear plant and food goods at import, but is not normally carried with a load inland. Ask for it only if other points raise doubt.');
   if(G&&meta&&meta.seller){ var s=same(meta.seller,G.g.importer); if(s===false) add('amber',22,'Seller is not the importer on the GD','Seller: '+meta.seller+'. Importer: '+G.g.importer+'. Ask for the sale invoices that link them.'); else if(s) add('ok',22,'Seller is the importer on the GD',''); }
   var digits=function(x){ return String(x||'').replace(/\D/g,''); };
   if(G){ var gi=G.info, g0=G.g, taken=meta&&meta.takenAt?Date.parse(meta.takenAt):NaN;
