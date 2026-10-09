@@ -296,6 +296,23 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 .qnote{border-radius:11px}
 .sum th{font:700 11px var(--head);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 @media (prefers-color-scheme: dark){.btn{background:linear-gradient(180deg,#15915a,#0d7044);border-color:#0d7044;color:#fff}.btn.ghost,.btn.danger{background:transparent}.legal::before{box-shadow:none}}
+
+/* ===== smooth tab changes: the banner never changes height, and each tab eases in ===== */
+.appbar .strip{flex-wrap:nowrap}
+.appbar .svc{flex:none}
+@media (max-width:520px){.appbar .svc{display:none}}
+.appbar .conn{flex:1 1 auto;min-width:0;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:34px;line-height:20px;padding:6px 13px 6px 30px;position:relative}
+.appbar .conn::before{position:absolute;left:12px;top:12px;margin:0}
+#main>section:not([hidden]),#p-people .grp:not([hidden]){animation:tabin .2s cubic-bezier(.2,.7,.3,1) both}
+@keyframes tabin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.tabs button{transition:color .15s;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.tabs button svg{transition:background .2s,transform .12s}
+.tabs button:active svg{transform:scale(.92)}
+.wrap{min-height:calc(100vh - 120px)}
+.appbar .tag{white-space:nowrap}
+@media (max-width:370px){.appbar .tag{letter-spacing:.1em;font-size:10.5px}.appbar h1{font-size:22px}.appbar .flag{width:50px}}
+button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion: reduce){#main>section:not([hidden]),#p-people .grp:not([hidden]){animation:none}}
 </style>
 </head>
 <body>
@@ -527,7 +544,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.11.5';
+var APPV = '2.12.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -593,15 +610,16 @@ async function api(path, opts) { var s = await findServer(); if (!s) throw { net
   if (!r.ok) throw { status: r.status };
   return r.json(); }
 
-function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' capture' + (n > 1 ? 's' : '') + ' waiting on this phone.' : '';
+function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' waiting.' : '';
   if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an admin to approve you.'; }
   else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.j ? 'Not a member yet' : 'Not set up'; }
   else if (S.bad) { e.className = 'conn bad'; e.textContent = 'This link is no longer valid. Ask for a new one.' + held; }
-  else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Captures are kept on this phone and upload later.' + held; }
+  else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Scans wait on this phone.' + held; }
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
-  else { e.className = 'conn wait'; e.textContent = 'The server is not reachable right now. Captures are kept on this phone and upload when it is back.' + held; }
-  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; if (adm && !$('f-locsel').value) { $('f-locsel').value = 'Bn HQ'; locChanged(); } $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
+  else { e.className = 'conn wait'; e.textContent = 'Server not reachable. Scans wait on this phone.' + held; }
+  e.title = e.textContent;
+  var adm = !!(S.me && S.me.admin); if ($('t-people').hidden !== !adm) $('t-people').hidden = !adm; if (adm && !$('f-locsel').value) { $('f-locsel').value = 'Bn HQ'; locChanged(); } $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
@@ -995,7 +1013,7 @@ function summary() { var day = $('sum-day').value, rows = {}, tot = { n: 0, clea
   S.list.forEach(function (c) { if (c.status !== 'done' || dayOf(c.takenAt || c.receivedAt) !== day) return; var k = c.location || 'No post given', r = rows[k] = rows[k] || { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} }, a = advise(c).a, col = a === 'detain' ? 'detain' : a === 'hold' ? 'hold' : a === 'clear' ? 'clear' : 'ask';
     [r, tot].forEach(function (x) { x.n++; x[col]++; if (c.decision && (c.decision.action === 'detained' || c.decision.action === 'handed' || c.decision.action === 'seized')) x.acted++; x.people[c.byName || '?'] = 1; }); });
   return { day: day, rows: rows, tot: tot }; }
-function drawSummary() { var s = summary(), box = $('sum-box'); box.textContent = ''; var t = h('table', { class: 'sum' }), tr = h('tr'); ['Post', 'Checked', 'Clear', 'Ask', 'Hold', 'Detain', 'Seized'].forEach(function (x) { tr.appendChild(h('th', { text: x })); }); t.appendChild(tr);
+function drawSummary() { var s = summary(), box = $('sum-box'), sg = JSON.stringify(s); if (sg === S.sumSig && box.firstChild) return; S.sumSig = sg; box.textContent = ''; var t = h('table', { class: 'sum' }), tr = h('tr'); ['Post', 'Checked', 'Clear', 'Ask', 'Hold', 'Detain', 'Seized'].forEach(function (x) { tr.appendChild(h('th', { text: x })); }); t.appendChild(tr);
   var line = function (name, r) { var tr = h('tr'); [name, r.n, r.clear, r.ask, r.hold, r.detain, r.acted].forEach(function (x) { tr.appendChild(h('td', { text: String(x) })); }); t.appendChild(tr); };
   Object.keys(s.rows).sort().forEach(function (k) { line(k, s.rows[k]); }); line('All posts', s.tot);
   box.appendChild(s.tot.n ? t : h('p', { class: 'note', text: 'No checked files on this day.' })); }
@@ -1006,6 +1024,7 @@ function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Check
 async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf(new Date()); drawSummary();
   try { var j = await api('/api/admin'); S.adminOk = true; S.vapid = j.vapid || ''; drawPush();
     $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
+    var wsig = JSON.stringify(j.watch); if (wsig === S.watchSig) return; S.watchSig = wsig;   // redraw the list only when it has changed
     var wb = $('watch'); wb.textContent = '';
     var item = function (box, title, sub, path) { var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function () { del.disabled = true; try { await api(path, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (e) { del.disabled = false; } } }); box.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, h('b', { text: title }), h('div', { class: 'meta', text: sub }), del))); };
     j.watch.forEach(function (w) { item(wb, w.value, (w.note ? w.note + ' · ' : '') + 'by ' + w.by + ', ' + when(w.at), '/api/watch/' + w.id); });
