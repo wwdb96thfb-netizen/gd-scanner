@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 24;
+const VERSION = 25;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -458,15 +458,15 @@ const server = http.createServer(async (req, res) => {
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req), r = {}; RPT.forEach(k => { r[k] = clip(b[k], k === 'remarks' || k === 'reason' ? 500 : 120).trim(); });
       if (RPT_MUST.some(k => !r[k])) return send(res, 400, { error: 'form' });
-      m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); log(user.name, 'submitted the detention report for', m.id);
-      notifyAdmins({ title: 'Detention report: ' + (m.location || 'a post'), body: 'Vehicle ' + r.vehicle + '. ' + r.goods + '. Sent by ' + user.name + ' for re-verification.' });
+      m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); log(user.name, 'submitted the seizure report for', m.id);
+      notifyAdmins({ title: 'Seizure report: ' + (m.location || 'a post'), body: 'Vehicle ' + r.vehicle + '. ' + r.goods + '. Sent by ' + user.name + ' for re-verification.' });
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'review' && p[2] && req.method === 'POST') {   // an admin's decision on the report
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || !m.report) return send(res, 404, { error: 'none' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
-      if (b.result === 'release') ordered(m, 'on re-verification of the detention report', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
+      if (b.result === 'release') ordered(m, 'on re-verification of the seizure report', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
       return send(res, 200, { ok: true });
     }
@@ -494,12 +494,12 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'order' && p[2] && req.method === 'POST') {   // a critical file: the admin decides and the post is told
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || m.status !== 'done') return send(res, 404, { error: 'none' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' });
-      const b = await body(req), act = { release: 'released', detain: 'detained', seize: 'seized', docs: 'held' }[b.order]; if (!act) return send(res, 400, { error: 'form' });
+      const b = await body(req), act = { release: 'released', detain: 'seized', seize: 'seized', docs: 'held' }[b.order]; if (!act) return send(res, 400, { error: 'form' });
       const o = { order: b.order, note: clip(b.note, 300).trim(), byName: user.name, at: new Date().toISOString() };
       m.orders = (m.orders || []).concat([o]).slice(-20); m.order = o; m.ack = null;
       if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); log(user.name, 'decided', b.order, 'for', m.id);
-      const W = { release: 'RELEASE the vehicle', detain: 'DETAIN the vehicle', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
+      const W = { release: 'RELEASE the vehicle', detain: 'SEIZE the goods', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
       for (const x of cfg.subs.filter(y => y.who === idOf(m.by))) { try { await pushTo(x, { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (o.note ? o.note + '. ' : '') + 'By ' + user.name + '.' }); } catch (e) {} }
       return send(res, 200, { ok: true });
     }
