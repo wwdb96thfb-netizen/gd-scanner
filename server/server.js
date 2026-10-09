@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 20;
+const VERSION = 21;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -26,6 +26,7 @@ if (!cfg.vapid) { const k = crypto.generateKeyPairSync('ec', { namedCurve: 'prim
 if (!Array.isArray(cfg.subs)) cfg.subs = [];
 if (!Array.isArray(cfg.watch)) cfg.watch = [];
 if (!cfg.pins || typeof cfg.pins !== 'object') cfg.pins = {};
+if (!Array.isArray(cfg.items)) cfg.items = [];
 if (!Array.isArray(cfg.values)) cfg.values = [];
 if (!cfg.usage) cfg.usage = { day: '', pages: 0, lastLimit: null };
 cfg.people.forEach(x => { if (x.role !== 'admin') x.role = 'field'; });
@@ -59,7 +60,11 @@ const km = (a, b) => { const R = 6371, r = x => x * Math.PI / 180, dl = r(b.lat 
 const med = L => { const a = L.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
 const tOf = m => String(m.takenAt || m.receivedAt || '');
 // What the post actually found on the vehicle, matched to the GD item it belongs to.
-const cleanFound = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? Math.round(+b.pkgs) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null, kg = pk && each ? +(pk * each).toFixed(2) : (+b.kg > 0 && isFinite(+b.kg) ? +b.kg : null); return what || kg ? { what, pkgs: pk, each, kg } : null; };
+const cleanFound = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), unit = clip(b.unit, 20).trim(), eachUnit = b.eachUnit === 'L' ? 'L' : 'kg', pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? +(+b.pkgs).toFixed(2) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null;
+  let kg = null, litres = null; if (pk && /^kg/i.test(unit)) kg = pk; else if (pk && /^ton/i.test(unit)) kg = pk * 1000; else if (pk && /^litre/i.test(unit)) litres = pk; else if (pk && each) { if (eachUnit === 'L') litres = +(pk * each).toFixed(2); else kg = +(pk * each).toFixed(2); } else if (+b.kg > 0 && isFinite(+b.kg)) kg = +b.kg;
+  if (!what && !pk) return null; const f = { what, pkgs: pk, unit, each, eachUnit, kg, litres };
+  if (b.custom && what && !cfg.items.some(x => x.name.toLowerCase() === what.toLowerCase())) { cfg.items.push({ name: what, unit, eachUnit }); if (cfg.items.length > 300) cfg.items.shift(); saveCfg(); xver++; }
+  return f; };
 const KER = /kern|kernal|shelled|giri|magaz/i, INSH = /in\s*-?\s*shells?|unshelled|with\s+shell|whole/i;
 function matchItem(what, items) {
   const w = String(what || '').toLowerCase(), fk = INSH.test(w) ? 'S' : KER.test(w) ? 'K' : '', tok = t => String(t || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(x => x.length >= 4).map(x => x.replace(/s$/, ''));
@@ -96,7 +101,7 @@ function live() {
     if (fi >= 0 && m.found.kg && (m.gdNos || [])[0]) { const k = AN(m.gdNos[0]) + '#' + fi, load = ((m.vehicles || [])[0] ? AN(m.vehicles[0]) : m.id) + '@' + tOf(m).slice(0, 10); used[k] = used[k] || {}; used[k][load] = Math.max(used[k][load] || 0, m.found.kg); } });
   done.forEach(m => { const fl = flags.get(m.id), fd = m.found, X = FI.get(m.id);
     if (!fd) { if ((m.pages || []).some(p => p.type === 'gd')) fl.push({ l: 'skip', n: 43, t: 'Goods found on the vehicle were not entered', d: 'Enter what was found and how much, so it can be compared with the GD.', p: 0 }); return; }
-    if (!X) return; const items = X.g.items, said = (fd.what || 'goods') + (fd.kg ? ', ' + F(fd.kg) + ' kg' : '');
+    if (!X) return; const items = X.g.items, said = (fd.what || 'goods') + (fd.pkgs ? ', ' + F(fd.pkgs) + ' ' + (fd.unit || 'packages').toLowerCase() : '') + (fd.kg ? ', ' + F(fd.kg) + ' kg' : fd.litres ? ', ' + F(fd.litres) + ' litres' : '');
     if (X.fi < 0) { fl.push({ l: 'red', n: 43, t: 'Goods found are not on the GD', d: 'Found: ' + said + '. The GD lists: ' + items.map(it => it.description).filter(Boolean).join('; ') + '.', p: 0 }); return; }
     const it = items[X.fi], q = parseFloat(it.qty_kg), name = String(it.description || '').split('=')[0].trim(), no = it.no || X.fi + 1;
     if (!fd.kg || !isFinite(q)) { fl.push({ l: 'ok', n: 43, t: 'Goods found are on the GD', d: 'Found: ' + said + '. GD item ' + no + ': ' + name + '.', p: 0 }); return; }
@@ -417,7 +422,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, q: queueInfo(), list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
