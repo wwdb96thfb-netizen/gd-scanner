@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 28;
+const VERSION = 29;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -132,11 +132,42 @@ function live() {
 }
 function listFor(user) {
   const L = live();
-  return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
+  return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => viewOf(m, L));
+}
+function viewOf(m, L) { {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
     return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null };
-  });
+  }
+}
+// ---- search across the whole database (admins): every word typed must be found somewhere in the file
+const labelled = m => { const o = [], add = (l, v) => { if (v != null && v !== '') o.push([l, String(v)]); };
+  (m.vehicles || []).forEach(v => add('Vehicle', v)); (m.gdNos || []).forEach(v => add('GD number', v)); (m.containers || []).forEach(v => add('Container', v));
+  add('Post', m.location); add('Note', m.note); add('Scanned by', m.byName); add('Date', String(m.takenAt || m.receivedAt || '').slice(0, 10));
+  (m.pages || []).forEach(p => { const g = p.gd, q = p.pq, v = p.inv, d = p.doc, w = p.veh;
+    if (g) { add('Importer', g.importer); add('Importer address', g.importer_address); add('NTN', g.ntn); add('STRN', g.strn); add('Exporter', g.exporter); add('Exporter country', g.exporter_country); add('Customs office', g.customs_office); add('Container / marks', g.container); add('BL number', g.bl_no); add('IGM', g.igm_no); add('Cash number', g.cash_no); (Array.isArray(g.items) ? g.items : []).forEach(it => { add('Goods on GD', it.description); add('HS code', it.hs_code); add('Origin', it.origin); }); }
+    if (q) { add('Release order', q.ro_no); add('Release order importer', q.importer); add('Release order exporter', q.exporter); add('Release order goods', q.goods); add('GD quoted', q.gd_no); add('Container', q.container); }
+    if (v) { add('Invoice', v.invoice_no); add('Invoice seller', v.seller); add('Seller NTN', v.seller_ntn); add('Invoice buyer', v.buyer); add('Buyer NTN', v.buyer_ntn); add('Invoice goods', v.description); }
+    if (d) { add('Other document', d.title || p.what); add('Document number', d.number); add('Names on document', d.parties); add('Document vehicle', d.vehicle_no); add('Document goods', d.goods); add('Issued by', d.issued_by); }
+    if (w) { add('Vehicle type', w.vehicle_type); add('Writing on vehicle', w.other_text); add('Container on vehicle', w.container_no); }
+    if (p.type === 'goods') add('Goods photo', p.what); });
+  foundList(m).forEach(f => add('Goods found', f.what));
+  const r = m.report; if (r) { add('Driver', r.driver); add('Driver contact', r.contact); add('Owner claimed', r.owner); add('Cargo in report', r.goods); add('Marks', r.marks); add('Coming from', r.from); add('Going to', r.to); add('Warehouse', r.kept); add('Reason', r.reason); add('Report remarks', r.remarks); add('Reported by', r.byName); }
+  if (m.decision) { add('Action taken', m.decision.action); add('Action remark', m.decision.remark); add('Action by', m.decision.byName); }
+  if (m.order) { add('Admin decision', m.order.order); add('Decision note', m.order.note); add('Decided by', m.order.byName); }
+  if (m.release) add('Released on the order of', m.release.byName);
+  if (m.courtCase) { add('Case number', m.courtCase.caseNo); add('Court', m.courtCase.court); add('Case warehouse', m.courtCase.warehouse); add('Case remark', m.courtCase.remark); }
+  return o; };
+let scache = null;
+function search(text) {
+  const words = String(text || '').toLowerCase().split(/\s+/).filter(w => w.length >= 2).slice(0, 6); if (!words.length) return { total: 0, list: [] };
+  if (!scache || scache.ver !== xver) scache = { ver: xver, rows: [...index.values()].map(m => { const F = labelled(m).map(x => [x[0], x[1], x[1].toLowerCase(), AN(x[1])]); return { m, F }; }) };
+  const L = live(), out = [];
+  for (const row of scache.rows) { const hits = []; let all = true;
+    for (const w of words) { const aw = AN(w), f = row.F.find(x => x[2].indexOf(w) >= 0 || (aw.length >= 3 && x[3].indexOf(aw) >= 0)); if (!f) { all = false; break; } if (!hits.some(h => h[0] === f[0] && h[1] === f[1])) hits.push([f[0], f[1].slice(0, 90)]); }
+    if (all) out.push(Object.assign(viewOf(row.m, L), { hits: hits.slice(0, 4) })); }
+  out.sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt)));
+  return { total: out.length, list: out.slice(0, 100) };
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -514,6 +545,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (!user.admin) return send(res, 403, { error: 'admin' });
+    if (p[1] === 'search' && req.method === 'GET') { const r = search(u.searchParams.get('q')); return send(res, 200, { ok: true, q: u.searchParams.get('q') || '', total: r.total, files: index.size, list: r.list }); }
     if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, vapid: cfg.vapid.pub, phones: cfg.subs.filter(x => x.who === idOf(user.code)).length, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
     if (p[1] === 'watch' && !p[2] && req.method === 'POST') { const b = await body(req), value = clip(b.value, 60).trim(); if (AN(value).length < 4) return send(res, 400, { error: 'form' }); if (cfg.watch.length >= 500) return send(res, 429, { error: 'full' }); cfg.watch.push({ id: rnd(8), value, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added to watchlist:', value); return send(res, 200, { ok: true }); }
     if (p[1] === 'watch' && p[2] && req.method === 'DELETE') { const x = cfg.watch.find(y => y.id === p[2]); cfg.watch = cfg.watch.filter(y => y.id !== p[2]); saveCfg(); xver++; if (x) log(user.name, 'removed from watchlist:', x.value); return send(res, 200, { ok: true }); }
