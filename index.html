@@ -404,6 +404,8 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
           <option value="other">Other (type it)</option></select>
           <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Optional: anything odd you noticed" maxlength="300"></label>
+        <label class="f">Driver name<input type="text" id="f-drv" maxlength="60" placeholder="As on his CNIC" autocomplete="off"></label>
+        <label class="f">Driver CNIC or phone<input type="text" id="f-drvid" maxlength="40" inputmode="numeric" placeholder="e.g. 42101-1234567-1" autocomplete="off"></label>
       </div>
       <div id="found-scan"></div>
       <div class="form" style="display:none">
@@ -460,7 +462,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
       <h2 class="sec">Watchlist</h2>
       <div class="panel">
         <p class="note">Enter a vehicle number, importer name, NTN, GD number or container number. Any file that matches is marked Critical and the post is told to detain.</p>
-        <p class="note">When goods are seized, the vehicle that carried them is added here automatically. Those entries tell the post to check the vehicle thoroughly next time and alert the admins; they do not order a detention by themselves.</p>
+        <p class="note">When goods are seized, the vehicle that carried them and its driver are added here automatically. Those entries tell the post to check the vehicle thoroughly next time and alert the admins; they do not order a detention by themselves.</p>
         <div class="form">
           <label class="f">Watch for<input type="text" id="w-value" maxlength="60" placeholder="e.g. TKA-123 or a firm name"></label>
           <label class="f">Reason<input type="text" id="w-note" maxlength="120" placeholder="Optional"></label>
@@ -565,7 +567,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.16.0';
+var APPV = '2.17.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -681,7 +683,7 @@ async function sync() {
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
-      try { var meta = { id: it.id, takenAt: it.takenAt, found: it.found || null, gps: it.gps || null, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
+      try { var meta = { id: it.id, takenAt: it.takenAt, found: it.found || null, driver: it.driver || null, gps: it.gps || null, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
         try { have = await api('/api/have/' + it.id); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
         if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
         else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
@@ -738,9 +740,9 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
       pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), found: scanFound.read(), offeredKg: null, pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), driver: ($('f-drv').value.trim() || $('f-drvid').value.trim()) ? { name: $('f-drv').value.trim(), idn: $('f-drvid').value.trim() } : null, found: scanFound.read(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
-  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = ''; scanFound.reset();
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = ''; $('f-drv').value = ''; $('f-drvid').value = ''; scanFound.reset();
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
 });
 
@@ -919,7 +921,7 @@ function courtBox(c) { var box = h('div', { class: 'dec' }), k = c.courtCase, ad
   view(); return box; }
 function reportBox(c) { var box = h('div', { class: 'dec' }), r = c.report, adm = !!(S.me && S.me.admin), st = rptState(c);
   var form = function () { box.textContent = ''; var adv = advise(c), g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, FL = Array.isArray(c.found) ? c.found : (c.found ? [c.found] : []), kgs = FL.reduce(function (t, x) { return t + (x.kg || 0); }, 0);
-    var pre = r || { vehicle: (c.vehicles || [])[0] || '', goods: FL.map(function (x) { return x.what; }).filter(Boolean).join(', '), packages: FL.filter(function (x) { return x.pkgs; }).map(function (x) { return fmt(x.pkgs) + ' ' + String(x.unit || 'packages').toLowerCase() + (FL.length > 1 ? ' ' + x.what : ''); }).join('; '), weight: kgs ? String(kgs) : '', owner: g.importer || '', reason: adv.items.join('; ') }, inp = {}, grid = h('div', { class: 'rptf' }), msg = h('span');
+    var pre = r || { driver: c.driver ? c.driver.name : '', contact: c.driver ? c.driver.idn : '', vehicle: (c.vehicles || [])[0] || '', goods: FL.map(function (x) { return x.what; }).filter(Boolean).join(', '), packages: FL.filter(function (x) { return x.pkgs; }).map(function (x) { return fmt(x.pkgs) + ' ' + String(x.unit || 'packages').toLowerCase() + (FL.length > 1 ? ' ' + x.what : ''); }).join('; '), weight: kgs ? String(kgs) : '', owner: g.importer || '', reason: adv.items.join('; ') }, inp = {}, grid = h('div', { class: 'rptf' }), msg = h('span');
     RPTF.forEach(function (d) { var el = d[3] === 2 ? h('textarea', { maxlength: '500' }) : h('input', { type: 'text', maxlength: '120' }); el.value = pre[d[0]] || ''; inp[d[0]] = el; grid.appendChild(h('label', d[3] ? { class: 'wide' } : null, h('span', { text: d[1] + (d[2] ? ' *' : '') }), el)); });
     var btn = h('button', { class: 'btn', text: 'Submit report for re-verification', onclick: async function () { var out = {}, miss = []; RPTF.forEach(function (d) { out[d[0]] = inp[d[0]].value.trim(); if (d[2] && !out[d[0]]) miss.push(d[1]); });
       if (miss.length) { msg.textContent = 'Still needed: ' + miss.join(', ') + '.'; return; } btn.disabled = true;
@@ -948,6 +950,9 @@ function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me &
       try { await api('/api/order/' + c.id, { method: 'POST', body: JSON.stringify({ order: sel.value, note: note.value }) }); toast('Decision sent: ' + ORD[sel.value]); S.ver = ''; refresh(); } catch (e) { sb.disabled = false; m2.textContent = e && e.status === 403 ? 'This file is locked by a release order. Only the Owner can change it.' : 'Could not send. The server is not reachable or has not updated yet.'; } } });
     [sel, note, sb, m2].forEach(function (x) { box.appendChild(x); }); }
   return box; }
+function driverBox(c) { var box = h('div', { class: 'dec' }), n = h('input', { type: 'text', maxlength: '60', placeholder: 'Driver name' }), i = h('input', { type: 'text', maxlength: '40', inputmode: 'numeric', placeholder: 'Driver CNIC or phone' }), msg = h('span');
+  var b = h('button', { class: 'btn ghost small', text: 'Save driver', onclick: async function () { if (!n.value.trim() && !i.value.trim()) { msg.textContent = 'Enter the name, the CNIC or phone, or both.'; return; } b.disabled = true; try { await api('/api/driver/' + c.id, { method: 'POST', body: JSON.stringify({ name: n.value.trim(), idn: i.value.trim() }) }); toast('Driver saved'); S.ver = ''; refresh(); } catch (e) { b.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
+  [h('b', { text: 'Driver' }), n, i, b, msg].forEach(function (x) { box.appendChild(x); }); return box; }
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'seized'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'seized' && (d.action === 'handed' || d.action === 'detained')))) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span');
@@ -992,7 +997,8 @@ function caseView(c) {
     else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
   d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null, reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR ADMIN DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Admin decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Hold', check: 'result was Ask / question', clear: 'result was Clear to go' }[c.already.result] || '') + (c.already.order ? ' · admin decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
-  if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
+  if (c.seller || c.note || c.offeredKg || c.driver) body.appendChild(kv([['Driver', c.driver ? [c.driver.name, c.driver.idn].filter(Boolean).join(' · ') : null], ['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
+  if (done && !c.local && !c.driver && !(c.release && !(S.me && S.me.owner))) body.appendChild(driverBox(c));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   var locked = !!c.release && !(S.me && S.me.owner);
   if (adv) body.appendChild(actBox(adv));

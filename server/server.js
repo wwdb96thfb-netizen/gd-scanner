@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 34;
+const VERSION = 35;
 const CHECKS_V = 9;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -84,7 +84,11 @@ function live() {
   done.forEach(m => {
     let fl = (m.flags || []).concat(ex[m.id] || []);
     const F = fieldsOf(m);
-    cfg.watch.forEach(w => { const k = AN(w.value); if (w.src === m.id || (w.auto && tOf(m) <= String(w.at))) return;   // not the seizure file itself, nor scans from before it
+    cfg.watch.forEach(w => { const k = AN(w.value); if (w.src === m.id || (w.auto && tOf(m) <= String(w.since || w.at))) return;   // not the seizure file itself, nor scans from before it
+      if (w.auto && w.kind === 'driver') { const D = driversOf(m), byId = w.dg && D.some(d => DG(d.idn) === w.dg), byName = !byId && w.nm && w.nm.length >= 5 && D.some(d => AN(d.name) === w.nm);
+        if (byId) fl.push({ l: 'amber', n: 41, t: 'Watchlist: this driver was carrying seized goods before', d: w.note + '. Matched on CNIC or phone number. Check this load thoroughly, whatever vehicle he is driving.', p: 0 });
+        else if (byName && !w.dg) fl.push({ l: 'amber', n: 41, t: 'Watchlist: a driver of this name was carrying seized goods before', d: w.note + '. Matched on the name only, and many people share a name: confirm with his CNIC before drawing any conclusion.', p: 0 });
+        return; }
       if (k.length >= 4 && w.auto) { if ((m.vehicles || []).some(v => AN(v) === k)) fl.push({ l: 'amber', n: 41, t: 'Watchlist: goods were seized from this vehicle before', d: (w.note ? w.note + '. ' : '') + 'The vehicle is not at fault by that alone, but check this load thoroughly: open the packages and match every paper.', p: 0 }); return; }
       if (k.length >= 4 && F.some(x => x.indexOf(k) >= 0)) fl.push({ l: 'red', n: 41, t: 'On the watchlist: ' + w.value, d: (w.note ? w.note + '. ' : '') + 'Added by ' + (w.by || 'an admin') + ' on ' + String(w.at).slice(0, 10) + '.', p: 0 }); });
     if (cfg.values.length) { let hit = false;
@@ -164,13 +168,13 @@ function listFor(user) {
 function viewOf(m, L) { {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, already: L.again.get(m.id) || null, notified: m.status === 'done' ? notifiedOf(m) : [], release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, driver: m.driver || null, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, already: L.again.get(m.id) || null, notified: m.status === 'done' ? notifiedOf(m) : [], release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null };
   }
 }
 // ---- search across the whole database (admins): every word typed must be found somewhere in the file
 const labelled = m => { const o = [], add = (l, v) => { if (v != null && v !== '') o.push([l, String(v)]); };
   (m.vehicles || []).forEach(v => add('Vehicle', v)); (m.gdNos || []).forEach(v => add('GD number', v)); (m.containers || []).forEach(v => add('Container', v));
-  add('Post', m.location); add('Note', m.note); add('Scanned by', m.byName); add('Date', String(m.takenAt || m.receivedAt || '').slice(0, 10));
+  add('Post', m.location); add('Note', m.note); if (m.driver) { add('Driver', m.driver.name); add('Driver CNIC or phone', m.driver.idn); } add('Scanned by', m.byName); add('Date', String(m.takenAt || m.receivedAt || '').slice(0, 10));
   (m.pages || []).forEach(p => { const g = p.gd, q = p.pq, v = p.inv, d = p.doc, w = p.veh;
     if (g) { add('Importer', g.importer); add('Importer address', g.importer_address); add('NTN', g.ntn); add('STRN', g.strn); add('Exporter', g.exporter); add('Exporter country', g.exporter_country); add('Customs office', g.customs_office); add('Container / marks', g.container); add('BL number', g.bl_no); add('IGM', g.igm_no); add('Cash number', g.cash_no); (Array.isArray(g.items) ? g.items : []).forEach(it => { add('Goods on GD', it.description); add('HS code', it.hs_code); add('Origin', it.origin); }); }
     if (q) { add('Release order', q.ro_no); add('Release order importer', q.importer); add('Release order exporter', q.exporter); add('Release order goods', q.goods); add('GD quoted', q.gd_no); add('Container', q.container); }
@@ -203,9 +207,15 @@ const NOTIFIED = [[/tyre|tire|\btubes?\b/, 'Tyres and tubes'], [/auto\s*parts?|s
 const notifiedOf = m => { const out = [], seen = t => { const d = String(t || '').toLowerCase(); if (!d) return; NOTIFIED.forEach(n => { if (n[0].test(d) && out.indexOf(n[1]) < 0) out.push(n[1]); }); };
   (m.pages || []).forEach(p => { if (p.gd && Array.isArray(p.gd.items)) p.gd.items.forEach(it => seen(it.description)); }); foundList(m).forEach(f => seen(f.what)); return out.slice(0, 4); };
 // When goods are seized, the vehicle that carried them goes on the watchlist by itself. If the seizure is later undone, it comes off again.
+// The driver as known for a file: entered at the scan, or in the seizure report. CNIC or phone digits identify a person; a name alone is only a hint.
+const DG = v => String(v || '').replace(/\D/g, '');
+const cleanDriver = d => { if (!d || typeof d !== 'object') return null; const name = clip(d.name, 60).trim(), idn = clip(d.idn, 40).trim(); return name || idn ? { name, idn } : null; };
+const driversOf = m => { const o = []; if (m.driver) o.push({ name: m.driver.name || '', idn: m.driver.idn || '' }); if (m.report && (m.report.driver || m.report.contact)) o.push({ name: m.report.driver || '', idn: m.report.contact || '' }); return o; };
 function autoWatch(m) { const seized = m.decision && ['seized', 'detained', 'handed'].indexOf(m.decision.action) >= 0, before = JSON.stringify(cfg.watch);
   cfg.watch = cfg.watch.filter(w => !(w.auto && w.src === m.id));
-  if (seized) (m.vehicles || []).forEach(v => { if (AN(v).length < 4) return; cfg.watch.push({ id: rnd(8), value: v, note: 'Goods seized from this vehicle at ' + (m.location || 'a post') + ' on ' + tOf(m).slice(0, 10) + (foundList(m).length ? ' (' + foundList(m).map(f => f.what).filter(Boolean).join(', ').slice(0, 60) + ')' : ''), by: 'Automatic', at: new Date().toISOString(), auto: true, src: m.id }); log('Watchlist: added', v, 'after a seizure'); });
+  if (seized) (m.vehicles || []).forEach(v => { if (AN(v).length < 4) return; cfg.watch.push({ id: rnd(8), value: v, note: 'Goods seized from this vehicle at ' + (m.location || 'a post') + ' on ' + tOf(m).slice(0, 10) + (foundList(m).length ? ' (' + foundList(m).map(f => f.what).filter(Boolean).join(', ').slice(0, 60) + ')' : ''), by: 'Automatic', at: new Date().toISOString(), since: tOf(m), auto: true, src: m.id }); log('Watchlist: added', v, 'after a seizure'); });
+  if (seized) { const done = {}; driversOf(m).forEach(d => { const dg = DG(d.idn), key = dg.length >= 7 ? 'id' + dg : (AN(d.name).length >= 5 ? 'nm' + AN(d.name) : ''); if (!key || done[key]) return; done[key] = 1;
+      cfg.watch.push({ id: rnd(8), value: dg.length >= 7 ? (d.name ? d.name + ' · ' : '') + d.idn : d.name, note: 'Driver of a vehicle from which goods were seized at ' + (m.location || 'a post') + ' on ' + tOf(m).slice(0, 10) + ((m.vehicles || [])[0] ? ' (vehicle ' + m.vehicles[0] + ')' : ''), by: 'Automatic', at: new Date().toISOString(), since: tOf(m), auto: true, kind: 'driver', dg: dg.length >= 7 ? dg : '', nm: AN(d.name), src: m.id }); log('Watchlist: added driver', d.name || d.idn, 'after a seizure'); }); }
   if (cfg.watch.length > 500) cfg.watch = cfg.watch.slice(-500);
   if (JSON.stringify(cfg.watch) !== before) { saveCfg(); xver++; } }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -507,7 +517,7 @@ const server = http.createServer(async (req, res) => {
         if (!nPages || !fs.existsSync(dir) || !claim(dir, user, false)) return send(res, 409, { error: 'missing' });
         for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); let k = 'doc'; try { const t = fs.readFileSync(path.join(dir, 'p' + n + '.kind'), 'utf8'); k = t === 'veh' ? 'veh' : t === 'goods' ? 'goods' : 'doc'; } catch (e) {} kinds.push(k); }
       }
-      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, found: cleanFound(b.found), gps: (b.gps && isFinite(+b.gps.lat) && isFinite(+b.gps.lon) && Math.abs(+b.gps.lat) <= 90 && Math.abs(+b.gps.lon) <= 180) ? { lat: +(+b.gps.lat).toFixed(5), lon: +(+b.gps.lon).toFixed(5), acc: Math.round(+b.gps.acc) || null } : null, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
+      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, found: cleanFound(b.found), driver: cleanDriver(b.driver), gps: (b.gps && isFinite(+b.gps.lat) && isFinite(+b.gps.lon) && Math.abs(+b.gps.lat) <= 90 && Math.abs(+b.gps.lon) <= 180) ? { lat: +(+b.gps.lat).toFixed(5), lon: +(+b.gps.lon).toFixed(5), acc: Math.round(+b.gps.acc) || null } : null, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
@@ -535,7 +545,7 @@ const server = http.createServer(async (req, res) => {
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req), r = {}; RPT.forEach(k => { r[k] = clip(b[k], k === 'remarks' || k === 'reason' ? 500 : 120).trim(); });
       if (RPT_MUST.some(k => !r[k])) return send(res, 400, { error: 'form' });
-      m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); log(user.name, 'submitted the seizure report for', m.id);
+      m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); autoWatch(m); log(user.name, 'submitted the seizure report for', m.id);
       notifyAdmins({ title: 'Seizure report: ' + (m.location || 'a post'), body: 'Vehicle ' + r.vehicle + '. ' + r.goods + '. Sent by ' + user.name + ' for re-verification.' });
       return send(res, 200, { ok: true });
     }
@@ -553,6 +563,10 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req); if (['prep', 'filed', 'confiscated', 'released', 'paid', 'other'].indexOf(b.status) < 0) return send(res, 400, { error: 'form' });
       m.courtCase = { status: b.status, warehouse: clip(b.warehouse, 120).trim(), caseNo: clip(b.caseNo, 60).trim(), filedOn: clip(b.filedOn, 20).trim(), court: clip(b.court, 120).trim(), hearing: clip(b.hearing, 20).trim(), decidedOn: clip(b.decidedOn, 20).trim(), remark: clip(b.remark, 400).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'updated the court case for', m.id, '-', b.status);
       return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'driver' && p[2] && req.method === 'POST') {   // the driver's name and CNIC or phone, entered or corrected after the scan
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' }); if (LOCK(m)) return send(res, 403, { error: 'locked' });
+      const d = cleanDriver(await body(req)); if (!d) return send(res, 400, { error: 'form' }); m.driver = d; m.alerted = false; save(m); autoWatch(m); if (m.status === 'done') alertAdmins(m); return send(res, 200, { ok: true });
     }
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
