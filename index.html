@@ -5,24 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>GD Scanner</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1f2f7a">
+<meta name="theme-color" content="#01411C">
 <meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="GD Scanner">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
 <style>
+@font-face{font-family:"Inter";src:url(fonts/inter.woff2) format("woff2");font-weight:100 900;font-style:normal;font-display:swap}
+@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-600.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Barlow Semi Condensed";src:url(fonts/barlow-700.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap}
 :root{
   --paper:#f2f4f8; --card:#ffffff; --ink:#18202e; --muted:#586478; --line:#d3dae5;
-  --stamp:#2b3f94; --stamp-soft:#e5e9f7; --on-stamp:#ffffff;
+  --stamp:#0b6b41; --stamp-soft:#e4f2ea; --on-stamp:#ffffff;
   --red:#b3261e; --red-soft:#fbe8e6; --amber:#8a5a00; --amber-soft:#fcefd3;
   --green:#1e6b3a; --green-soft:#e1f2e7; --grey-soft:#e8ecf2;
-  --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --head:"Barlow Semi Condensed","Inter",system-ui,sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){ :root{
   --paper:#10141c; --card:#19202c; --ink:#e8ecf3; --muted:#9aa6b8; --line:#2c3545;
-  --stamp:#9db0ff; --stamp-soft:#222b47; --on-stamp:#10141c;
+  --stamp:#74d6a4; --stamp-soft:#16301f; --on-stamp:#0c1510;
   --red:#ff8a80; --red-soft:#3a1c1a; --amber:#f2c063; --amber-soft:#3a2e12;
   --green:#7fd49b; --green-soft:#15301f; --grey-soft:#232b39; color-scheme:dark } }
 *{box-sizing:border-box}
@@ -215,18 +219,96 @@ details.case>summary>*{grid-column:2;min-width:0}
 details.case>summary>.pic{grid-column:1;grid-row:1 / span 4;width:64px;height:64px;border-radius:8px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:block}
 details.case>summary.nopic{grid-template-columns:1fr}
 details.case>summary.nopic>*{grid-column:1}
+
+/* ===== 2.11 design layer: Pakistan green identity, Inter + Barlow Semi Condensed ===== */
+body{font-family:var(--body);font-size:15px;letter-spacing:-.003em;-webkit-font-smoothing:antialiased}
+.wrap{padding-block:16px 56px;gap:18px}
+.appbar{position:relative;overflow:hidden;background:linear-gradient(135deg,#0f7a4b 0%,#075233 45%,#01361a 100%);padding:calc(16px + env(safe-area-inset-top,0px)) 16px 0;box-shadow:0 2px 14px rgba(1,54,26,.35)}
+.appbar::before{content:"";position:absolute;right:-70px;top:-90px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle at 62% 38%,transparent 0 46%,rgba(255,255,255,.07) 46.5% 56%,transparent 56.5%);pointer-events:none}
+.appbar::after{content:"";display:block;height:4px;margin:14px -16px 0;background:linear-gradient(90deg,#fff 0 25%,#0f7a4b 25% 100%);opacity:.9}
+.appbar .in{position:relative}
+.appbar .brand{gap:13px}
+.appbar .brand img{border-radius:13px;box-shadow:0 0 0 1.5px rgba(255,255,255,.35),0 4px 12px rgba(0,0,0,.3)}
+.appbar .bt{flex:1;min-width:0}
+.appbar h1{font:700 25px/1 var(--head);letter-spacing:.035em;text-transform:uppercase;color:#fff}
+.appbar .tag{margin-top:5px;font:600 11.5px/1 var(--head);letter-spacing:.2em;color:#cfe8da}
+.appbar .flag{flex:none;width:58px;height:auto;border-radius:5px;box-shadow:0 0 0 1.5px rgba(255,255,255,.85),0 5px 14px rgba(0,0,0,.4);margin-right:2px}
+.dec select,.dec input,.dec textarea{border:1px solid var(--line);border-radius:10px}
+.appbar .strip{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;flex-wrap:wrap}
+.appbar .svc{font:600 11px/1 var(--head);letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.appbar .conn{margin:0!important;flex:1 1 180px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:7px 13px;font:500 12.5px/1.35 var(--body);align-items:center}
+.appbar .conn::before{margin-top:0;box-shadow:0 0 0 3px rgba(255,255,255,.12)}
+h2.sec{font:700 13px/1 var(--head);letter-spacing:.14em;color:var(--ink);display:flex;align-items:center;gap:8px;margin-top:4px}
+h2.sec::before{content:"";width:4px;height:15px;border-radius:2px;background:var(--stamp)}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.steps div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px 9px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.steps i{font:700 13px/22px var(--head);font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--stamp);color:var(--on-stamp)}
+.steps b{font:700 14px/1.2 var(--head);letter-spacing:.05em;text-transform:uppercase;margin-top:3px}
+.steps span{font-size:10.5px;color:var(--muted);line-height:1.25}
+.panel{border-radius:16px;padding:16px;box-shadow:0 1px 2px rgba(16,40,28,.05),0 6px 18px rgba(16,40,28,.05)}
+label.f,.rptf label,.fopen>span,.fpick .flab{font:600 11.5px/1.2 var(--body);letter-spacing:.02em;color:var(--muted)}
+select,input[type=text],input[type=search],input[type=number],input[type=date]{border-radius:11px;height:48px;line-height:46px;transition:border-color .15s,box-shadow .15s}
+select:focus,input:focus,textarea:focus,.fopen button:focus{outline:none;border-color:var(--stamp);box-shadow:0 0 0 3px var(--stamp-soft)}
+.fopen button{border-radius:11px;height:48px}
+.btn{font:600 15px var(--body);border-radius:11px;padding:13px 16px;background:linear-gradient(180deg,#0f7a4b,#0a5f3a);border-color:#0a5f3a;color:#fff;box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 2px 6px rgba(10,95,58,.25);transition:transform .06s,filter .15s}
+.btn:active{transform:translateY(1px);filter:brightness(.95)}
+.btn.ghost{background:var(--card);color:var(--stamp);border-color:var(--stamp);box-shadow:none}
+.btn.danger{background:var(--card);color:var(--red);border-color:var(--red);box-shadow:none}
+.btn.small{font-size:13px;padding:8px 12px;border-radius:9px}
+.btn.wide{font:700 16px var(--head);letter-spacing:.08em;text-transform:uppercase;padding:15px 16px}
+.btn:disabled{opacity:.45;box-shadow:none}
+.drop{border-radius:14px;border-width:1.5px}
+.drop.one b{font:700 17px var(--head);letter-spacing:.04em;text-transform:uppercase}
+.pill{font:700 11px/1 var(--head);letter-spacing:.1em;padding:5px 8px;border-radius:5px}
+.legend{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.chips{gap:7px}.chips button{font:600 12.5px var(--body);padding:7px 13px}
+details.case{border-radius:14px;border-left-width:6px;overflow:hidden;box-shadow:0 1px 2px rgba(16,40,28,.05),0 6px 16px rgba(16,40,28,.05)}
+details.case>summary{padding:13px 14px}
+.case .gdno{font:700 17px/1.2 var(--head);letter-spacing:.01em}
+.case .meta{font-size:12.5px;line-height:1.45}
+details.case>summary>.pic{width:68px;height:68px;border-radius:11px}
+.case .body{gap:12px;background:linear-gradient(180deg,var(--grey-soft) 0,transparent 26px)}
+.act{border-radius:12px;padding:13px 14px;font-size:13.5px}
+.act b{font:700 16px/1.15 var(--head);letter-spacing:.07em}
+.act.hasico{display:grid;grid-template-columns:34px 1fr;column-gap:11px;align-items:start}.act.hasico>*{grid-column:2}.act.hasico>.ico{grid-column:1;grid-row:1 / span 4;width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.act.red{background:linear-gradient(135deg,#c62f26,#9c1f18);color:#fff}
+.flags li{border-radius:10px;padding:10px 11px}
+.flags .t{font-weight:600;font-size:14px}
+.flags .n{font:500 10.5px var(--body);letter-spacing:.04em;text-transform:uppercase}
+dl.kv dd{font-family:var(--body);font-weight:500}
+.dec{border-radius:12px;border:1px solid var(--line);background:var(--card);padding:12px}
+.dec>b{font:700 13px/1.2 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--stamp)}
+.status{font:500 13px/1.4 var(--body)}
+.person{border-radius:14px}
+.tabs{box-shadow:0 -4px 18px rgba(16,40,28,.08);border-top:0}
+.tabs button{font:600 11px var(--body);letter-spacing:.02em;padding:8px 6px 8px;color:var(--muted)}
+.tabs button svg{width:22px;height:22px;padding:5px 16px;box-sizing:content-box;border-radius:999px;transition:background .15s}
+.tabs button[aria-selected="true"]{color:var(--stamp);border-bottom-color:transparent}
+.tabs button[aria-selected="true"] svg{background:var(--stamp-soft)}
+#toast{border-radius:12px;font:600 14px var(--body);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.legal{border-top:0;margin-top:30px}
+.legal::before{content:"";display:block;width:54px;height:4px;margin:0 auto 14px;background:linear-gradient(90deg,#fff 0 25%,#01411C 25% 100%);border-radius:2px;box-shadow:0 0 0 1px var(--line)}
+.legal b{font:700 14px var(--head);letter-spacing:.22em}
+.intro h1{font:700 32px var(--head);letter-spacing:.05em;text-transform:uppercase}
+.intro .tag{font:600 12px var(--head);letter-spacing:.2em}
+.intro li{border-radius:13px}.intro li b{font:700 16px var(--head);letter-spacing:.05em;text-transform:uppercase}
+.sheet-head b{font:700 16px var(--head);letter-spacing:.08em;text-transform:uppercase}
+.qnote{border-radius:11px}
+.sum th{font:700 11px var(--head);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+@media (prefers-color-scheme: dark){.btn{background:linear-gradient(180deg,#15915a,#0d7044);border-color:#0d7044;color:#fff}.btn.ghost,.btn.danger{background:transparent}.legal::before{box-shadow:none}}
 </style>
 </head>
 <body>
 <header class="appbar"><div class="in">
   <div class="brand">
-    <img src="icon-192.png" alt="" width="44" height="44">
-    <div>
+    <img src="icon-192.png" alt="" width="48" height="48">
+    <div class="bt">
       <h1>GD Scanner</h1>
-      <p class="tag">Customs document check</p>
+      <p class="tag">Pakistan Coast Guards</p>
     </div>
+    <svg class="flag" viewBox="0 0 90 60" role="img" aria-label="Flag of Pakistan"><rect width="90" height="60" fill="#01411C"/><rect width="22.5" height="60" fill="#fff"/><circle cx="56.25" cy="30" r="18" fill="#fff"/><circle cx="60.9" cy="25.4" r="16.4" fill="#01411C"/><polygon points="71.93,15.47 69.81,19.62 73.10,22.91 68.51,22.18 66.40,26.32 65.67,21.73 61.08,21.00 65.22,18.89 64.49,14.30 67.78,17.59" fill="#fff"/></svg>
   </div>
-  <p class="conn" id="conn" role="status">Starting…</p>
+  <div class="strip"><span class="svc">Customs document check</span><p class="conn" id="conn" role="status">Starting…</p></div>
 </div></header>
 <div class="wrap">
 
@@ -253,7 +335,7 @@ details.case>summary.nopic>*{grid-column:1}
     <div class="intro" id="g-intro" hidden>
       <img src="logo.svg" alt="" width="84" height="84">
       <h1>GD Scanner</h1>
-      <p class="tag">Customs document check for the post</p>
+      <p class="tag">Pakistan Coast Guards</p>
       <ol>
         <li><b>Photograph</b><span>Take photos of the papers, the vehicle and the goods, in any order.</span></li>
         <li><b>Send</b><span>The server reads every paper and checks it against the others and against earlier files.</span></li>
@@ -285,7 +367,8 @@ details.case>summary.nopic>*{grid-column:1}
   <div id="main" hidden>
 
     <section id="p-scan">
-      <h2 class="sec">New consignment</h2>
+      <div class="steps" aria-hidden="true"><div><i>1</i><b>Photograph</b><span>papers, vehicle, goods</span></div><div><i>2</i><b>Send</b><span>server checks them</span></div><div><i>3</i><b>Act</b><span>on the result</span></div></div>
+      <h2 class="sec">New scan</h2>
       <div class="panel">
       <div class="form">
         <label class="f">Location<select id="f-locsel">
@@ -431,7 +514,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.10.0';
+var APPV = '2.11.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -811,7 +894,9 @@ function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   return box; }
 function histBox(c) { var box = h('div', { class: 'hist' }, h('b', { text: 'Other scans of this vehicle: ' + c.history.length + ' file' + (c.history.length > 1 ? 's' : '') }));
   c.history.slice(0, 8).forEach(function (x) { box.appendChild(h('div', { text: when(x.at) + ' · ' + (x.location || '?') + ' · ' + (RES[x.result] || x.result) + (x.taken ? ' · ' + DEC[x.taken] : '') + (x.gd ? ' · ' + x.gd : '') + (x.why ? ' · ' + x.why : '') })); }); return box; }
-function actBox(a) { return h('div', { class: 'act ' + a.k }, h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
+var ICON = { detain: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2zM12 7.5v5.5M12 16.5v.01', hold: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9v6M14 9v6', ask: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v6M9 14h6', query: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.6 9.5a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9M12 16.8v.01', clear: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12.3l2.8 2.8L16.2 9.5' };
+function icon(d) { var NS = 'http://www.w3.org/2000/svg', sv = document.createElementNS(NS, 'svg'), pa = document.createElementNS(NS, 'path'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('class', 'ico'); sv.setAttribute('aria-hidden', 'true'); pa.setAttribute('d', d); sv.appendChild(pa); return sv; }
+function actBox(a) { return h('div', { class: 'act hasico ' + a.k }, icon(ICON[a.a] || ICON.query), h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
 
