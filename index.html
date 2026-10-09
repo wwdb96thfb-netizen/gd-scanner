@@ -403,7 +403,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.7';
+var APPV = '2.3.8';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -681,12 +681,13 @@ var TH = load('gd.th') || {};
 async function keepThumb(k, url) { try { var r = await fx(url, {}, 15000); if (!r.ok) return; var b = await r.blob(); if (b.size > 40000) return;
     var d = await new Promise(function (res, rej) { var f = new FileReader(); f.onload = function () { res(f.result); }; f.onerror = rej; f.readAsDataURL(b); });
     TH[k] = d; var ks = Object.keys(TH); while (ks.length > 80) delete TH[ks.shift()]; keep('gd.th', TH); } catch (e) {} }
-function goodsName(t) { t = String(t || '').split(/[=;\n]/)[0].replace(/\s+/g, ' ').replace(/[\s.,:-]+$/, '').trim(); if (t.length < 3) return ''; if (t.length > 48) t = t.slice(0, 46).replace(/\s+\S*$/, '') + '…'; return t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t; }
+function goodsName(t) { t = String(t || '').split(/[=;\n]/)[0].replace(/\s+/g, ' ').replace(/[\s.,:-]+$/, '').trim(); if (t.length < 3) return ''; if (t.length > 34) t = t.slice(0, 32).replace(/\s+\S*$/, '') + '…'; return t === t.toUpperCase() ? t.charAt(0) + t.slice(1).toLowerCase() : t; }
 function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', adv = done ? advise(c) : null, v = done ? adv.k : 'busy', fl = c.flags || [];
   var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
   var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, q = ((c.pages || []).filter(function (p) { return p.type === 'pq'; })[0] || {}).pq || {};
-  var item = goodsName((Array.isArray(g.items) && g.items[0] && g.items[0].description) || q.goods), gdRef = (c.gdNos && c.gdNos[0]) || '';
+  var names = []; (Array.isArray(g.items) ? g.items : []).forEach(function (it) { var nm = goodsName(it.description); if (nm && names.indexOf(nm) < 0) names.push(nm); });
+  var item = names.length ? names.slice(0, 2).join(' + ') + (names.length > 2 ? ' + ' + (names.length - 2) + ' more' : '') : goodsName(q.goods), gdRef = (c.gdNos && c.gdNos[0]) || '';
   var title = done ? (item || (c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
   var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : ACT[adv.a];
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
