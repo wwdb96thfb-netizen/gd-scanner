@@ -277,6 +277,10 @@ details.case>summary.nopic>*{grid-column:1}
           <option value="other">Other (type it)</option></select>
           <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Optional: anything odd you noticed" maxlength="300"></label>
+        <label class="f">Goods found on the vehicle<input type="text" id="f-what" placeholder="e.g. shelled walnuts" maxlength="80"></label>
+        <label class="f">Number of packages<input type="number" id="f-pkgs" inputmode="numeric" min="0" step="1" placeholder="e.g. 199"></label>
+        <label class="f">Weight of each, kg<input type="number" id="f-each" inputmode="decimal" min="0" step="0.01" placeholder="e.g. 5"></label>
+        <label class="f">Total found<input type="text" id="f-tot" readonly placeholder="Packages × weight" tabindex="-1"></label>
       </div>
       <label class="drop one" for="f-files" id="l-files" tabindex="0">
         <span class="arts"><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="27" y="4" width="38" height="52" rx="3" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M55 4v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M33 20h18M33 27h26M33 34h26M33 41h14"/></g><circle cx="55" cy="45" r="6" fill="none" stroke="#b3261e" stroke-width="2"/><path d="M51.5 45h7" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/><path d="M19 62h54" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="6" y="14" width="50" height="34" rx="2" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M56 26h14l10 12v10H56z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M62 31h7l5 6H62z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity=".55"/><circle cx="22" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="66" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="17" y="27" width="28" height="11" rx="2" fill="#fff" stroke="#b3261e" stroke-width="2"/><path d="M22 32.5h18" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 2.4"/><path d="M4 62h84" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><g fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="12" y="34" width="30" height="22"/><rect x="42" y="34" width="30" height="22"/><rect x="27" y="12" width="30" height="22"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M23 34v8M31 34v8M53 34v8M61 34v8M38 12v8M46 12v8"/></g><path d="M6 62h80" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg></span>
@@ -403,7 +407,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.3.8';
+var APPV = '2.4.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -516,7 +520,7 @@ async function sync() {
   try { S.outbox = (await outAll()).sort(function (a, b) { return String(a.takenAt).localeCompare(String(b.takenAt)); }); drawConn(); drawFiles();
     var items = S.outbox.slice();
     for (var i = 0; i < items.length; i++) { var it = items[i]; it.sending = true; drawFiles();
-      try { var meta = { id: it.id, takenAt: it.takenAt, gps: it.gps || null, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
+      try { var meta = { id: it.id, takenAt: it.takenAt, found: it.found || null, gps: it.gps || null, location: it.location, seller: it.seller, note: it.note, offeredKg: it.offeredKg }, have = null;
         try { have = await api('/api/have/' + it.id); } catch (e) { if (e.status !== 404 && e.status !== 403) throw e; }
         if (!have) await api('/api/capture', { method: 'POST', ms: 240000, body: JSON.stringify(Object.assign({ pages: it.pages }, meta)) });   // older server: everything in one request
         else if (!have.done) {   // one page per request, so a weak signal only has to resend the page that failed
@@ -573,9 +577,9 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
       pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), offeredKg: null, pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), found: foundOf('f-what', 'f-pkgs', 'f-each'), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
-  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = '';
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); ['f-note', 'f-what', 'f-pkgs', 'f-each', 'f-tot'].forEach(function (i) { $(i).value = ''; });
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
 });
 
@@ -634,10 +638,12 @@ var WHY = {
   40: 'A repeat offender, or a vehicle used again after an earlier problem.',
   41: 'An admin asked for this vehicle, firm or number to be stopped.',
   42: 'The scan was sent from somewhere else, or the wrong post was selected.',
+  43: 'The goods on the vehicle are not the goods on the paper, or more is being carried than was cleared.',
+  44: 'One GD is being shown again and again to move more goods than were imported.',
   38: 'A transport or supporting paper from another consignment is being shown with this GD.',
   39: 'The goods were moved to a different vehicle, or the paper belongs to another load.'
 };
-var CRIT = { 7: 1, 8: 1, 19: 1, 20: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 29: 1, 30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, 38: 1, 39: 1, 41: 1 };
+var CRIT = { 7: 1, 8: 1, 19: 1, 20: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 29: 1, 30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, 38: 1, 39: 1, 41: 1, 43: 1, 44: 1 };
 var ACT = { detain: 'Detain', hold: 'Hold', ask: 'Ask for documents', query: 'Question driver', clear: 'Clear to go' };
 function advise(c) {
   var fl = c.flags || [], pg = c.pages || [], has = function (t) { return pg.some(function (p) { return p.type === t; }); };
@@ -663,6 +669,16 @@ function advise(c) {
   return { k: 'ok', a: 'clear', head: 'CLEAR TO GO', text: 'Papers are in order. Match the goods and the vehicle number with the papers by eye, then release.', items: [], foot: '' };
 }
 var DEC = { released: 'Released', held: 'Held', detained: 'Detained', handed: 'Handed to Customs' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
+function foundOf(a, b, e) { var what = $(a).value.trim(), pk = parseFloat($(b).value), each = parseFloat($(e).value); if (!what && !(pk > 0)) return null; return { what: what, pkgs: pk > 0 ? pk : null, each: each > 0 ? each : null }; }
+function foundText(f) { return (f.what || 'Goods') + (f.pkgs ? ' · ' + fmt(f.pkgs) + ' packages' + (f.each ? ' × ' + fmt(f.each) + ' kg' : '') : '') + (f.kg ? ' = ' + fmt(f.kg) + ' kg' : ''); }
+['f-pkgs', 'f-each'].forEach(function (i) { $(i).addEventListener('input', function () { var p = parseFloat($('f-pkgs').value), e = parseFloat($('f-each').value); $('f-tot').value = p > 0 && e > 0 ? fmt(p * e) + ' kg' : ''; }); });
+function foundBox(c) { var box = h('div', { class: 'dec' }), f = c.found;
+  var form = function () { box.textContent = ''; var w = h('input', { type: 'text', maxlength: '80', placeholder: 'Goods found, e.g. shelled walnuts', value: f ? f.what || '' : '' }), p = h('input', { type: 'number', inputmode: 'numeric', placeholder: 'Number of packages', value: f && f.pkgs ? f.pkgs : '' }), e = h('input', { type: 'number', inputmode: 'decimal', step: '0.01', placeholder: 'Weight of each, kg', value: f && f.each ? f.each : '' }), msg = h('span');
+    var btn = h('button', { class: 'btn small', text: 'Save goods found', onclick: async function () { var pk = parseFloat(p.value), ea = parseFloat(e.value); if (!w.value.trim() && !(pk > 0)) { msg.textContent = 'Enter what was found and how many packages.'; return; } btn.disabled = true;
+      try { await api('/api/found/' + c.id, { method: 'POST', body: JSON.stringify({ what: w.value.trim(), pkgs: pk > 0 ? pk : null, each: ea > 0 ? ea : null }) }); toast('Goods found saved. The file has been checked again.'); S.ver = ''; refresh(); } catch (x) { btn.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
+    [h('b', { text: 'What was found on the vehicle?' }), w, p, e, btn, msg].forEach(function (x) { box.appendChild(x); }); };
+  if (f) { box.appendChild(h('span', null, h('b', { text: 'Goods found: ' }), h('span', { text: foundText(f) + (f.byName ? ' · entered by ' + f.byName : '') }))); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
+  return box; }
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); Object.keys(DEC).forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && d.action === k) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span');
@@ -706,6 +722,7 @@ function caseView(c) {
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   if (adv) body.appendChild(actBox(adv));
+  if (done && !c.local) body.appendChild(foundBox(c));
   if (done && !c.local) body.appendChild(decBox(c));
   if (c.history && c.history.length) body.appendChild(histBox(c));
   if (adm && !c.local) body.appendChild(h('div', { class: 'meta' }, c.gps ? h('a', { href: 'https://maps.google.com/?q=' + c.gps.lat + ',' + c.gps.lon, target: '_blank', rel: 'noopener', text: 'Where it was sent from (map)' + (c.gps.acc ? ', within ' + c.gps.acc + ' m' : '') }) : h('span', { text: 'Phone location was not shared for this file.' })));

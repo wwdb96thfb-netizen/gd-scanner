@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 17;
+const VERSION = 18;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -48,7 +48,7 @@ const who = code => { if (!code) return null; if (code === cfg.adminCode) return
 
 // ---- flags that depend on other files or on what the admins have entered: worked out fresh whenever anything changes
 const AN = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-const CRIT = new Set([7, 8, 19, 20, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 38, 39, 41]);
+const CRIT = new Set([7, 8, 19, 20, 23, 24, 25, 26, 27, 29, 30, 31, 32, 33, 34, 35, 38, 39, 41, 43, 44]);
 const resultOf = fl => fl.some(f => f.l === 'red' && CRIT.has(f.n)) ? 'detain' : fl.some(f => f.l === 'red') ? 'hold' : fl.some(f => f.l === 'amber') ? 'check' : 'clear';
 const fieldsOf = m => { const o = [].concat(m.vehicles || [], m.gdNos || [], m.containers || []);
   (m.pages || []).forEach(p => { const g = p.gd, q = p.pq, v = p.inv, d = p.doc, w = p.veh;
@@ -58,6 +58,15 @@ const fieldsOf = m => { const o = [].concat(m.vehicles || [], m.gdNos || [], m.c
 const km = (a, b) => { const R = 6371, r = x => x * Math.PI / 180, dl = r(b.lat - a.lat), dn = r(b.lon - a.lon), h = Math.sin(dl / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)); };
 const med = L => { const a = L.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
 const tOf = m => String(m.takenAt || m.receivedAt || '');
+// What the post actually found on the vehicle, matched to the GD item it belongs to.
+const cleanFound = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? Math.round(+b.pkgs) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null, kg = pk && each ? +(pk * each).toFixed(2) : (+b.kg > 0 && isFinite(+b.kg) ? +b.kg : null); return what || kg ? { what, pkgs: pk, each, kg } : null; };
+const KER = /kern|kernal|shelled|giri|magaz/i, INSH = /in\s*-?\s*shells?|unshelled|with\s+shell|whole/i;
+function matchItem(what, items) {
+  const w = String(what || '').toLowerCase(), fk = INSH.test(w) ? 'S' : KER.test(w) ? 'K' : '', tok = t => String(t || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(x => x.length >= 4).map(x => x.replace(/s$/, ''));
+  const wt = tok(w).filter(t => !/^(shell|shelled|kernel|kernal)$/.test(t)); let best = -1, score = 0;
+  items.forEach((it, i) => { const d = String(it.description || '').toLowerCase(), dt = tok(d); let sc = wt.filter(t => dt.includes(t)).length; if (!sc) return; const ik = INSH.test(d) ? 'S' : KER.test(d) ? 'K' : ''; if (fk && ik) sc += fk === ik ? 2 : -1.5; if (sc > score) { score = sc; best = i; } });
+  return score >= 1 ? best : -1;
+}
 function live() {
   if (xcache && xcache.ver === xver) return xcache;
   const all = [...index.values()], done = all.filter(m => m.status === 'done');
@@ -81,6 +90,23 @@ function live() {
       if (o.length >= 3) { const d = km(m.gps, { lat: med(o.map(x => x.gps.lat)), lon: med(o.map(x => x.gps.lon)) }); if (d > 5) fl.push({ l: 'amber', n: 42, t: 'Captured ' + Math.round(d) + ' km from where ' + m.location + ' usually scans', d: 'The phone was not at the usual place for this post when the photos were sent.', p: 0 }); } }
     flags.set(m.id, fl);
   });
+  // goods found: is it on the GD, is it within the GD, and how much of the GD has been shown so far across all files
+  const used = {}, F = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 1 }), FI = new Map();
+  done.forEach(m => { if (!m.found) return; const gp = (m.pages || []).find(p => p.type === 'gd' && p.gd && Array.isArray(p.gd.items)); if (!gp) return; const fi = m.found.what ? matchItem(m.found.what, gp.gd.items) : (gp.gd.items.length === 1 ? 0 : -1); FI.set(m.id, { g: gp.gd, fi });
+    if (fi >= 0 && m.found.kg && (m.gdNos || [])[0]) { const k = AN(m.gdNos[0]) + '#' + fi, load = ((m.vehicles || [])[0] ? AN(m.vehicles[0]) : m.id) + '@' + tOf(m).slice(0, 10); used[k] = used[k] || {}; used[k][load] = Math.max(used[k][load] || 0, m.found.kg); } });
+  done.forEach(m => { const fl = flags.get(m.id), fd = m.found, X = FI.get(m.id);
+    if (!fd) { if ((m.pages || []).some(p => p.type === 'gd')) fl.push({ l: 'skip', n: 43, t: 'Goods found on the vehicle were not entered', d: 'Enter what was found and how much, so it can be compared with the GD.', p: 0 }); return; }
+    if (!X) return; const items = X.g.items, said = (fd.what || 'goods') + (fd.kg ? ', ' + F(fd.kg) + ' kg' : '');
+    if (X.fi < 0) { fl.push({ l: 'red', n: 43, t: 'Goods found are not on the GD', d: 'Found: ' + said + '. The GD lists: ' + items.map(it => it.description).filter(Boolean).join('; ') + '.', p: 0 }); return; }
+    const it = items[X.fi], q = parseFloat(it.qty_kg), name = String(it.description || '').split('=')[0].trim(), no = it.no || X.fi + 1;
+    if (!fd.kg || !isFinite(q)) { fl.push({ l: 'ok', n: 43, t: 'Goods found are on the GD', d: 'Found: ' + said + '. GD item ' + no + ': ' + name + '.', p: 0 }); return; }
+    if (fd.kg > q * 1.02) { fl.push({ l: 'red', n: 43, t: 'More goods found than the GD covers', d: 'Found ' + F(fd.kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 }); return; }
+    fl.push({ l: 'ok', n: 43, t: 'Goods found are within the GD', d: 'Found ' + F(fd.kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 });
+    const U = used[AN((m.gdNos || [])[0] || '') + '#' + X.fi] || {}, loads = Object.keys(U).length, tot = Object.values(U).reduce((a, b) => a + b, 0);
+    if (loads > 1) { if (tot > q * 1.02) fl.push({ l: 'red', n: 44, t: 'This GD has been used for more than it covers', d: loads + ' loads shown under this GD total ' + F(tot) + ' kg of ' + name + '. The GD covers ' + F(q) + ' kg.', p: 0 });
+      else { fl.push({ l: 'ok', n: 44, t: 'Loads shown under this GD are within its quantity', d: loads + ' loads total ' + F(tot) + ' kg of ' + F(q) + ' kg. ' + F(q - tot) + ' kg left.', p: 0 });
+        fl.forEach((f, i) => { if (f.n === 23 && f.l === 'red') fl[i] = Object.assign({}, f, { l: 'amber', d: f.d + ' The quantities entered so far are within the GD (' + F(tot) + ' of ' + F(q) + ' kg).' }); }); } }
+  });
   done.forEach(m => { const seen = new Set(), H = [];
     (m.vehicles || []).forEach(v => (byVeh[AN(v)] || []).forEach(x => { if (x.id === m.id || seen.has(x.id)) return; seen.add(x.id); const fl = flags.get(x.id) || [], top = fl.find(f => f.l === 'red' && CRIT.has(f.n)) || fl.find(f => f.l === 'red') || fl.find(f => f.l === 'amber');
       H.push({ at: tOf(x), location: x.location, gd: (x.gdNos || [])[0] || '', result: resultOf(fl), why: top ? top.t : '', taken: x.decision ? x.decision.action : '' }); }));
@@ -95,7 +121,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -384,7 +410,7 @@ const server = http.createServer(async (req, res) => {
         if (!nPages || !fs.existsSync(dir) || !claim(dir, user, false)) return send(res, 409, { error: 'missing' });
         for (let n = 0; n < nPages; n++) { const f = path.join(dir, 'p' + n + '.ok'); if (!fs.existsSync(f)) return send(res, 409, { error: 'missing', n }); hashes.push(fs.readFileSync(f, 'utf8') || null); let k = 'doc'; try { const t = fs.readFileSync(path.join(dir, 'p' + n + '.kind'), 'utf8'); k = t === 'veh' ? 'veh' : t === 'goods' ? 'goods' : 'doc'; } catch (e) {} kinds.push(k); }
       }
-      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, gps: (b.gps && isFinite(+b.gps.lat) && isFinite(+b.gps.lon) && Math.abs(+b.gps.lat) <= 90 && Math.abs(+b.gps.lon) <= 180) ? { lat: +(+b.gps.lat).toFixed(5), lon: +(+b.gps.lon).toFixed(5), acc: Math.round(+b.gps.acc) || null } : null, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
+      const m = { id: b.id, by: user.code, byName: user.name, takenAt: clip(b.takenAt, 40), receivedAt: new Date().toISOString(), location: clip(b.location, 80), seller: clip(b.seller, 120), note: clip(b.note, 300), offeredKg: (+b.offeredKg > 0 && isFinite(+b.offeredKg)) ? +b.offeredKg : null, hashes, kinds, nPages, found: cleanFound(b.found), gps: (b.gps && isFinite(+b.gps.lat) && isFinite(+b.gps.lon) && Math.abs(+b.gps.lat) <= 90 && Math.abs(+b.gps.lon) <= 180) ? { lat: +(+b.gps.lat).toFixed(5), lon: +(+b.gps.lon).toFixed(5), acc: Math.round(+b.gps.acc) || null } : null, status: 'queued', pages: [], flags: [], gdNos: [], containers: [] };
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
@@ -400,6 +426,11 @@ const server = http.createServer(async (req, res) => {
       const f = path.join(CAP, m.id, 'p' + (parseInt(p[3], 10) || 0) + '-view.jpg');
       if (!fs.existsSync(f)) return send(res, 404, { error: 'none' });
       res.writeHead(200, { 'content-type': 'image/jpeg', 'cache-control': 'private, max-age=3600' }); return fs.createReadStream(f).pipe(res);
+    }
+    if (p[1] === 'found' && p[2] && req.method === 'POST') {   // what was actually found on the vehicle; can be entered or corrected after the scan
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      const f = cleanFound(await body(req)); if (!f) return send(res, 400, { error: 'form' }); m.found = Object.assign(f, { byName: user.name, at: new Date().toISOString() }); m.alerted = false; save(m); log(user.name, 'entered goods found for', m.id, '-', f.what, f.kg || '', 'kg'); if (m.status === 'done') alertAdmins(m);
+      return send(res, 200, { ok: true });
     }
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
