@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 22;
+const VERSION = 23;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -135,7 +135,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, release: m.release || null, review: m.review || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -392,6 +392,9 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (cfg.pins[pinKey] && cfg.pins[pinKey] !== sentPin) return send(res, 401, { error: 'pin' });
+    // A release ordered by an admin is a permanent record: once made, only the Owner can change it, undo it or delete the file.
+    const LOCK = m => !!(m && m.release && !user.owner);
+    const ordered = (m, via, remark) => { m.release = { byName: user.name, at: new Date().toISOString(), via, remark: clip(remark, 300).trim() }; log(user.name, 'ORDERED RELEASE of', m.id, '(' + via + ')'); };
     if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {
@@ -431,7 +434,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
@@ -446,11 +449,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (p[1] === 'found' && p[2] && req.method === 'POST') {   // what was actually found on the vehicle; can be entered or corrected after the scan
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const f = cleanFound(await body(req)); if (!f) return send(res, 400, { error: 'form' }); m.found = f; m.foundBy = { byName: user.name, at: new Date().toISOString() }; m.alerted = false; save(m); log(user.name, 'entered goods found for', m.id, '-', f.map(x => x.what).join(', ')); if (m.status === 'done') alertAdmins(m);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'report' && p[2] && req.method === 'POST') {   // the post's detention report, sent up for re-verification
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req), r = {}; RPT.forEach(k => { r[k] = clip(b[k], k === 'remarks' || k === 'reason' ? 500 : 120).trim(); });
       if (RPT_MUST.some(k => !r[k])) return send(res, 400, { error: 'form' });
       m.report = Object.assign(r, { byName: user.name, at: new Date().toISOString() }); m.review = null; save(m); log(user.name, 'submitted the detention report for', m.id);
@@ -459,12 +464,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (p[1] === 'review' && p[2] && req.method === 'POST') {   // an admin's decision on the report
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || !m.report) return send(res, 404, { error: 'none' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
+      if (b.result === 'release') ordered(m, 'on re-verification of the detention report', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'case' && p[2] && req.method === 'POST') {   // the court case that follows a detention
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['prep', 'filed', 'confiscated', 'released', 'paid', 'other'].indexOf(b.status) < 0) return send(res, 400, { error: 'form' });
       m.courtCase = { status: b.status, warehouse: clip(b.warehouse, 120).trim(), caseNo: clip(b.caseNo, 60).trim(), filedOn: clip(b.filedOn, 20).trim(), court: clip(b.court, 120).trim(), hearing: clip(b.hearing, 20).trim(), decidedOn: clip(b.decidedOn, 20).trim(), remark: clip(b.remark, 400).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'updated the court case for', m.id, '-', b.status);
       return send(res, 200, { ok: true });
@@ -472,6 +480,8 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const b = await body(req); if (['released', 'held', 'detained', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
+      if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'recorded', b.action, 'for', m.id);
       return send(res, 200, { ok: true });
     }
@@ -486,8 +496,8 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'watch' && p[2] && req.method === 'DELETE') { const x = cfg.watch.find(y => y.id === p[2]); cfg.watch = cfg.watch.filter(y => y.id !== p[2]); saveCfg(); xver++; if (x) log(user.name, 'removed from watchlist:', x.value); return send(res, 200, { ok: true }); }
     if (p[1] === 'values' && !p[2] && req.method === 'POST') { const b = await body(req), match = clip(b.match, 40).trim().replace(/^(\d{4})\.(\d+)$/, '$1$2'), min = +b.min; if (match.length < 3 || !(min > 0) || !isFinite(min)) return send(res, 400, { error: 'form' }); if (cfg.values.length >= 500) return send(res, 429, { error: 'full' }); cfg.values.push({ id: rnd(8), match, min, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added minimum value:', match, min); return send(res, 200, { ok: true }); }
     if (p[1] === 'values' && p[2] && req.method === 'DELETE') { cfg.values = cfg.values.filter(y => y.id !== p[2]); saveCfg(); xver++; return send(res, 200, { ok: true }); }
-    if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
-    if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
+    if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); if (LOCK(m)) return send(res, 403, { error: 'locked' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
+    if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (LOCK(m)) return send(res, 403, { error: 'locked' }); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
       people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
       requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
