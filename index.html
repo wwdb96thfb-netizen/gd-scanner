@@ -577,7 +577,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.20.0';
+var APPV = '2.20.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -635,7 +635,10 @@ async function findServer() {
         if (url && url !== cfg.s && await ping(url)) { cfg.s = url; keep('gd.cfg', cfg); return url; } } catch (e) {} }
     return null; })();
   var s = await S.finding; S.finding = null; S.server = s; drawConn(); return s; }
-async function api(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
+// A save that fails because the server has just restarted or moved to a new address is tried again by itself.
+async function api(path, opts) { var small = !!(opts && opts.method && opts.method !== 'GET') && (!/^\/api\/(page|capture)(\/|\?|$)/.test(path) || opts.method === 'DELETE');
+  for (var n = 0; ; n++) { try { return await api1(path, opts); } catch (e) { if (!e || !e.net || !small || n >= 2 || !navigator.onLine) throw e; await new Promise(function (ok) { setTimeout(ok, n ? 6000 : 2500); }); } } }
+async function api1(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
   try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now() + pinq(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
   catch (e) { S.server = null; drawConn(); throw { net: true }; }
   if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { pinRejected(); throw { pin: true }; } revoked(); drawConn(); throw { code: true }; }
@@ -972,7 +975,7 @@ function driverBox(c) { var box = h('div', { class: 'dec' }), n = h('input', { t
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'seized'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'seized' && (d.action === 'handed' || d.action === 'detained')))) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span'), adm = !!(S.me && S.me.admin), rw = relWho(sel, adm ? 'released' : '\u0000');
-    var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } if (rw.on() && !rw.get()) { msg.textContent = 'Enter the name of who ordered the release.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value, orderedBy: rw.on() ? rw.get() : '' }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not save. The server is not reachable.'; } } });
+    var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } if (rw.on() && !rw.get()) { msg.textContent = 'Enter the name of who ordered the release.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value, orderedBy: rw.on() ? rw.get() : '' }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = e && e.status === 403 ? 'This file is locked or waiting for the admin, so it was not changed.' : 'Could not save: the server did not answer after three tries. Nothing was lost. Wait a minute and tap Save again.'; } } });
     [h('b', { text: 'What did you do with this vehicle?' }), sel, rw.el, rem, btn, msg].forEach(function (x) { box.appendChild(x); }); };
   if (d) { box.appendChild(h('span', null, h('b', { text: 'Action taken: ' + (DEC[d.action] || d.action) }), h('span', { text: (d.remark ? ' · ' + d.remark : '') + ' · ' + (d.byName || '') + ', ' + when(d.at) }))); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
   return box; }
