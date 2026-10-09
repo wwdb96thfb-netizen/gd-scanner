@@ -375,6 +375,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
           <option value="">Choose a post…</option>
           <option>Super Highway</option><option>Hub Bypass</option><option>Juma Hadeed</option><option>Sona Pass</option>
           <option>Hawksbay</option><option>Rehri</option><option>Lath Basti</option><option>Hassan Shah Mazar</option>
+          <option>Bn HQ</option>
           <option value="other">Other (type it)</option></select>
           <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Optional: anything odd you noticed" maxlength="300"></label>
@@ -514,7 +515,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.11.0';
+var APPV = '2.11.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -588,7 +589,7 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
   else { e.className = 'conn wait'; e.textContent = 'The server is not reachable right now. Captures are kept on this phone and upload when it is back.' + held; }
-  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
+  var adm = !!(S.me && S.me.admin); $('t-people').hidden = !adm; if (adm && !$('f-locsel').value) { $('f-locsel').value = 'Bn HQ'; locChanged(); } $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files'; }
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
@@ -1070,8 +1071,12 @@ $('g-ok').addEventListener('click', async function () { var p = $('g-p1').value;
   cfg.ph = H; cfg.pinSync = r === 'ok'; keep('gd.cfg', cfg); unlock(); });
 $('g-forgot').addEventListener('click', function () { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); gate(); setStatus('s-gpin', 'Ask an admin to reset your PIN in the Admin tab, then choose a new one here.'); });
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
-function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {};
-  [['Name', me.name || '—'], ['Role', me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Post', getLoc() || 'Not chosen yet (choose on the Scan tab)'], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); box.appendChild(h('dd', { text: r[1] })); }); }
+function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
+  if (me.admin && !getLoc()) { $('f-locsel').value = 'Bn HQ'; locChanged(); }   // admins sit at Bn HQ
+  if (me.owner) { var inp = h('input', { type: 'text', maxlength: '40', placeholder: 'Your rank and name' }), msg = h('span', { class: 'note' }); inp.value = me.name && me.name !== 'Owner' ? me.name : '';
+    var sv = h('button', { class: 'btn small', text: 'Save name', onclick: async function () { var v = inp.value.trim(); if (v.length < 2) { msg.textContent = 'Type your name first.'; return; } sv.disabled = true; try { var j = await api('/api/me', { method: 'POST', body: JSON.stringify({ name: v }) }); S.me.name = j.name; keep('gd.me', S.me); toast('Name saved'); S.ver = ''; refresh(); drawSettings(); } catch (e) { sv.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
+    nameNode = h('div', { style: 'display:flex;flex-direction:column;gap:7px' }, inp, sv, msg); }
+  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Location', me.admin ? 'Bn HQ' : (getLoc() || 'Not chosen yet (choose on the Scan tab)')], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
 $('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
 $('b-chpin').addEventListener('click', async function () { var o = $('c-old').value, n = $('c-new').value;
   if (!cfg.ph || (await sha(cfg.c + ':' + o)) !== cfg.ph) { setStatus('s-pin', 'The current PIN is wrong.', true); return; }

@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 25;
+const VERSION = 26;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -45,7 +45,7 @@ const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if
 // The picture shown on a file's card: the goods if photographed, else any non-paper photo, else the vehicle, else page one.
 const thumbOf = m => { const P = m.pages || [], f = t => P.findIndex(p => p.type === t); for (const t of ['goods', 'other', 'veh']) { if (f(t) >= 0) return f(t); } return 0; };
 const pinFails = new Map();
-const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
+const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: cfg.ownerName || 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
 
 // ---- flags that depend on other files or on what the admins have entered: worked out fresh whenever anything changes
 const AN = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -395,6 +395,10 @@ const server = http.createServer(async (req, res) => {
     // A release ordered by an admin is a permanent record: once made, only the Owner can change it, undo it or delete the file.
     const LOCK = m => !!(m && m.release && !user.owner);
     const ordered = (m, via, remark) => { m.release = { byName: user.name, at: new Date().toISOString(), via, remark: clip(remark, 300).trim() }; log(user.name, 'ORDERED RELEASE of', m.id, '(' + via + ')'); };
+    if (p[1] === 'me' && req.method === 'POST') {   // the Owner sets the name shown for him; everyone else's name is set by an admin in People
+      if (!user.owner) return send(res, 403, { error: 'owner' }); const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
+      cfg.ownerName = name; saveCfg(); xver++; log('Owner name set to', name); return send(res, 200, { ok: true, name });
+    }
     if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {
