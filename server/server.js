@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 26;
+const VERSION = 27;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -539,7 +539,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 // ---- public address: Cloudflare quick tunnel, announced on a private ntfy topic so phones can find it
-let publicUrl = '', opened = false;
+let publicUrl = '', opened = false, tunnelProc = null;
 const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : '');
 function writeLinks() {
   const L = ['GD Scanner links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
@@ -558,7 +558,7 @@ async function announce() {
 setInterval(announce, 20 * 60e3);
 function tunnel() {
   let ch;
-  try { ch = spawn('cloudflared', ['tunnel', '--url', 'http://localhost:' + PORT, '--no-autoupdate'], { stdio: ['ignore', 'pipe', 'pipe'] }); }
+  try { ch = tunnelProc = spawn('cloudflared', ['tunnel', '--url', 'http://localhost:' + PORT, '--no-autoupdate'], { stdio: ['ignore', 'pipe', 'pipe'] }); }
   catch (e) { log('cloudflared could not start:', e.message); return; }
   const seen = d => {
     const m = String(d).match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
@@ -574,6 +574,17 @@ function tunnel() {
   ch.on('close', () => { publicUrl = ''; log('Tunnel stopped. Restarting in 15 seconds.'); setTimeout(tunnel, 15e3); });
   process.on('exit', () => { try { ch.kill(); } catch (e) {} });
 }
+// Keep the Mac awake while the server runs, so posts are never left without results. (Closing the lid still puts a laptop to sleep.)
+if (process.platform === 'darwin') { try { const caf = spawn('caffeinate', ['-i', '-m', '-s', '-w', String(process.pid)], { stdio: 'ignore' }); caf.on('error', () => {}); log('Keeping this Mac awake while the server runs.'); } catch (e) {} }
+// Watchdog: notices when the Mac has been asleep, and replaces the public address if phones can no longer reach it.
+let lastTick = Date.now(), badChecks = 0;
+setInterval(async () => {
+  const gap = Date.now() - lastTick; lastTick = Date.now();
+  if (gap > 6 * 60e3) { log('This Mac was asleep for about ' + Math.round(gap / 60e3) + ' minutes. Posts could not get results in that time.'); badChecks = 0; setTimeout(() => { announce(); selfUpdate(); }, 20e3); }
+  if (!publicUrl || process.env.GD_NO_TUNNEL) return;
+  try { const r = await fetch(publicUrl + '/', { signal: AbortSignal.timeout(12000) }); if (!r.ok) throw new Error('status ' + r.status); badChecks = 0; }
+  catch (e) { badChecks++; if (badChecks >= 3) { badChecks = 0; log('The public address stopped answering (' + e.message + '). Getting a new one.'); try { tunnelProc && tunnelProc.kill(); } catch (x) {} } }
+}, 2 * 60e3);
 // Half-uploaded captures that were never finished are removed after a week.
 try { for (const id of fs.readdirSync(CAP)) { const d = path.join(CAP, id); if (!fs.existsSync(path.join(d, 'meta.json')) && Date.now() - fs.statSync(d).mtimeMs > 7 * 864e5) fs.rmSync(d, { recursive: true, force: true }); } } catch (e) {}
 server.on('error', e => { if (e.code === 'EADDRINUSE') { log('Another GD Scanner server is already running on this Mac. This copy will stop.'); setTimeout(() => process.exit(1), 60e3); } else log('server error:', e.message); });

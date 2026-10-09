@@ -484,11 +484,23 @@ dl.kv dd{font-family:var(--body);font-weight:500}
       <h2 class="sec">PIN</h2>
       <div class="panel">
         <p class="note">The PIN is asked every time the app is opened, and again after 5 minutes away. Your link does not work on another phone without it. If you forget it, an admin can reset it from the Admin tab.</p>
-        <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
-        <input type="password" id="c-new" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="New PIN, 4 to 6 digits" aria-label="New PIN">
-        <input type="password" id="c-new2" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat new PIN" aria-label="Repeat new PIN">
-        <div class="row"><button class="btn small" id="b-chpin">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
+        <div class="row" id="pin-btns"><button class="btn ghost small" id="b-pinopen">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
+        <div id="pin-form" hidden style="display:flex;flex-direction:column;gap:10px">
+          <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
+          <input type="password" id="c-new" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="New PIN, 4 to 6 digits" aria-label="New PIN">
+          <input type="password" id="c-new2" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Repeat new PIN" aria-label="Repeat new PIN">
+          <div class="row"><button class="btn small" id="b-chpin">Save new PIN</button><button class="btn ghost small" id="b-pincancel">Cancel</button></div>
+        </div>
         <p class="status" id="s-pin" role="status"></p>
+      </div>
+      <h2 class="sec">About this app</h2>
+      <div class="panel">
+        <p class="note"><b>GD Scanner</b> helps Pakistan Coast Guards posts check goods moving on the roads against their customs papers, quickly and in the same way at every post.</p>
+        <p class="note"><b>What it does:</b> the post photographs the Goods Declaration (GD), other papers, the vehicle and the goods. The server reads them, checks the papers against each other, against the goods found, and against every earlier file, and tells the post what to do.</p>
+        <p class="note"><b>What it catches:</b> a GD used again and again, papers that belong to another consignment, wrong HS codes, goods that are not on the GD, more goods than the GD covers, edited figures, and vehicles or firms on the watchlist.</p>
+        <p class="note"><b>Who decides:</b> on ordinary files the post decides and it is recorded. On critical files an admin at Bn HQ decides: release, seize, or ask for more documents. Every seizure needs a report, is re-verified, and is followed through to the Customs Court.</p>
+        <p class="note"><b>What is recorded:</b> who scanned, where and when, what was found, every decision and who gave it. A release ordered by an admin cannot be changed except by the Owner.</p>
+        <p class="note">The app gives guidance from the papers. The officer on the spot and the chain of command remain responsible for the decision.</p>
       </div>
       <h2 class="sec">What the results mean</h2>
       <div class="panel">
@@ -515,7 +527,7 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.11.1';
+var APPV = '2.11.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1076,14 +1088,16 @@ function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me =
   if (me.owner) { var inp = h('input', { type: 'text', maxlength: '40', placeholder: 'Your rank and name' }), msg = h('span', { class: 'note' }); inp.value = me.name && me.name !== 'Owner' ? me.name : '';
     var sv = h('button', { class: 'btn small', text: 'Save name', onclick: async function () { var v = inp.value.trim(); if (v.length < 2) { msg.textContent = 'Type your name first.'; return; } sv.disabled = true; try { var j = await api('/api/me', { method: 'POST', body: JSON.stringify({ name: v }) }); S.me.name = j.name; keep('gd.me', S.me); toast('Name saved'); S.ver = ''; refresh(); drawSettings(); } catch (e) { sv.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
     nameNode = h('div', { style: 'display:flex;flex-direction:column;gap:7px' }, inp, sv, msg); }
-  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Location', me.admin ? 'Bn HQ' : (getLoc() || 'Not chosen yet (choose on the Scan tab)')], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
+  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', !S.me ? 'Not known yet' : me.owner ? 'Owner (admin)' : me.admin ? 'Admin' : 'Post staff'], ['Location', !S.me ? (getLoc() || 'Not known yet') : me.admin ? 'Bn HQ' : (getLoc() || 'Not chosen yet (choose on the Scan tab)')], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')], ['App version', APPV]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
 $('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
+function pinForm(open) { $('pin-form').hidden = !open; $('pin-form').style.display = open ? 'flex' : 'none'; $('pin-btns').hidden = open; if (!open) { ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); } else { setStatus('s-pin', ''); $('c-old').focus(); } }
+$('b-pinopen').addEventListener('click', function () { pinForm(true); }); $('b-pincancel').addEventListener('click', function () { pinForm(false); setStatus('s-pin', ''); }); pinForm(false);
 $('b-chpin').addEventListener('click', async function () { var o = $('c-old').value, n = $('c-new').value;
   if (!cfg.ph || (await sha(cfg.c + ':' + o)) !== cfg.ph) { setStatus('s-pin', 'The current PIN is wrong.', true); return; }
   if (!/^\d{4,6}$/.test(n)) { setStatus('s-pin', 'The new PIN must be 4 to 6 digits.', true); return; } if (n !== $('c-new2').value) { setStatus('s-pin', 'The two new PINs do not match.', true); return; }
   var H = await sha(cfg.c + ':' + n), r = await pinPost(H, cfg.ph);
   if (r !== 'ok') { setStatus('s-pin', 'The PIN could not be changed. The server must be reachable and up to date.', true); return; }
-  cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); setStatus('s-pin', 'PIN changed.'); });
+  cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); pinForm(false); setStatus('s-pin', 'PIN changed.'); });
 document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEventListener('click', function () { document.querySelectorAll('#grp-chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); document.querySelectorAll('#p-people .grp').forEach(function (g) { g.hidden = g.dataset.g !== b.dataset.g; }); }); });
 // tap a photo in a file to see it full screen; tap again to enlarge, drag to move
 document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { $('zoom-img').src = t.src; $('zoom').classList.remove('big'); $('zoom').hidden = false; } });
