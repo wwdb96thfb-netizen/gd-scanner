@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 23;
+const VERSION = 24;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -125,7 +125,7 @@ function live() {
     (m.vehicles || []).forEach(v => (byVeh[AN(v)] || []).forEach(x => { if (x.id === m.id || seen.has(x.id)) return; seen.add(x.id); const fl = flags.get(x.id) || [], top = fl.find(f => f.l === 'red' && CRIT.has(f.n)) || fl.find(f => f.l === 'red') || fl.find(f => f.l === 'amber');
       H.push({ at: tOf(x), location: x.location, gd: (x.gdNos || [])[0] || '', result: resultOf(fl), why: top ? top.t : '', taken: x.decision ? x.decision.action : '' }); }));
     H.sort((a, b) => b.at.localeCompare(a.at)); hist.set(m.id, H.slice(0, 20));
-    const bad = H.filter(x => x.at < tOf(m) && (x.result === 'detain' || x.taken === 'detained' || x.taken === 'handed'));
+    const bad = H.filter(x => x.at < tOf(m) && (x.result === 'detain' || x.taken === 'detained' || x.taken === 'seized' || x.taken === 'handed'));
     if (bad.length) flags.get(m.id).push({ l: 'amber', n: 40, t: 'This vehicle was stopped before', d: bad.slice(0, 3).map(x => x.at.slice(0, 10) + ' at ' + (x.location || '?') + (x.why ? ': ' + x.why : '')).join('; ') + '.', p: 0 });
   });
   return xcache = { ver: xver, flags, hist };
@@ -135,7 +135,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, release: m.release || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -434,7 +434,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
@@ -479,19 +479,38 @@ const server = http.createServer(async (req, res) => {
     }
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
-      const b = await body(req); if (['released', 'held', 'detained', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
+      const b = await body(req); if (['released', 'held', 'detained', 'seized', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
+      if (!user.admin && resultOf(live().flags.get(m.id) || []) === 'detain') return send(res, 403, { error: 'await' });   // critical: the admin decides
       if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'recorded', b.action, 'for', m.id);
       return send(res, 200, { ok: true });
     }
-    if (!user.admin) return send(res, 403, { error: 'admin' });
-    if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, vapid: cfg.vapid.pub, phones: cfg.subs.filter(x => x.who === idOf(user.code)).length, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
     if (p[1] === 'push' && req.method === 'POST') { const b = await body(req), x = b.sub || {}, k = x.keys || {}; let host = ''; try { const e = new URL(x.endpoint); if (e.protocol === 'https:') host = e.hostname; } catch (e) {}
       if (!PUSH_HOSTS.test(host) || !/^[\w-]{80,100}$/.test(k.p256dh || '') || !/^[\w-]{16,30}$/.test(k.auth || '')) return send(res, 400, { error: 'form' });
       cfg.subs = cfg.subs.filter(y => y.endpoint !== x.endpoint); cfg.subs.push({ who: idOf(user.code), endpoint: String(x.endpoint).slice(0, 600), p256dh: k.p256dh, auth: k.auth, at: new Date().toISOString() }); if (cfg.subs.length > 200) cfg.subs.shift(); saveCfg(); log(user.name, 'turned on phone alerts');
       if (b.test) { try { await pushTo(cfg.subs[cfg.subs.length - 1], { title: 'GD Scanner alerts are on', body: 'You will be told here when a post gets a Detain result.' }); } catch (e) {} }
       return send(res, 200, { ok: true }); }
+    if (p[1] === 'order' && p[2] && req.method === 'POST') {   // a critical file: the admin decides and the post is told
+      if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || m.status !== 'done') return send(res, 404, { error: 'none' });
+      if (LOCK(m)) return send(res, 403, { error: 'locked' });
+      const b = await body(req), act = { release: 'released', detain: 'detained', seize: 'seized', docs: 'held' }[b.order]; if (!act) return send(res, 400, { error: 'form' });
+      const o = { order: b.order, note: clip(b.note, 300).trim(), byName: user.name, at: new Date().toISOString() };
+      m.orders = (m.orders || []).concat([o]).slice(-20); m.order = o; m.ack = null;
+      if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
+      m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); log(user.name, 'decided', b.order, 'for', m.id);
+      const W = { release: 'RELEASE the vehicle', detain: 'DETAIN the vehicle', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
+      for (const x of cfg.subs.filter(y => y.who === idOf(m.by))) { try { await pushTo(x, { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (o.note ? o.note + '. ' : '') + 'By ' + user.name + '.' }); } catch (e) {} }
+      return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'ack' && p[2] && req.method === 'POST') {   // the post confirms it has carried out the admin's decision
+      const m = index.get(p[2]); if (!m || !m.order || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
+      const b = await body(req); m.ack = { byName: user.name, at: new Date().toISOString(), remark: clip(b.remark, 200).trim() }; save(m); log(user.name, 'carried out', m.order.order, 'for', m.id);
+      notifyAdmins({ title: 'Carried out: ' + m.order.order, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + ' at ' + (m.location || 'post') + '. By ' + user.name + '.' });
+      return send(res, 200, { ok: true });
+    }
+    if (!user.admin) return send(res, 403, { error: 'admin' });
+    if (p[1] === 'admin' && req.method === 'GET') return send(res, 200, { ok: true, watch: cfg.watch, values: cfg.values, vapid: cfg.vapid.pub, phones: cfg.subs.filter(x => x.who === idOf(user.code)).length, usage: Object.assign({}, cfg.usage, { pages: cfg.usage.day === today() ? cfg.usage.pages : 0 }), q: queueInfo() });
     if (p[1] === 'watch' && !p[2] && req.method === 'POST') { const b = await body(req), value = clip(b.value, 60).trim(); if (AN(value).length < 4) return send(res, 400, { error: 'form' }); if (cfg.watch.length >= 500) return send(res, 429, { error: 'full' }); cfg.watch.push({ id: rnd(8), value, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added to watchlist:', value); return send(res, 200, { ok: true }); }
     if (p[1] === 'watch' && p[2] && req.method === 'DELETE') { const x = cfg.watch.find(y => y.id === p[2]); cfg.watch = cfg.watch.filter(y => y.id !== p[2]); saveCfg(); xver++; if (x) log(user.name, 'removed from watchlist:', x.value); return send(res, 200, { ok: true }); }
     if (p[1] === 'values' && !p[2] && req.method === 'POST') { const b = await body(req), match = clip(b.match, 40).trim().replace(/^(\d{4})\.(\d+)$/, '$1$2'), min = +b.min; if (match.length < 3 || !(min > 0) || !isFinite(min)) return send(res, 400, { error: 'form' }); if (cfg.values.length >= 500) return send(res, 429, { error: 'full' }); cfg.values.push({ id: rnd(8), match, min, note: clip(b.note, 120).trim(), by: user.name, at: new Date().toISOString() }); saveCfg(); xver++; log(user.name, 'added minimum value:', match, min); return send(res, 200, { ok: true }); }

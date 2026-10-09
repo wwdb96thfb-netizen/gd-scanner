@@ -310,13 +310,14 @@ details.case>summary.nopic>*{grid-column:1}
         <span class="pill red">Detain / Hold</span><span class="pill amber">Ask / Question</span><span class="pill ok">Clear to go</span>
         <span>Open a file to see the action to take. Points marked Critical allow no compromise. A blurred photo can also cause red, so retake before you conclude.</span>
       </div>
-      <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span>Get an alert on this phone when a post gets a Detain result.</span><button class="btn small" id="b-push2">Turn on</button></div>
+      <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="push-txt">Get an alert on this phone when a post gets a Detain result.</span><button class="btn small" id="b-push2">Turn on</button></div>
       <div id="admin-tools" hidden>
         <div class="chips" id="chips" style="margin-bottom:10px">
           <button data-f="all" aria-pressed="true">All</button>
           <button data-f="red" aria-pressed="false">Detain / Hold</button>
           <button data-f="amber" aria-pressed="false">Ask / Question</button>
           <button data-f="ok" aria-pressed="false">Clear to go</button>
+          <button data-f="wait" aria-pressed="false">Awaiting decision</button>
           <button data-f="due" aria-pressed="false">Report due</button>
           <button data-f="rev" aria-pressed="false">To verify</button>
           <button data-f="court" aria-pressed="false">Cases open</button>
@@ -422,7 +423,7 @@ details.case>summary.nopic>*{grid-column:1}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.8.0';
+var APPV = '2.9.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -505,10 +506,12 @@ async function refresh() {
   try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin, owner: !!j.owner || !!(S.me && S.me.owner && j.owner === undefined) }; keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ(); if (Array.isArray(j.items) && JSON.stringify(j.items) !== JSON.stringify(S.items)) { S.items = j.items; keep('gd.items', S.items); if (!scanFound.read()) { $('found-scan').textContent = ''; scanFound = foundFields(); $('found-scan').appendChild(scanFound.el); } }
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
-    if (j.admin) { detainAlert(j.list); pushCheck(); }
+    if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the admin\'s decision on this phone as a notification.'; pushCheck();
     S.list = j.list; keep('gd.list', j.list.slice(0, 50)); } catch (e) {}
   drawConn(); drawFiles(); }
-async function pushCheck() { if (!pushOK()) return; if (!S.vapid) { try { var j = await api('/api/admin'); S.vapid = j.vapid || ''; } catch (e) { return; } } if (!S.vapid) return;
+function orderAlert(list) { var seen = load('gd.ord') || {}, first = !load('gd.ordinit'), hit = null; list.forEach(function (c) { if (c.order && seen[c.id] !== c.order.at) { if (!first) hit = c; seen[c.id] = c.order.at; } }); keep('gd.ord', seen); keep('gd.ordinit', 1);
+  if (hit) { toast('ADMIN DECISION: ' + ORD[hit.order.order].toUpperCase() + (hit.vehicles && hit.vehicles[0] ? ' · ' + hit.vehicles[0] : '')); if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); } }
+async function pushCheck() { if (!pushOK()) return; if (!S.vapid) return;
   var on = Notification.permission === 'granted' && load('gd.push') === S.vapid; $('push-ask').hidden = on || Notification.permission === 'denied'; if ($('push-ask').hidden) $('push-ask').style.display = 'none'; else $('push-ask').style.display = 'flex';
   if (Notification.permission === 'granted' && !on && !S.pushTried) { S.pushTried = true; if (await enablePush(false)) { $('push-ask').hidden = true; $('push-ask').style.display = 'none'; } } }
 function pushOK() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
@@ -677,13 +680,14 @@ function advise(c) {
     else put(why, f.t); });
   if (!has('veh')) put(ask, 'A photo of the vehicle showing its number plate');
   var uniq = function (L) { var o = []; L.forEach(function (f) { put(o, f.t); }); return o; };
-  if (crit.length) return { k: 'red', a: 'detain', head: 'DETAIN THE VEHICLE', text: 'Critical mismatch. Do not release. Inform your officer now.', items: uniq(crit), foot: 'If a photo was blurred, retake it and send again while the vehicle waits.' };
+  if (crit.length) return { k: 'red', a: 'detain', head: 'DETAIN THE VEHICLE', text: 'Critical mismatch. Hold the vehicle. Do not release. The admins have been told and will send their decision here.', items: uniq(crit), foot: 'If a photo was blurred, retake it and send again while the vehicle waits.' };
   if (red.length) return { k: 'red', a: 'hold', head: 'HOLD THE VEHICLE', text: 'Figures on the papers do not agree. Retake sharp photos and send again.', items: uniq(red), foot: 'If the result is still red, detain the vehicle and inform your officer.' };
   if (ask.length) return { k: 'amber', a: 'ask', head: 'ASK FOR DOCUMENTS', text: 'Do not release until these are shown and scanned:', items: ask.concat(why.map(function (t) { return 'Explanation: ' + t; })), foot: 'If the driver cannot produce them, hold the vehicle and inform your officer.' };
   if (why.length) return { k: 'amber', a: 'query', head: 'QUESTION THE DRIVER', text: 'Release only after a satisfactory answer on:', items: why, foot: 'If the answer does not satisfy you, hold the vehicle and inform your officer.' };
   return { k: 'ok', a: 'clear', head: 'CLEAR TO GO', text: 'Papers are in order. Match the goods and the vehicle number with the papers by eye, then release.', items: [], foot: '' };
 }
-var DEC = { released: 'Released', held: 'Held', detained: 'Detained: goods to warehouse, case to be filed', handed: 'Detained' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
+var ORD = { release: 'Release the vehicle', detain: 'Detain the vehicle', seize: 'Seize the goods', docs: 'Ask for more documents' };
+var DEC = { seized: 'Seized: goods to warehouse, case to be filed', released: 'Released', held: 'Held', detained: 'Detained: goods to warehouse, case to be filed', handed: 'Detained' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
 // ---- goods found: a pick list of what is commonly carried, each with its usual packing; anything else can be typed in
 var UNITS = ['Bags', 'Cartons', 'Boxes', 'Barrels', 'Drums', 'Jerry cans', 'Tins', 'Bottles', 'Cylinders', 'Bales', 'Rolls', 'Bundles', 'Crates', 'Packets', 'Pieces', 'Vehicles', 'Animals', 'Kg (loose)', 'Tons', 'Litres (loose)'];
 var GOODS = [
@@ -737,7 +741,7 @@ var RPTF = [['vehicle', 'Vehicle number', 1], ['driver', 'Driver name', 1], ['co
 var REV = { confirmed: 'Detention confirmed: file the case', release: 'Release ordered', redo: 'Sent back for correction' };
 var CST = { prep: 'Goods in warehouse, case being prepared', filed: 'Case filed in Customs Court, decision awaited', confiscated: 'Court decided: goods confiscated', released: 'Court decided: goods released', paid: 'Court decided: released on payment of duty or fine', other: 'Court decided: other (see remark)' };
 function caseOpen(c) { var k = c.courtCase; return k ? (k.status === 'prep' || k.status === 'filed') : rptState(c) === 'confirmed'; }
-function rptState(c) { var d = c.decision; if (!d || (d.action !== 'detained' && d.action !== 'handed')) return c.report ? (c.review ? c.review.result : 'sent') : ''; if (!c.report) return 'due'; return c.review ? c.review.result : 'sent'; }
+function rptState(c) { var d = c.decision; if (!d || (d.action !== 'detained' && d.action !== 'handed' && d.action !== 'seized')) return c.report ? (c.review ? c.review.result : 'sent') : ''; if (!c.report) return 'due'; return c.review ? c.review.result : 'sent'; }
 function rptRows(c) { var r = c.report || {}, g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, adv = advise(c);
   return [['Post', c.location], ['Scanned', when(c.takenAt)], ['Action taken', c.decision ? DEC[c.decision.action] + (c.decision.remark ? ' (' + c.decision.remark + ')' : '') : '']].concat(RPTF.map(function (f) { return [f[1], r[f[0]]]; }), [['GD number', (c.gdNos || []).join(', ')], ['Importer on the GD', g.importer], ['Goods on the GD', (Array.isArray(g.items) ? g.items : []).map(function (it) { return it.description; }).filter(Boolean).join('; ')], ['Goods found (entered)', c.found ? foundText(c.found) : ''], ['App result', adv.head + (adv.items.length ? ': ' + adv.items.join('; ') : '')], ['Place of scan', c.gps ? c.gps.lat + ', ' + c.gps.lon : ''], ['Reported by', (r.byName || '') + (r.at ? ', ' + when(r.at) : '')], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' (' + c.review.remark + ')' : '') + ' by ' + c.review.byName + ', ' + when(c.review.at) : 'Pending'], ['Released on the order of', c.release ? c.release.byName + ', ' + when(c.release.at) + (c.release.remark ? ' (' + c.release.remark + ')' : '') : ''], ['Court case', c.courtCase ? CST[c.courtCase.status] + (c.courtCase.caseNo ? ', case ' + c.courtCase.caseNo : '') + (c.courtCase.court ? ', ' + c.courtCase.court : '') : '']]).filter(function (x) { return x[1]; }); }
 function rptText(c) { return 'DETENTION REPORT\nGD Scanner, Pakistan Coast Guards\n\n' + rptRows(c).map(function (x) { return x[0] + ': ' + x[1]; }).join('\n'); }
@@ -768,8 +772,23 @@ function reportBox(c) { var box = h('div', { class: 'dec' }), r = c.report, adm 
     var b2 = h('button', { class: 'btn small', text: 'Save re-verification', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } b2.disabled = true; try { await api('/api/review/' + c.id, { method: 'POST', body: JSON.stringify({ result: sel.value, remark: rem.value }) }); toast('Saved: ' + REV[sel.value]); S.ver = ''; refresh(); } catch (e) { b2.disabled = false; m2.textContent = 'Could not save.'; } } });
     [h('b', { text: 'Re-verification (admin)' }), sel, rem, b2, m2].forEach(function (x) { box.appendChild(x); }); }
   return box; }
+// ---- critical files: the admin decides, the post is told and confirms. Other files: the post decides and it is recorded.
+function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me && S.me.admin), o = c.order;
+  box.appendChild(h('b', { text: 'Admin decision (critical file)' }));
+  if (o) { box.appendChild(h('div', { class: 'act ' + (o.order === 'release' ? 'ok' : o.order === 'docs' ? 'amber' : 'red') }, h('b', { text: ORD[o.order].toUpperCase() }), o.note ? h('span', { text: o.note }) : null, h('small', { text: 'Decided by ' + o.byName + ', ' + when(o.at) })));
+    if (c.ack) box.appendChild(h('span', { text: 'Carried out by ' + c.ack.byName + ', ' + when(c.ack.at) + (c.ack.remark ? ' · ' + c.ack.remark : '') }));
+    else if (o.order === 'docs') box.appendChild(h('span', { text: adm ? 'Waiting for the post to scan the extra documents.' : 'Keep holding the vehicle. Scan the documents asked for as a new scan with the same vehicle, then wait for the next decision.' }));
+    else if (!adm || (S.me && c.byName === S.me.name)) { var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)' }), msg = h('span'), ab = h('button', { class: 'btn small', text: 'Confirm: decision carried out', onclick: async function () { ab.disabled = true; try { await api('/api/ack/' + c.id, { method: 'POST', body: JSON.stringify({ remark: rem.value }) }); toast('Confirmed'); S.ver = ''; refresh(); } catch (e) { ab.disabled = false; msg.textContent = 'Could not save. The server is not reachable.'; } } }); [rem, ab, msg].forEach(function (x) { box.appendChild(x); }); }
+    else box.appendChild(h('span', { text: 'Waiting for the post to confirm it has been carried out.' }));
+    if ((c.orders || []).length > 1) box.appendChild(h('div', { class: 'meta', text: 'Earlier: ' + c.orders.slice(0, -1).map(function (x) { return ORD[x.order] + ' (' + x.byName + ', ' + when(x.at) + ')'; }).join('; ') })); }
+  else if (!adm) box.appendChild(h('div', { class: 'act amber' }, h('b', { text: 'WAITING FOR THE ADMIN\'S DECISION' }), h('span', { text: 'Hold the vehicle. Do not release it. The decision will appear here and you will be alerted.' })));
+  if (adm && !(c.release && !(S.me && S.me.owner))) { var sel = h('select', { 'aria-label': 'Decision' }); sel.appendChild(h('option', { value: '', text: o ? 'Change the decision…' : 'Choose the decision…' })); Object.keys(ORD).forEach(function (k) { sel.appendChild(h('option', { value: k, text: ORD[k] })); });
+    var note = h('input', { type: 'text', maxlength: '300', placeholder: 'Instruction to the post, e.g. which documents' }), m2 = h('span'), sb = h('button', { class: 'btn small', text: 'Send decision to the post', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } if (sel.value === 'docs' && !note.value.trim()) { m2.textContent = 'Say which documents are needed.'; return; } sb.disabled = true;
+      try { await api('/api/order/' + c.id, { method: 'POST', body: JSON.stringify({ order: sel.value, note: note.value }) }); toast('Decision sent: ' + ORD[sel.value]); S.ver = ''; refresh(); } catch (e) { sb.disabled = false; m2.textContent = e && e.status === 403 ? 'This file is locked by a release order. Only the Owner can change it.' : 'Could not send. The server is not reachable or has not updated yet.'; } } });
+    [sel, note, sb, m2].forEach(function (x) { box.appendChild(x); }); }
+  return box; }
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
-  var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'detained'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'detained' && d.action === 'handed'))) o.selected = true; sel.appendChild(o); });
+  var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'detained', 'seized'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'detained' && d.action === 'handed'))) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span');
     var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not save. The server is not reachable.'; } } });
     [h('b', { text: 'What did you do with this vehicle?' }), sel, rem, btn, msg].forEach(function (x) { box.appendChild(x); }); };
@@ -807,7 +826,7 @@ function caseView(c) {
   else if (c.nPages) { var tk = c.id + ':' + (c.thumbN || 0), saved = TH[tk];
     if (saved) pic = h('img', { class: 'pic', alt: '', src: saved });
     else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
-  d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })));
+  d.appendChild(h('summary', pic ? null : { class: 'nopic' }, pic, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR ADMIN DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Admin decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })));
   var body = h('div', { class: 'body' }); d.appendChild(body);
   if (c.seller || c.note || c.offeredKg) body.appendChild(kv([['Seller', c.seller], ['On offer', c.offeredKg ? fmt(c.offeredKg) + ' kg' : null], ['Note', c.note]]));
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
@@ -815,7 +834,8 @@ function caseView(c) {
   if (adv) body.appendChild(actBox(adv));
   if (c.release) body.appendChild(h('div', { class: 'act ok relbox' }, h('b', { text: 'RELEASED ON THE ORDER OF ' + String(c.release.byName || '').toUpperCase() }), h('span', { text: when(c.release.at) + ' · ' + (c.release.via || '') + (c.release.remark ? ' · ' + c.release.remark : '') }), h('small', { text: S.me && S.me.owner ? 'Permanent record. Only you, the Owner, can change or remove it.' : 'Permanent record. It cannot be changed or removed, and this file cannot be deleted, except by the Owner.' })));
   if (done && !c.local) body.appendChild(foundBox(c));
-  if (done && !c.local) body.appendChild(decBox(c));
+  var crit = done && !c.local && ((adv && adv.a === 'detain') || !!c.order);
+  if (crit) body.appendChild(orderBox(c)); else if (done && !c.local) body.appendChild(decBox(c));
   if (done && !c.local && rptState(c)) body.appendChild(reportBox(c));
   if (done && !c.local && (c.courtCase || rptState(c) === 'confirmed')) body.appendChild(courtBox(c));
   if (c.history && c.history.length) body.appendChild(histBox(c));
@@ -826,7 +846,7 @@ function caseView(c) {
   if (sk.length) body.appendChild(h('details', { class: 'more' }, h('summary', { text: sk.length + ' not checked' }), flagList(sk)));
   (c.pages || []).forEach(function (p, i) { if (c.local) return; var pv = pageView(p, i); if (pv) body.appendChild(pv); });
   if (!c.local && c.nPages) { var ph = h('div', { class: 'photos' }); ph.appendChild(h('button', { class: 'btn ghost small', text: 'Show ' + c.nPages + ' photo' + (c.nPages > 1 ? 's' : ''), onclick: function (e) { if (!S.server) { e.currentTarget.textContent = 'Photos need the server. Try again later'; return; } e.currentTarget.remove(); for (var n = 0; n < c.nPages; n++) ph.appendChild(h('img', { src: S.server + '/api/photo/' + c.id + '/' + n + '?code=' + encodeURIComponent(cfg.c) + pinq() + '&_=' + c.id, alt: 'Page ' + (n + 1), loading: 'lazy' })); } })); body.appendChild(ph); }
-  if (locked) body.querySelectorAll('.dec button, .dec select, .dec input, .dec textarea').forEach(function (x) { var t = x.textContent; if (x.tagName === 'BUTTON' && (t === 'Share report' || t === 'Print or save as PDF')) return; if (x.tagName === 'BUTTON') x.remove(); else x.disabled = true; });
+  if (locked) body.querySelectorAll('.dec button, .dec select, .dec input, .dec textarea').forEach(function (x) { var t = x.textContent; if (x.tagName === 'BUTTON' && (t === 'Share report' || t === 'Print or save as PDF' || t === 'Confirm: decision carried out')) return; if (x.tagName === 'INPUT' && x.placeholder === 'Remark (optional)' && x.closest('.ord')) return; if (x.tagName === 'BUTTON') x.remove(); else x.disabled = true; });
   if (adm && !c.local && !locked) { var bar = h('div', { class: 'row' });
     var again = h('button', { class: 'btn ghost small', text: 'Read again', onclick: async function () { again.disabled = true; try { await api('/api/retry/' + c.id, { method: 'POST' }); refresh(); } catch (e) { again.disabled = false; } } });
     var ask = h('button', { class: 'btn danger small', text: 'Delete this file', onclick: function () { ask.hidden = true; yes.hidden = false; no.hidden = false; } });
@@ -844,7 +864,7 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
   var y = window.scrollY; box.textContent = '';
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   local.concat(S.list).forEach(function (c) {
-    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && v !== S.filter)) return;
+    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'wait' ? !(c.status === 'done' && !c.decision && (!c.order || c.order.order === 'docs') && advise(c).a === 'detain') && !(c.order && c.order.order === 'docs') : S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && v !== S.filter)) return;
       if (term && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
     n++; var cv = caseView(c); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
   if (y) window.scrollTo(0, y);
@@ -859,7 +879,7 @@ async function shareText(text, btn, field) { try { if (navigator.share) await na
 function dayOf(s) { var d = new Date(s); return isNaN(d) ? '' : d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
 function summary() { var day = $('sum-day').value, rows = {}, tot = { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} };
   S.list.forEach(function (c) { if (c.status !== 'done' || dayOf(c.takenAt || c.receivedAt) !== day) return; var k = c.location || 'No post given', r = rows[k] = rows[k] || { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} }, a = advise(c).a, col = a === 'detain' ? 'detain' : a === 'hold' ? 'hold' : a === 'clear' ? 'clear' : 'ask';
-    [r, tot].forEach(function (x) { x.n++; x[col]++; if (c.decision && (c.decision.action === 'detained' || c.decision.action === 'handed')) x.acted++; x.people[c.byName || '?'] = 1; }); });
+    [r, tot].forEach(function (x) { x.n++; x[col]++; if (c.decision && (c.decision.action === 'detained' || c.decision.action === 'handed' || c.decision.action === 'seized')) x.acted++; x.people[c.byName || '?'] = 1; }); });
   return { day: day, rows: rows, tot: tot }; }
 function drawSummary() { var s = summary(), box = $('sum-box'); box.textContent = ''; var t = h('table', { class: 'sum' }), tr = h('tr'); ['Post', 'Checked', 'Clear', 'Ask', 'Hold', 'Detain', 'Actually detained'].forEach(function (x) { tr.appendChild(h('th', { text: x })); }); t.appendChild(tr);
   var line = function (name, r) { var tr = h('tr'); [name, r.n, r.clear, r.ask, r.hold, r.detain, r.acted].forEach(function (x) { tr.appendChild(h('td', { text: String(x) })); }); t.appendChild(tr); };
