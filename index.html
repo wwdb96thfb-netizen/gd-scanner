@@ -414,15 +414,13 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
           <option value="other">Other (type it)</option></select>
           <input type="text" id="f-loc" placeholder="Type the location" maxlength="80" hidden aria-label="Other location"></label>
         <label class="f">Note<input type="text" id="f-note" placeholder="Optional: anything odd you noticed" maxlength="300"></label>
-        <label class="f">Driver name<input type="text" id="f-drv" maxlength="60" placeholder="As on his CNIC" autocomplete="off"></label>
-        <label class="f">Driver CNIC or phone<input type="text" id="f-drvid" maxlength="40" inputmode="numeric" placeholder="e.g. 42101-1234567-1" autocomplete="off"></label>
       </div>
       <div id="found-scan"></div>
       <div class="form" style="display:none">
       </div>
       <label class="drop one" for="f-files" id="l-files" tabindex="0">
         <span class="arts"><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="27" y="4" width="38" height="52" rx="3" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M55 4v8a2 2 0 0 0 2 2h8" fill="none" stroke="currentColor" stroke-width="2"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M33 20h18M33 27h26M33 34h26M33 41h14"/></g><circle cx="55" cy="45" r="6" fill="none" stroke="#b3261e" stroke-width="2"/><path d="M51.5 45h7" stroke="#b3261e" stroke-width="2" stroke-linecap="round"/><path d="M19 62h54" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><rect x="6" y="14" width="50" height="34" rx="2" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="M56 26h14l10 12v10H56z" fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M62 31h7l5 6H62z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" opacity=".55"/><circle cx="22" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><circle cx="66" cy="51" r="6" fill="#fff" stroke="currentColor" stroke-width="2"/><rect x="17" y="27" width="28" height="11" rx="2" fill="#fff" stroke="#b3261e" stroke-width="2"/><path d="M22 32.5h18" stroke="#b3261e" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="3 2.4"/><path d="M4 62h84" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg><svg class="art" viewBox="0 0 92 68" aria-hidden="true"><g fill="#fff" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="12" y="34" width="30" height="22"/><rect x="42" y="34" width="30" height="22"/><rect x="27" y="12" width="30" height="22"/></g><g stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M23 34v8M31 34v8M53 34v8M61 34v8M38 12v8M46 12v8"/></g><path d="M6 62h80" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".3"/></svg></span>
-        <b>Take or choose photos</b><small>Papers, vehicle and goods, in any order. The app sorts them automatically.</small></label>
+        <b>Take or choose photos</b><small>Papers, driver's CNIC, vehicle and goods, in any order. The app sorts them automatically.</small></label>
       <input type="file" id="f-files" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
       <p class="qnote" id="q-note" hidden role="status"></p>
@@ -577,7 +575,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.21.0';
+var APPV = '2.22.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -753,9 +751,9 @@ $('b-send').addEventListener('click', async function () {
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
       pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), driver: ($('f-drv').value.trim() || $('f-drvid').value.trim()) ? { name: $('f-drv').value.trim(), idn: $('f-drvid').value.trim() } : null, found: scanFound.read(), offeredKg: null, pages: pages };
+  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), driver: null, found: scanFound.read(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
-  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = ''; $('f-drv').value = ''; $('f-drvid').value = ''; scanFound.reset();
+  picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = ''; scanFound.reset();
   setStatus('s-scan', 'Saved on this phone. Uploading…'); S.outbox.push(item); drawConn(); showTab('files'); sync();
 });
 
@@ -770,6 +768,8 @@ function pageView(p, i) { var box = h('details', { class: 'more' }), g = p.gd, q
     box.appendChild(kv([['Invoice', v.invoice_no], ['Date', v.date], ['Seller', v.seller], ['Seller NTN', v.seller_ntn], ['Buyer', v.buyer], ['Goods', v.description], ['Quantity', v.quantity_kg != null ? fmt(v.quantity_kg) + ' kg' : null], ['GD quoted', v.gd_no]])); }
   else if (p.type === 'veh') { var w = p.veh || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Vehicle, what was read' }));
     box.appendChild(kv([['Number plate', w.reg_no || 'not readable'], ['Type', w.vehicle_type], ['Colour', w.colour], ['Container number', w.container_no], ['Other writing', w.other_text]])); }
+  else if (p.type === 'id') { var pid = p.id || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Driver identity (' + (pid.doc_kind || 'CNIC') + '), what was read' }));
+    box.appendChild(kv([['Name', pid.name], ['Father / husband', pid.father_name], ['Number', pid.id_no], ['Date of birth', pid.dob], ['Valid until', pid.expiry], ['Address', pid.address]])); }
   else if (p.type === 'doc') { var o = p.doc || {}; box.appendChild(h('summary', { text: 'Page ' + (i + 1) + ': Other document' + (p.what || o.title ? ' (' + (o.title || p.what) + ')' : '') }));
     box.appendChild(kv([['Document', o.title || p.what], ['Number', o.number], ['Date', o.date], ['Issued by', o.issued_by], ['Names on it', o.parties], ['Goods', o.goods], ['Quantity', o.quantity], ['Vehicle number', o.vehicle_no], ['GD quoted', o.gd_no]])); }
   else if (p.type === 'goods') { var gg = p.goods || {}; box.appendChild(h('summary', { text: 'Photo ' + (i + 1) + ': Goods' + (gg.product || p.what ? ' (' + (gg.product || p.what) + ')' : '') })); box.appendChild(kv([['Seen', p.what], ['Product printed on packing', gg.product], ['Brand', gg.brand], ['Packing', gg.packing], ['Marked weight of each', gg.net_wt_each], ['Made in', gg.made_in], ['Made or packed on', gg.mfg_date], ['Expiry', gg.expiry_date], ['All printing', gg.label_text]])); }
@@ -971,7 +971,7 @@ function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me &
   return box; }
 function driverBox(c) { var box = h('div', { class: 'dec' }), n = h('input', { type: 'text', maxlength: '60', placeholder: 'Driver name' }), i = h('input', { type: 'text', maxlength: '40', inputmode: 'numeric', placeholder: 'Driver CNIC or phone' }), msg = h('span');
   var b = h('button', { class: 'btn ghost small', text: 'Save driver', onclick: async function () { if (!n.value.trim() && !i.value.trim()) { msg.textContent = 'Enter the name, the CNIC or phone, or both.'; return; } b.disabled = true; try { await api('/api/driver/' + c.id, { method: 'POST', body: JSON.stringify({ name: n.value.trim(), idn: i.value.trim() }) }); toast('Driver saved'); S.ver = ''; refresh(); } catch (e) { b.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
-  [h('b', { text: 'Driver' }), n, i, b, msg].forEach(function (x) { box.appendChild(x); }); return box; }
+  [h('b', { text: 'Driver' }), h('span', { text: 'No CNIC was read in this file. Scan the driver\'s CNIC with the papers next time, or type his details here.' }), n, i, b, msg].forEach(function (x) { box.appendChild(x); }); return box; }
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'seized'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'seized' && (d.action === 'handed' || d.action === 'detained')))) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span'), adm = !!(S.me && S.me.admin), rw = relWho(sel, adm ? 'released' : '\u0000');
