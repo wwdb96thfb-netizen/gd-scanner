@@ -552,7 +552,7 @@ button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.13.0';
+var APPV = '2.13.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1006,11 +1006,15 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
   var useSrv = adm && term && S.search && S.search.q.toLowerCase() === term;
   (useSrv ? S.search.list : local.concat(S.list)).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'wait' ? !(c.status === 'done' && !c.decision && (!c.order || c.order.order === 'docs') && advise(c).a === 'detain') && !(c.order && c.order.order === 'docs') : S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && v !== S.filter)) return;
-      if (term && !useSrv && JSON.stringify([c.gdNos, c.containers, c.vehicles, c.seller, c.location, c.note, c.byName, (c.pages || []).map(function (p) { return [(p.gd || {}).importer, (p.gd || {}).exporter, (p.pq || {}).importer, (p.pq || {}).ro_no]; })]).toLowerCase().indexOf(term) < 0) return; }
+      if (term && !useSrv && !localMatch(c, term)) return; }
     n++; var cv = caseView(c); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
   if (y) window.scrollTo(0, y);
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
 document.querySelectorAll('#chips button').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
+// Fallback when the server cannot search: look through everything this phone holds about each file. Plural endings are ignored, as on the server.
+function stemW(w) { return w.length >= 5 && /[a-z]ies$/.test(w) ? w.slice(0, -3) : w.length >= 5 && /[a-z](ches|shes|xes|sses)$/.test(w) ? w.slice(0, -2) : w.length >= 4 && /[a-rt-z]s$/.test(w) ? w.slice(0, -1) : w; }
+function localMatch(c, term) { var hay = JSON.stringify([c.gdNos, c.containers, c.vehicles, c.location, c.note, c.byName, c.pages, c.found, c.report, c.decision, c.order, c.courtCase, c.release]).toLowerCase(), flat = hay.replace(/[^a-z0-9]/g, '');
+  return term.split(/\s+/).filter(function (w) { return w.length >= 2; }).every(function (w0) { var w = stemW(w0), a = w.replace(/[^a-z0-9]/g, ''); return hay.indexOf(w) >= 0 || (a.length >= 3 && flat.indexOf(a) >= 0); }); }
 // Admin search: the server looks through every file in the database, not only the ones loaded on this phone.
 async function runSearch() { var q = $('q').value.trim(), info = $('q-info'); clearTimeout(S.searchT);
   if (q.length < 2) { S.search = null; info.hidden = true; drawFiles(); return; }

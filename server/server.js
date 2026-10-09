@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 29;
+const VERSION = 30;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -158,13 +158,15 @@ const labelled = m => { const o = [], add = (l, v) => { if (v != null && v !== '
   if (m.release) add('Released on the order of', m.release.byName);
   if (m.courtCase) { add('Case number', m.courtCase.caseNo); add('Court', m.courtCase.court); add('Case warehouse', m.courtCase.warehouse); add('Case remark', m.courtCase.remark); }
   return o; };
+// "walnuts" should find "walnut", "tyres" should find "tyre": plural endings are dropped from longer words before matching.
+const stem = w => w.length >= 5 && /[a-z]ies$/.test(w) ? w.slice(0, -3) : w.length >= 5 && /[a-z](ches|shes|xes|sses)$/.test(w) ? w.slice(0, -2) : w.length >= 4 && /[a-rt-z]s$/.test(w) ? w.slice(0, -1) : w;
 let scache = null;
 function search(text) {
   const words = String(text || '').toLowerCase().split(/\s+/).filter(w => w.length >= 2).slice(0, 6); if (!words.length) return { total: 0, list: [] };
   if (!scache || scache.ver !== xver) scache = { ver: xver, rows: [...index.values()].map(m => { const F = labelled(m).map(x => [x[0], x[1], x[1].toLowerCase(), AN(x[1])]); return { m, F }; }) };
   const L = live(), out = [];
   for (const row of scache.rows) { const hits = []; let all = true;
-    for (const w of words) { const aw = AN(w), f = row.F.find(x => x[2].indexOf(w) >= 0 || (aw.length >= 3 && x[3].indexOf(aw) >= 0)); if (!f) { all = false; break; } if (!hits.some(h => h[0] === f[0] && h[1] === f[1])) hits.push([f[0], f[1].slice(0, 90)]); }
+    for (const w0 of words) { const w = stem(w0), aw = AN(w), f = row.F.find(x => x[2].indexOf(w) >= 0 || (aw.length >= 3 && x[3].indexOf(aw) >= 0)); if (!f) { all = false; break; } if (!hits.some(h => h[0] === f[0] && h[1] === f[1])) hits.push([f[0], f[1].slice(0, 90)]); }
     if (all) out.push(Object.assign(viewOf(row.m, L), { hits: hits.slice(0, 4) })); }
   out.sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt)));
   return { total: out.length, list: out.slice(0, 100) };
