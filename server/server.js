@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 19;
+const VERSION = 20;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -121,7 +121,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, report: m.report || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, report: m.report || null, courtCase: m.courtCase || null, review: m.review || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -447,6 +447,12 @@ const server = http.createServer(async (req, res) => {
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || !m.report) return send(res, 404, { error: 'none' });
       const b = await body(req); if (['confirmed', 'release', 'redo'].indexOf(b.result) < 0) return send(res, 400, { error: 'form' });
       m.review = { result: b.result, remark: clip(b.remark, 300).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'reviewed the report for', m.id, '-', b.result);
+      return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'case' && p[2] && req.method === 'POST') {   // the court case that follows a detention
+      if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' });
+      const b = await body(req); if (['prep', 'filed', 'confiscated', 'released', 'paid', 'other'].indexOf(b.status) < 0) return send(res, 400, { error: 'form' });
+      m.courtCase = { status: b.status, warehouse: clip(b.warehouse, 120).trim(), caseNo: clip(b.caseNo, 60).trim(), filedOn: clip(b.filedOn, 20).trim(), court: clip(b.court, 120).trim(), hearing: clip(b.hearing, 20).trim(), decidedOn: clip(b.decidedOn, 20).trim(), remark: clip(b.remark, 400).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'updated the court case for', m.id, '-', b.status);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'decision' && p[2] && req.method === 'POST') {   // what the post actually did with the vehicle
