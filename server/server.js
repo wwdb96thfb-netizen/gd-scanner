@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 21;
+const VERSION = 22;
 const CHECKS_V = 6;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -60,11 +60,14 @@ const km = (a, b) => { const R = 6371, r = x => x * Math.PI / 180, dl = r(b.lat 
 const med = L => { const a = L.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
 const tOf = m => String(m.takenAt || m.receivedAt || '');
 // What the post actually found on the vehicle, matched to the GD item it belongs to.
-const cleanFound = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), unit = clip(b.unit, 20).trim(), eachUnit = b.eachUnit === 'L' ? 'L' : 'kg', pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? +(+b.pkgs).toFixed(2) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null;
+const cleanOne = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), unit = clip(b.unit, 20).trim(), eachUnit = b.eachUnit === 'L' ? 'L' : 'kg', pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? +(+b.pkgs).toFixed(2) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null;
   let kg = null, litres = null; if (pk && /^kg/i.test(unit)) kg = pk; else if (pk && /^ton/i.test(unit)) kg = pk * 1000; else if (pk && /^litre/i.test(unit)) litres = pk; else if (pk && each) { if (eachUnit === 'L') litres = +(pk * each).toFixed(2); else kg = +(pk * each).toFixed(2); } else if (+b.kg > 0 && isFinite(+b.kg)) kg = +b.kg;
   if (!what && !pk) return null; const f = { what, pkgs: pk, unit, each, eachUnit, kg, litres };
   if (b.custom && what && !cfg.items.some(x => x.name.toLowerCase() === what.toLowerCase())) { cfg.items.push({ name: what, unit, eachUnit }); if (cfg.items.length > 300) cfg.items.shift(); saveCfg(); xver++; }
   return f; };
+// One vehicle can carry several kinds of goods: the goods found are a list.
+const cleanFound = b => { const L = (Array.isArray(b) ? b : (b && Array.isArray(b.items) ? b.items : [b])).slice(0, 20).map(cleanOne).filter(Boolean); return L.length ? L : null; };
+const foundList = m => Array.isArray(m.found) ? m.found : (m.found ? [m.found] : []);
 const KER = /kern|kernal|shelled|giri|magaz/i, INSH = /in\s*-?\s*shells?|unshelled|with\s+shell|whole/i;
 function matchItem(what, items) {
   const w = String(what || '').toLowerCase(), fk = INSH.test(w) ? 'S' : KER.test(w) ? 'K' : '', tok = t => String(t || '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(x => x.length >= 4).map(x => x.replace(/s$/, ''));
@@ -95,22 +98,28 @@ function live() {
       if (o.length >= 3) { const d = km(m.gps, { lat: med(o.map(x => x.gps.lat)), lon: med(o.map(x => x.gps.lon)) }); if (d > 5) fl.push({ l: 'amber', n: 42, t: 'Captured ' + Math.round(d) + ' km from where ' + m.location + ' usually scans', d: 'The phone was not at the usual place for this post when the photos were sent.', p: 0 }); } }
     flags.set(m.id, fl);
   });
-  // goods found: is it on the GD, is it within the GD, and how much of the GD has been shown so far across all files
+  // goods found: is each item on the GD, is it within the GD, and how much of the GD has been shown so far across all files
   const used = {}, F = n => Number(n).toLocaleString('en-US', { maximumFractionDigits: 1 }), FI = new Map();
-  done.forEach(m => { if (!m.found) return; const gp = (m.pages || []).find(p => p.type === 'gd' && p.gd && Array.isArray(p.gd.items)); if (!gp) return; const fi = m.found.what ? matchItem(m.found.what, gp.gd.items) : (gp.gd.items.length === 1 ? 0 : -1); FI.set(m.id, { g: gp.gd, fi });
-    if (fi >= 0 && m.found.kg && (m.gdNos || [])[0]) { const k = AN(m.gdNos[0]) + '#' + fi, load = ((m.vehicles || [])[0] ? AN(m.vehicles[0]) : m.id) + '@' + tOf(m).slice(0, 10); used[k] = used[k] || {}; used[k][load] = Math.max(used[k][load] || 0, m.found.kg); } });
-  done.forEach(m => { const fl = flags.get(m.id), fd = m.found, X = FI.get(m.id);
-    if (!fd) { if ((m.pages || []).some(p => p.type === 'gd')) fl.push({ l: 'skip', n: 43, t: 'Goods found on the vehicle were not entered', d: 'Enter what was found and how much, so it can be compared with the GD.', p: 0 }); return; }
-    if (!X) return; const items = X.g.items, said = (fd.what || 'goods') + (fd.pkgs ? ', ' + F(fd.pkgs) + ' ' + (fd.unit || 'packages').toLowerCase() : '') + (fd.kg ? ', ' + F(fd.kg) + ' kg' : fd.litres ? ', ' + F(fd.litres) + ' litres' : '');
-    if (X.fi < 0) { fl.push({ l: 'red', n: 43, t: 'Goods found are not on the GD', d: 'Found: ' + said + '. The GD lists: ' + items.map(it => it.description).filter(Boolean).join('; ') + '.', p: 0 }); return; }
-    const it = items[X.fi], q = parseFloat(it.qty_kg), name = String(it.description || '').split('=')[0].trim(), no = it.no || X.fi + 1;
-    if (!fd.kg || !isFinite(q)) { fl.push({ l: 'ok', n: 43, t: 'Goods found are on the GD', d: 'Found: ' + said + '. GD item ' + no + ': ' + name + '.', p: 0 }); return; }
-    if (fd.kg > q * 1.02) { fl.push({ l: 'red', n: 43, t: 'More goods found than the GD covers', d: 'Found ' + F(fd.kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 }); return; }
-    fl.push({ l: 'ok', n: 43, t: 'Goods found are within the GD', d: 'Found ' + F(fd.kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 });
-    const U = used[AN((m.gdNos || [])[0] || '') + '#' + X.fi] || {}, loads = Object.keys(U).length, tot = Object.values(U).reduce((a, b) => a + b, 0);
-    if (loads > 1) { if (tot > q * 1.02) fl.push({ l: 'red', n: 44, t: 'This GD has been used for more than it covers', d: loads + ' loads shown under this GD total ' + F(tot) + ' kg of ' + name + '. The GD covers ' + F(q) + ' kg.', p: 0 });
-      else { fl.push({ l: 'ok', n: 44, t: 'Loads shown under this GD are within its quantity', d: loads + ' loads total ' + F(tot) + ' kg of ' + F(q) + ' kg. ' + F(q - tot) + ' kg left.', p: 0 });
-        fl.forEach((f, i) => { if (f.n === 23 && f.l === 'red') fl[i] = Object.assign({}, f, { l: 'amber', d: f.d + ' The quantities entered so far are within the GD (' + F(tot) + ' of ' + F(q) + ' kg).' }); }); } }
+  done.forEach(m => { const L = foundList(m); if (!L.length) return; const gp = (m.pages || []).find(p => p.type === 'gd' && p.gd && Array.isArray(p.gd.items)); if (!gp) return;
+    const fis = L.map(f => f.what ? matchItem(f.what, gp.gd.items) : (gp.gd.items.length === 1 ? 0 : -1)), sums = {}; FI.set(m.id, { g: gp.gd, fis, sums });
+    L.forEach((f, i) => { if (fis[i] >= 0 && f.kg) sums[fis[i]] = (sums[fis[i]] || 0) + f.kg; });
+    if ((m.gdNos || [])[0]) Object.keys(sums).forEach(fi => { const k = AN(m.gdNos[0]) + '#' + fi, load = ((m.vehicles || [])[0] ? AN(m.vehicles[0]) : m.id) + '@' + tOf(m).slice(0, 10); used[k] = used[k] || {}; used[k][load] = Math.max(used[k][load] || 0, sums[fi]); }); });
+  done.forEach(m => { const fl = flags.get(m.id), L = foundList(m), X = FI.get(m.id);
+    if (!L.length) { if ((m.pages || []).some(p => p.type === 'gd')) fl.push({ l: 'skip', n: 43, t: 'Goods found on the vehicle were not entered', d: 'Enter what was found and how much, so it can be compared with the GD.', p: 0 }); return; }
+    if (!X) return; const items = X.g.items, doneItem = {};
+    L.forEach((fd, i) => { const fi = X.fis[i], said = (fd.what || 'goods') + (fd.pkgs ? ', ' + F(fd.pkgs) + ' ' + (fd.unit || 'packages').toLowerCase() : '') + (fd.kg ? ', ' + F(fd.kg) + ' kg' : fd.litres ? ', ' + F(fd.litres) + ' litres' : '');
+      if (fi < 0) { fl.push({ l: 'red', n: 43, t: 'Goods found are not on the GD: ' + (fd.what || 'goods'), d: 'Found: ' + said + '. The GD lists: ' + items.map(it => it.description).filter(Boolean).join('; ') + '.', p: 0 }); return; }
+      const it = items[fi], q = parseFloat(it.qty_kg), name = String(it.description || '').split('=')[0].trim(), no = it.no || fi + 1, kg = X.sums[fi];
+      if (!kg || !isFinite(q)) { fl.push({ l: 'ok', n: 43, t: 'Goods found are on the GD: ' + (fd.what || 'goods'), d: 'Found: ' + said + '. GD item ' + no + ': ' + name + '.', p: 0 }); return; }
+      if (doneItem[fi]) return; doneItem[fi] = 1;
+      if (kg > q * 1.02) { fl.push({ l: 'red', n: 43, t: 'More goods found than the GD covers: ' + name, d: 'Found ' + F(kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 }); return; }
+      fl.push({ l: 'ok', n: 43, t: 'Goods found are within the GD: ' + name, d: 'Found ' + F(kg) + ' kg. GD item ' + no + ' (' + name + ') covers ' + F(q) + ' kg.', p: 0 });
+      const U = used[AN((m.gdNos || [])[0] || '') + '#' + fi] || {}, loads = Object.keys(U).length, tot = Object.values(U).reduce((a, b) => a + b, 0);
+      if (loads > 1) { if (tot > q * 1.02) fl.push({ l: 'red', n: 44, t: 'This GD has been used for more than it covers', d: loads + ' loads shown under this GD total ' + F(tot) + ' kg of ' + name + '. The GD covers ' + F(q) + ' kg.', p: 0 });
+        else { fl.push({ l: 'ok', n: 44, t: 'Loads shown under this GD are within its quantity', d: loads + ' loads total ' + F(tot) + ' kg of ' + F(q) + ' kg of ' + name + '. ' + F(q - tot) + ' kg left.', p: 0 });
+          fl.forEach((f, j) => { if (f.n === 23 && f.l === 'red') fl[j] = Object.assign({}, f, { l: 'amber', d: f.d + ' The quantities entered so far are within the GD (' + F(tot) + ' of ' + F(q) + ' kg).' }); }); } }
+    });
+    if (fl.some(f => f.n === 43 && f.l === 'red')) fl.forEach((f, j) => { if (f.n === 23 && f.l === 'amber' && / The quantities entered so far/.test(f.d)) fl[j] = Object.assign({}, f, { l: 'red' }); });
   });
   done.forEach(m => { const seen = new Set(), H = [];
     (m.vehicles || []).forEach(v => (byVeh[AN(v)] || []).forEach(x => { if (x.id === m.id || seen.has(x.id)) return; seen.add(x.id); const fl = flags.get(x.id) || [], top = fl.find(f => f.l === 'red' && CRIT.has(f.n)) || fl.find(f => f.l === 'red') || fl.find(f => f.l === 'amber');
@@ -126,7 +135,7 @@ function listFor(user) {
   return [...index.values()].filter(m => user.admin || m.by === user.code).sort((a, b) => String(b.receivedAt).localeCompare(String(a.receivedAt))).slice(0, 400).map(m => {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: m.found || null, report: m.report || null, courtCase: m.courtCase || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, review: m.review || null, gps: m.gps || null };
   });
 }
 const queueInfo = () => { const A = [...index.values()], w = A.filter(m => m.status === 'waiting'); return { ahead: A.filter(m => m.status === 'queued' || m.status === 'reading').length + w.length, waitUntil: w.length ? Math.max(...w.map(m => m.retryAt || 0)) : 0 }; };
@@ -437,7 +446,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (p[1] === 'found' && p[2] && req.method === 'POST') {   // what was actually found on the vehicle; can be entered or corrected after the scan
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
-      const f = cleanFound(await body(req)); if (!f) return send(res, 400, { error: 'form' }); m.found = Object.assign(f, { byName: user.name, at: new Date().toISOString() }); m.alerted = false; save(m); log(user.name, 'entered goods found for', m.id, '-', f.what, f.kg || '', 'kg'); if (m.status === 'done') alertAdmins(m);
+      const f = cleanFound(await body(req)); if (!f) return send(res, 400, { error: 'form' }); m.found = f; m.foundBy = { byName: user.name, at: new Date().toISOString() }; m.alerted = false; save(m); log(user.name, 'entered goods found for', m.id, '-', f.map(x => x.what).join(', ')); if (m.status === 'done') alertAdmins(m);
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'report' && p[2] && req.method === 'POST') {   // the post's detention report, sent up for re-verification
