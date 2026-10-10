@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 48;
+const VERSION = 49;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -524,8 +524,10 @@ const server = http.createServer(async (req, res) => {
       if (!user.owner) return send(res, 403, { error: 'owner' }); const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
       cfg.ownerName = name; saveCfg(); xver++; log('Owner name set to', name); return send(res, 200, { ok: true, name });
     }
-    // View-only accounts: they may look at everything an admin sees, and may set their own PIN. Every other change is refused.
-    if (user.viewer && (req.method !== 'GET' || p[1] === 'people')) { log('Refused (view only):', user.name, req.method, p[1]); return send(res, 403, { error: 'readonly' }); }
+    // View-only accounts see everything an admin sees. For any change they count as post staff: they can send scans and work on their own files
+    // (goods found, driver, action taken), and nothing else. They cannot touch another person's file or use any admin function.
+    if (user.viewer && p[1] === 'people') return send(res, 403, { error: 'readonly' });
+    if (user.viewer && req.method !== 'GET') user.admin = false;
     if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {

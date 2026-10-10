@@ -404,7 +404,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     <h2 class="sec">Request access</h2>
     <div class="panel" id="join-form">
       <label class="f">Your name<input type="text" id="j-name" maxlength="40" placeholder="Name and location" autocomplete="name"></label>
-      <label class="f">You are<select id="j-role"><option value="field">Post staff: I photograph papers and vehicles</option><option value="admin">Admin: I review everyone's files</option><option value="viewer">View only: I only look at files</option></select></label>
+      <label class="f">You are<select id="j-role"><option value="field">Post staff: I photograph papers and vehicles</option><option value="admin">Admin: I review everyone's files</option><option value="viewer">View only: I scan, and I can see all files but not change them</option></select></label>
       <label class="tick"><input type="checkbox" id="j-loc"><span>I agree that this phone's location is recorded with every scan I send. The app does not work without it.</span></label>
       <button class="btn wide" id="b-join">Send request</button>
     </div>
@@ -640,7 +640,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.32.0';
+var APPV = '2.33.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -700,7 +700,7 @@ async function findServer() {
   var s = await S.finding; S.finding = null; S.server = s; drawConn(); return s; }
 // A save that fails because the server has just restarted or moved to a new address is tried again by itself.
 function viewOnly() { toast('View only. This action is for admins.'); }
-async function api(path, opts) { if (S.me && S.me.viewer && opts && opts.method && opts.method !== 'GET') { viewOnly(); throw { status: 403, readonly: true }; }
+async function api(path, opts) {
   var small = !!(opts && opts.method && opts.method !== 'GET') && (!/^\/api\/(page|capture)(\/|\?|$)/.test(path) || opts.method === 'DELETE');
   for (var n = 0; ; n++) { try { return await api1(path, opts); } catch (e) { if (!e || !e.net || !small || n >= 2 || !navigator.onLine) throw e; await new Promise(function (ok) { setTimeout(ok, n ? 6000 : 2500); }); } } }
 async function api1(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
@@ -708,7 +708,7 @@ async function api1(path, opts) { var s = await findServer(); if (!s) throw { ne
   catch (e) { S.server = null; drawConn(); throw { net: true }; }
   if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { pinRejected(); throw { pin: true }; } if (e401.error === 'device') { devBlocked(); drawConn(); throw { code: true }; } revoked(); drawConn(); throw { code: true }; }
   if (r.status >= 500) { S.server = null; drawConn(); throw { net: true }; }
-  if (!r.ok) { if (r.status === 403) { var e403 = await r.clone().json().catch(function () { return {}; }); if (e403.error === 'readonly') viewOnly(); } throw { status: r.status }; }
+  if (!r.ok) { if (S.me && S.me.viewer && opts && opts.method && opts.method !== 'GET' && (r.status === 403 || r.status === 404)) { var e403 = await r.clone().json().catch(function () { return {}; }); if (e403.error !== 'await' && e403.error !== 'locked') viewOnly(); } throw { status: r.status }; }
   return r.json(); }
 
 function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' waiting.' : '';
@@ -722,7 +722,7 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   else { e.className = 'conn wait'; e.textContent = 'Server not reachable. Scans wait on this phone.' + held; }
   e.title = e.textContent;
   var adm = !!(S.me && S.me.admin); if ($('t-people').hidden !== !adm) $('t-people').hidden = !adm; if (adm && !$('f-locsel').value) { $('f-locsel').value = 'Bn HQ'; locChanged(); } $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files';
-  var vw = !!(S.me && S.me.viewer), ts = document.querySelector('.tabs button[data-p="scan"]'); if (ts.hidden !== vw) { ts.hidden = vw; $('chip-people').hidden = vw; if (vw && ts.getAttribute('aria-selected') === 'true') showTab('files'); } }
+  var vw = !!(S.me && S.me.viewer); if ($('chip-people').hidden !== vw) $('chip-people').hidden = vw; }
 
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
