@@ -151,6 +151,13 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 .addm{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:0 12px;margin-bottom:6px}.addm>summary{list-style:none;cursor:pointer;padding:13px 2px;font:700 15px var(--body);color:var(--stamp);display:flex;align-items:center;gap:10px}.addm>summary::-webkit-details-marker{display:none}.addm .plus{width:26px;height:26px;border-radius:50%;background:var(--stamp);color:#fff;display:inline-flex;align-items:center;justify-content:center;font:700 18px/1 var(--body)}.addm[open]{padding-bottom:12px}
 .person .phead{display:flex;align-items:center;justify-content:space-between;gap:10px}.person .pbtns .btn{padding:7px 11px;font-size:12.5px}.pextra{display:flex;flex-direction:column;gap:8px}.pextra[hidden]{display:none}
 .wrow{display:flex;gap:11px;align-items:center;cursor:pointer}.wpic{flex:0 0 58px;width:58px;height:58px;border-radius:10px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:flex;align-items:center;justify-content:center}.wrow .wt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}.wrow .wt b{font-size:15px}.wkind{font:700 10.5px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.wdet{display:flex;flex-direction:column;gap:9px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}.wdet[hidden]{display:none}.wdet .photos{display:flex;gap:6px;flex-wrap:wrap}.wdet .photos img{width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}.wfile{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.shotgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.shot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:92px;padding:10px 6px;border:1.5px dashed var(--stamp);border-radius:14px;background:var(--stamp-soft);color:var(--ink);text-align:center;cursor:pointer;position:relative}.shot b{font:700 13px/1.2 var(--body)}.shot em{font:700 12px/1 var(--body);font-style:normal;min-height:12px;color:var(--muted)}
+.shot.got{border-style:solid;border-color:#17854a;background:rgba(23,133,74,.1)}.shot.got em{color:#17854a}.shot.part{border-style:solid;border-color:#b97a08}.shot.part em{color:#b97a08}.shothint{display:block;color:var(--muted);font-size:12.5px;margin:6px 2px 2px}
+.thumbs figure .kt{position:absolute;left:3px;top:3px;font:700 9.5px/1 var(--body);letter-spacing:.04em;text-transform:uppercase;color:#fff;background:rgba(1,45,20,.78);padding:3px 5px;border-radius:5px}
+.tabs .badge{position:relative;top:-7px;margin-left:2px}
+.srow{display:flex;flex-direction:column;gap:5px;padding:9px 0;border-bottom:1px solid var(--line)}.srow.tot{border-bottom:2px solid var(--line)}.shead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.shead b{font-size:14.5px}.shead span{font-size:12.5px;color:var(--muted)}.sbar{display:flex;gap:3px;height:26px}.sbar i{font:700 12px/26px var(--body);font-style:normal;color:#fff;text-align:center;border-radius:6px;min-width:26px}.sbar .rel,.skey .rel::before{background:#17854a}.sbar .det,.skey .det::before{background:#b97a08}.sbar .sz,.skey .sz::before{background:#c62f26}
+.skey{display:flex;gap:14px;font-size:12.5px;color:var(--muted);padding-top:9px}.skey span::before{content:'';display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+.np-day{margin:6px 2px 0;font:700 11px/1 var(--head);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 #b-bell{flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(1,45,20,.72);color:#fff;display:flex;align-items:center;justify-content:center;position:relative;padding:0;cursor:pointer}#b-bell[hidden]{display:none}
 #bell-n{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#e11d2e;color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 0 2px #01411C}#bell-n[hidden]{display:none}
 #npanel,#amenu{position:fixed;inset:0;z-index:75;background:rgba(6,14,10,.6);display:flex;align-items:flex-end;justify-content:center}#npanel[hidden],#amenu[hidden]{display:none}
@@ -523,10 +530,17 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div id="found-scan"></div>
       <div class="form" style="display:none">
       </div>
-      <label class="drop one" for="f-files" id="l-files" tabindex="0">
-        <span class="shots"><span><i class="ci" data-ci="doc"></i>GD and papers</span><span><i class="ci" data-ci="truck"></i>Number plate</span><span><i class="ci" data-ci="id"></i>CNIC front and back</span><span><i class="ci" data-ci="box"></i>Goods</span></span>
-        <b>Take photos</b><small>Any order. Keep each photo sharp and filling the frame.</small></label>
+      <div class="shotgrid" id="shotgrid">
+        <label class="shot" for="f-files" id="l-files" tabindex="0" data-k="doc"><i class="ci" data-ci="doc"></i><b>GD and papers</b><em></em></label>
+        <label class="shot" for="f-veh" tabindex="0" data-k="veh"><i class="ci" data-ci="truck"></i><b>Number plate</b><em></em></label>
+        <label class="shot" for="f-goods" tabindex="0" data-k="goods"><i class="ci" data-ci="box"></i><b>Goods</b><em></em></label>
+        <label class="shot" for="f-id" tabindex="0" data-k="id"><i class="ci" data-ci="id"></i><b>CNIC front and back</b><em></em></label>
+      </div>
+      <small class="shothint">Tap each box to take that photo. A box turns green when it is done. Keep each photo sharp and filling the frame.</small>
       <input type="file" id="f-files" accept="image/*" multiple hidden>
+      <input type="file" id="f-veh" accept="image/*" multiple hidden>
+      <input type="file" id="f-goods" accept="image/*" multiple hidden>
+      <input type="file" id="f-id" accept="image/*" multiple hidden>
       <div class="thumbs" id="thumbs"></div>
       <p class="qnote" id="q-note" hidden role="status"></p>
       <button class="btn wide" id="b-send" disabled>Send for check</button>
@@ -643,12 +657,12 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         <details><summary>How to scan a vehicle</summary>
           <ol>
             <li>Choose your post under Location. It stays chosen for the next scan.</li>
-            <li>Tap <b>Take photos</b> and photograph, in any order: the GD and every other paper, the number plate, and one close photo of the goods.</li>
+            <li>Photograph, in any order: the GD and every other paper, the number plate, the goods, and the driver's CNIC. Each has its own box, which turns green when its photo is taken.</li>
             <li>Keep each photo sharp and filling the frame. A blurred or dark photo is marked red and cannot be sent: remove it with the &times; and take it again.</li>
             <li>Choose the goods found on the vehicle and enter how much.</li>
             <li>Tap <b>Send for check</b>. You can start the next vehicle straight away.</li>
             <li>The result comes to your screen as a card with the vehicle photo and number. Follow the order on it.</li>
-            <li>Open the file and, under Driver, photograph the <b>front and back of his CNIC</b>. The app reads his details. Nothing is typed.</li>
+            <li>The app reads the driver's details from his CNIC, front and back. Nothing is typed. If it was missed, add it later inside the file under Driver.</li>
           </ol>
           <p class="note">No signal? Send anyway. The scan waits on the phone and goes up by itself.</p>
           <p class="note">Your earlier scans are listed under <b>Past cases</b>, below the Send button.</p>
@@ -708,7 +722,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     </section>
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><span class="ci" data-ci="camera"></span><span>Scan</span></button>
-      <button role="tab" aria-selected="false" data-p="files" id="t-files"><span class="ci" data-ci="folder"></span><span id="t-files-l">Files</span></button>
+      <button role="tab" aria-selected="false" data-p="files" id="t-files"><span class="ci" data-ci="folder"></span><span><span id="t-files-l">Files</span><span class="badge" id="files-badge" hidden></span></span></button>
       <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><span class="ci" data-ci="people"></span><span>Manage<span class="badge" id="req-badge" hidden></span></span></button>
       <button role="tab" aria-selected="false" data-p="settings"><span class="ci" data-ci="gear"></span><span>Settings</span></button>
     </nav>
@@ -717,13 +731,13 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="zoom" hidden><div id="zoom-in"><img id="zoom-img" alt="Enlarged photo"></div><button id="zoom-x" aria-label="Close photo">Close</button><div id="zoom-wm" aria-hidden="true"></div><span id="zoom-tip">Tap the photo to enlarge. Drag to move.</span></div>
 <div id="sheet" hidden><div class="sheet-head"><b>Goods found on the vehicle</b><button class="btn small" id="sheet-done">Done</button></div><div id="sheet-body"></div></div>
 <div id="print"></div>
-<div id="npanel" hidden><div class="np-in"><div class="np-head"><b>Notifications</b><button class="btn small" id="np-x">Close</button></div><div id="np-list"></div></div></div>
+<div id="npanel" hidden><div class="np-in"><div class="np-head"><b>Notifications</b><span class="row" style="gap:6px"><button class="btn ghost small" id="np-clear">Clear all</button><button class="btn small" id="np-x">Close</button></span></div><div id="np-list"></div></div></div>
 <div id="amenu" hidden><div class="am-in"><b id="am-title"></b><small id="am-sub"></small><div id="am-btns"></div><span id="am-msg" role="status"></span></div></div>
 <div id="toast" hidden role="status"></div>
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.46.0';
+var APPV = '2.47.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -905,12 +919,16 @@ $('f-locsel').addEventListener('change', function () { locChanged(); if ($('f-lo
 $('f-loc').addEventListener('input', locChanged);
 (function () { var l = load('gd.loc'); if (l && typeof l.sel === 'string') { $('f-locsel').value = l.sel; if ($('f-locsel').value !== l.sel) $('f-locsel').value = ''; $('f-loc').value = l.text || ''; } $('f-loc').hidden = $('f-locsel').value !== 'other'; })();
 var picked = [];
-$('l-files').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('f-files').click(); } });
-$('f-files').addEventListener('change', function (e) { var over = false; Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 12) { var pk = { file: f, url: URL.createObjectURL(f), kind: 'doc' }; picked.push(pk); loadImg(pk.url).then(function (im) { pk.warn = pk.okd ? '' : photoQuality(im); if (pk.warn) drawThumbs(); }).catch(function () {}); } else over = true; }); e.target.value = ''; drawThumbs(); if (over) toast('12 photos at most in one file'); });
+// Four boxes, one per kind of photo, so the post can see at a glance what is still missing.
+[['f-files', 'doc', 'doc'], ['f-veh', 'veh', 'veh'], ['f-goods', 'goods', 'goods'], ['f-id', 'doc', 'id']].forEach(function (d) { var inp = $(d[0]), lab = document.querySelector('label.shot[for="' + d[0] + '"]');
+  lab.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inp.click(); } });
+  inp.addEventListener('change', function (e) { var over = false; Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 12) { var pk = { file: f, url: URL.createObjectURL(f), kind: d[1], tag: d[2] }; picked.push(pk); loadImg(pk.url).then(function (im) { pk.warn = pk.okd ? '' : photoQuality(im); if (pk.warn) drawThumbs(); }).catch(function () {}); } else over = true; }); e.target.value = ''; S.missAck = ''; drawThumbs(); if (over) toast('12 photos at most in one file'); }); });
+var SHOTN = { doc: 'Papers', veh: 'Plate', goods: 'Goods', id: 'CNIC' };
+function drawShots() { document.querySelectorAll('#shotgrid .shot').forEach(function (l) { var k = l.dataset.k, n = picked.filter(function (f) { return (f.tag || 'doc') === k; }).length, need = k === 'id' ? 2 : 1; l.classList.toggle('got', n >= need); l.classList.toggle('part', n > 0 && n < need); l.querySelector('em').textContent = n >= need ? '✓ ' + n : n ? n + ' of ' + need : ''; }); }
 function setStatus(id, msg, bad) { var e = $(id); e.textContent = msg || ''; e.className = 'status' + (bad ? ' bad' : ''); }
-function drawThumbs() { $('thumbs').textContent = '';
+function drawThumbs() { $('thumbs').textContent = ''; try { drawShots(); } catch (e) {}
   picked.forEach(function (f, i) { var label = 'Photo ' + (i + 1);
-    $('thumbs').appendChild(h('figure', f.warn ? { class: 'warn' } : null, h('img', { src: f.url, alt: label }), f.warn ? h('figcaption', { text: f.warn }) : null, f.warn ? h('button', { type: 'button', class: 'keepit', text: 'It is clear', onclick: function () { f.warn = ''; f.okd = true; drawThumbs(); } }) : null, h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
+    $('thumbs').appendChild(h('figure', f.warn ? { class: 'warn' } : null, h('img', { src: f.url, alt: label }), h('span', { class: 'kt', text: SHOTN[f.tag || 'doc'] }), f.warn ? h('figcaption', { text: f.warn }) : null, f.warn ? h('button', { type: 'button', class: 'keepit', text: 'It is clear', onclick: function () { f.warn = ''; f.okd = true; drawThumbs(); } }) : null, h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
   var nbad = picked.filter(function (f) { return f.warn; }).length; $('b-send').disabled = !picked.length || nbad > 0;
   var nw = picked.filter(function (f) { return f.warn; }).length; setStatus('s-scan', picked.length ? picked.length + ' photo' + (picked.length === 1 ? '' : 's') + ' ready.' + (nw ? ' ' + nw + (nw === 1 ? ' is' : ' are') + ' blurred or dark and cannot be sent. Remove ' + (nw === 1 ? 'it' : 'them') + ' with the × and take ' + (nw === 1 ? 'it' : 'them') + ' again.' : '') : '', nw > 0); }
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
@@ -936,7 +954,10 @@ function fingerprint(im) { try { var c = document.createElement('canvas'); c.wid
 function thumbOf(im) { var c = document.createElement('canvas'), d = Math.min(im.naturalWidth, im.naturalHeight); c.width = c.height = 160; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 160, 160); x.drawImage(im, (im.naturalWidth - d) / 2, (im.naturalHeight - d) / 2, d, d, 0, 0, 160, 160); var u = c.toDataURL('image/jpeg', 0.6); c.width = c.height = 0; return u; }
 function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 $('b-send').addEventListener('click', async function () {
-  if (!picked.length || picked.some(function (f) { return f.warn; })) return; $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
+  if (!picked.length || picked.some(function (f) { return f.warn; })) return;
+  var has = function (k) { return picked.some(function (f) { return (f.tag || 'doc') === k; }); }, miss = [has('doc') ? '' : 'the papers', has('veh') ? '' : 'the number plate', has('goods') ? '' : 'the goods'].filter(Boolean), mk = picked.length + ':' + miss.join();
+  if (miss.length && S.missAck !== mk) { S.missAck = mk; setStatus('s-scan', 'No photo of ' + miss.join(', ').replace(/, ([^,]*)$/, ' and $1') + '. Take ' + (miss.length > 1 ? 'them' : 'it') + ' now, or press Send again to send without.', true); return; }
+  $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
   var gps = await getGPS(); if (!gps) { setStatus('s-scan', 'Location is required with every scan. Turn on Location (GPS) on this phone, allow it for this app, and press Send again.', true); $('b-send').disabled = false; return; }
   setStatus('s-scan', 'Preparing photos…');
   var pages = [], takenAt = new Date().toISOString(), who = wmWho(takenAt);
@@ -1264,11 +1285,15 @@ function goTo(go) { if (!go) return; if (!S.unlocked) { PGO = go; return; }
 var PGO = null; try { PGO = new URLSearchParams(location.search).get('go'); } catch (e) {}
 try { if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', function (e) { if (e.data && e.data.go) goTo(e.data.go); }); } catch (e) {}
 // ---- the bell: a red count of notices not yet read, like the number on a chat icon
-function drawBell() { var b = $('b-bell'), L = S.notices || [], seen = load('gd.nseen') || 0, n = L.filter(function (x) { return x.id > seen; }).length; b.hidden = !cfg.c; $('bell-n').hidden = !n; $('bell-n').textContent = n > 99 ? '99+' : n; try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n); else navigator.clearAppBadge(); } } catch (e) {} }
-$('b-bell').addEventListener('click', function () { var L = (S.notices || []).slice().reverse(), seen = load('gd.nseen') || 0, box = $('np-list'); box.textContent = '';
-  if (!L.length) box.appendChild(h('p', { class: 'note', text: 'No notifications yet.' }));
-  L.forEach(function (x) { var go = x.go || guessGo(x), it = h('div', { class: 'np-item' + (x.id > seen ? ' new' : '') + (go ? ' tap' : '') }, h('b', { text: x.title }), h('span', { text: x.body }), h('small', { text: when(x.at) })); if (go) it.addEventListener('click', function () { $('npanel').hidden = true; goTo(go); }); box.appendChild(it); });
-  $('npanel').hidden = false; if (L.length) keep('gd.nseen', L[0].id); drawBell(); });
+function drawBell() { var b = $('b-bell'), L = shownNotices(), seen = load('gd.nseen') || 0, n = L.filter(function (x) { return x.id > seen; }).length; b.hidden = !cfg.c; $('bell-n').hidden = !n; $('bell-n').textContent = n > 99 ? '99+' : n; try { if (navigator.setAppBadge) { if (n) navigator.setAppBadge(n); else navigator.clearAppBadge(); } } catch (e) {} }
+function shownNotices() { var cl = load('gd.nclear') || 0; return (S.notices || []).filter(function (x) { return x.id > cl; }); }
+function drawNotices() { var L = shownNotices().slice().reverse(), seen = load('gd.nseen') || 0, box = $('np-list'), today = new Date().toDateString(), last = ''; box.textContent = ''; $('np-clear').hidden = !L.length;
+  if (!L.length) box.appendChild(h('p', { class: 'note', text: 'No notifications.' }));
+  L.forEach(function (x) { var grp = new Date(x.at).toDateString() === today ? 'Today' : 'Earlier'; if (grp !== last) { last = grp; box.appendChild(h('h4', { class: 'np-day', text: grp })); }
+    var go = x.go || guessGo(x), it = h('div', { class: 'np-item' + (x.id > seen ? ' new' : '') + (go ? ' tap' : '') }, h('b', { text: x.title }), h('span', { text: x.body }), h('small', { text: when(x.at) })); if (go) it.addEventListener('click', function () { $('npanel').hidden = true; goTo(go); }); box.appendChild(it); });
+  return L; }
+$('b-bell').addEventListener('click', function () { var L = drawNotices(); $('npanel').hidden = false; if (L.length) keep('gd.nseen', L[0].id); drawBell(); });
+$('np-clear').addEventListener('click', function () { var L = S.notices || []; if (L.length) { var mx = Math.max.apply(null, L.map(function (x) { return x.id; })); keep('gd.nclear', mx); keep('gd.nseen', mx); } drawNotices(); drawBell(); });
 $('np-x').addEventListener('click', function () { $('npanel').hidden = true; }); $('npanel').addEventListener('click', function (e) { if (e.target === $('npanel')) $('npanel').hidden = true; });
 // ---- long press on a file: share it or delete it. What is shared is only what an outsider may see: no suggestion, no decision, no points found, no names of officers, no driver identity.
 function caseText(c) { var g = ((c.pages || []).filter(function (p) { return p.type === 'gd'; })[0] || {}).gd || {}, L = [['Vehicle', (c.vehicles || []).join(', ')], ['GD number', (c.gdNos || []).join(', ')], ['Importer', g.importer], ['Goods on the GD', (Array.isArray(g.items) ? g.items : []).map(function (it) { return it.description; }).filter(Boolean).join('; ')], ['Goods found', c.found ? foundText(c.found) : ''], ['Checked at', c.location], ['Date', when(c.takenAt || c.receivedAt)]];
@@ -1438,6 +1463,7 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
       if (term && !useSrv && !localMatch(c, term)) return; }
     n++; var cv = caseView(c); if (term) markHits(cv, term, !c.hits); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); (isPast(c) ? pastL : curL).push(cv); });
   [['Current cases', curL, 'cur'], ['Past cases', pastL, 'past']].forEach(function (g) { if (!g[1].length) return; box.appendChild(h('h3', { class: 'fsec ' + g[2] }, h('span', { text: g[0] }), h('i', { text: String(g[1].length) }))); g[1].forEach(function (x) { box.appendChild(x); }); });
+  try { var off = !!(S.me && S.me.admin && !S.me.viewer), np = off ? S.list.filter(function (c) { return c.status === 'done' && !isPast(c); }).length : 0, fb = $('files-badge'); fb.hidden = !np; fb.textContent = np > 99 ? '99+' : np; } catch (e) {}
   if (y) window.scrollTo(0, y);
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
 document.querySelectorAll('#chips button[data-f]').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button[data-f]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
@@ -1474,10 +1500,12 @@ function summary() { var day = $('sum-day').value, rows = {}, tot = { n: 0, clea
   S.list.forEach(function (c) { if (c.status !== 'done' || dayOf(c.takenAt || c.receivedAt) !== day) return; var k = c.location || 'No post given', r = rows[k] = rows[k] || { n: 0, clear: 0, ask: 0, hold: 0, detain: 0, acted: 0, people: {} }, col = ({ Release: 'clear', Seize: 'detain' })[postView(c).w] || 'ask';
     [r, tot].forEach(function (x) { x.n++; x[col]++; if (c.decision && (c.decision.action === 'detained' || c.decision.action === 'handed' || c.decision.action === 'seized')) x.acted++; x.people[c.byName || '?'] = 1; }); });
   return { day: day, rows: rows, tot: tot }; }
-function drawSummary() { var s = summary(), box = $('sum-box'), sg = JSON.stringify(s); if (sg === S.sumSig && box.firstChild) return; S.sumSig = sg; box.textContent = ''; var t = h('table', { class: 'sum' }), tr = h('tr'); ['Post', 'Checked', 'Release', 'Detain', 'Seize'].forEach(function (x) { tr.appendChild(h('th', { text: x })); }); t.appendChild(tr);
-  var line = function (name, r) { var tr = h('tr'); [name, r.n, r.clear, r.ask, r.detain].forEach(function (x) { tr.appendChild(h('td', { text: String(x) })); }); t.appendChild(tr); };
-  Object.keys(s.rows).sort().forEach(function (k) { line(k, s.rows[k]); }); line('All posts', s.tot);
-  box.appendChild(s.tot.n ? t : h('p', { class: 'note', text: 'No checked files on this day.' })); }
+function drawSummary() { var s = summary(), box = $('sum-box'), sg = JSON.stringify(s); if (sg === S.sumSig && box.firstChild) return; S.sumSig = sg; box.textContent = '';
+  if (!s.tot.n) { box.appendChild(h('p', { class: 'note', text: 'No checked files on this day.' })); return; }
+  var line = function (name, r, tot) { var bar = h('div', { class: 'sbar' }); [['rel', r.clear], ['det', r.ask], ['sz', r.detain]].forEach(function (x) { if (!x[1]) return; var sg2 = h('i', { class: x[0], text: String(x[1]) }); sg2.style.flex = x[1] + ' 1 26px'; bar.appendChild(sg2); });
+    box.appendChild(h('div', { class: 'srow' + (tot ? ' tot' : '') }, h('div', { class: 'shead' }, h('b', { text: name }), h('span', { text: r.n + ' checked' })), bar)); };
+  line('All posts', s.tot, true); Object.keys(s.rows).sort().forEach(function (k) { line(k, s.rows[k]); });
+  box.appendChild(h('div', { class: 'skey' }, h('span', { class: 'rel', text: 'Released' }), h('span', { class: 'det', text: 'Detained' }), h('span', { class: 'sz', text: 'Seized' }))); }
 function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Checked', 'Release', 'Detain', 'Seize', 'Staff'].join(',')] : ['GD Verification System summary for ' + s.day];
   Object.keys(s.rows).sort().concat(['All posts']).forEach(function (k) { var r = k === 'All posts' ? s.tot : s.rows[k], who = Object.keys(r.people).join('; ');
     L.push(csv ? [s.day, '"' + k.replace(/"/g, '""') + '"', r.n, r.clear, r.ask, r.detain, '"' + who.replace(/"/g, '""') + '"'].join(',') : k + ': ' + r.n + ' checked, ' + r.clear + ' release, ' + r.ask + ' detain, ' + r.detain + ' seize'); });
