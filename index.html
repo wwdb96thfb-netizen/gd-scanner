@@ -462,8 +462,8 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <ol>
         <li><b>Photograph</b><span>Take photos of the papers, the vehicle and the goods, in any order.</span></li>
         <li><b>Send</b><span>The server reads every paper and checks it against the others and against earlier files.</span></li>
-        <li><b>Act</b><span>You are told what to do: clear to go, ask for documents, hold or detain.</span></li>
-        <li><b>Record</b><span>Note what you did with the vehicle. Everything is kept for your officers.</span></li>
+        <li><b>Act</b><span>You are told what to do: Release, Detain or Seize.</span></li>
+        <li><b>Record</b><span>Every scan and every decision is kept, with who gave it and when.</span></li>
       </ol>
       <p class="note">Works without internet: scans wait on the phone and go up by themselves. Your location is recorded with every scan, and the app is protected by your own PIN.</p>
       <button class="btn wide" id="g-start">Get started</button>
@@ -537,7 +537,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 
     <section id="p-files" hidden>
       <h2 class="sec">Database</h2>
-      <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="push-txt">Get an alert on this phone when a post gets a Detain result.</span><button class="btn small" id="b-push2">Turn on</button></div>
+      <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="push-txt">Get an alert on this phone when a new case needs your decision.</span><button class="btn small" id="b-push2">Turn on</button></div>
       <div id="admin-tools" hidden>
         <div class="chips" id="chips" style="margin-bottom:10px">
           <button data-f="all" aria-pressed="true">All</button>
@@ -582,7 +582,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div class="grp" data-g="alerts" hidden>
       <h2 class="sec">Alerts on your phone</h2>
       <div class="panel">
-        <p class="note">Admins are told on their phone the moment any post gets a Detain result, even when the app is closed. Turn it on once on each phone you use.</p>
+        <p class="note">Officers are told on their phone the moment a critical case comes in, even when the app is closed. Turn it on once on each phone you use.</p>
         <button class="btn" id="b-push">Turn on alerts on this phone</button>
         <p class="status" id="s-push" role="status"></p>
       </div>
@@ -643,24 +643,35 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         <details><summary>How to scan a vehicle</summary>
           <ol>
             <li>Choose your post under Location. It stays chosen for the next scan.</li>
-            <li>Tap <b>Take photos</b> and photograph, in any order: the GD and every other paper, the number plate, the driver's CNIC, and the goods.</li>
+            <li>Tap <b>Take photos</b> and photograph, in any order: the GD and every other paper, the number plate, and one close photo of the goods.</li>
             <li>Keep each photo sharp and filling the frame. A blurred or dark photo is marked red and cannot be sent: remove it with the &times; and take it again.</li>
             <li>Choose the goods found on the vehicle and enter how much.</li>
             <li>Tap <b>Send for check</b>. You can start the next vehicle straight away.</li>
             <li>The result comes to your screen as a card with the vehicle photo and number. Follow the order on it.</li>
+            <li>Open the file and, under Driver, photograph the <b>front and back of his CNIC</b>. The app reads his details. Nothing is typed.</li>
           </ol>
           <p class="note">No signal? Send anyway. The scan waits on the phone and goes up by itself.</p>
+          <p class="note">Your earlier scans are listed under <b>Past cases</b>, below the Send button.</p>
         </details>
         <details><summary>The three orders</summary>
-          <p class="note"><b>Release</b> <span class="ur" lang="ur" dir="rtl">چھوڑ دیں</span>: the papers are in order, or HQ has ordered release. Let the vehicle go.</p>
-          <p class="note"><b>Detain</b> <span class="ur" lang="ur" dir="rtl">روک لیں</span>: stop the vehicle. If the card lists papers, ask for them and scan them. If it says wait for HQ, do not let the vehicle go until the order comes.</p>
-          <p class="note"><b>Seize</b> <span class="ur" lang="ur" dir="rtl">ضبط کریں</span>: only on an order from HQ. Unload the goods to the warehouse.</p>
+          <p class="note"><b>Release</b> <span class="ur" lang="ur" dir="rtl">چھوڑ دیں</span>: the papers are in order, or an officer has ordered release. Let the vehicle go.</p>
+          <p class="note"><b>Detain</b> <span class="ur" lang="ur" dir="rtl">روک لیں</span>: stop the vehicle and do not let it go. The file lists what may be wrong in the papers. Wait for the officer's order.</p>
+          <p class="note"><b>Seize</b> <span class="ur" lang="ur" dir="rtl">ضبط کریں</span>: only on an officer's order. Unload the goods to the warehouse.</p>
+          <p class="note">Only an officer decides. When he does, the notice on your phone changes to his order. Tap <b>Confirm: decision carried out</b> when you have done it.</p>
           <p class="note">Every order shows the vehicle photo and number. Check both before you act.</p>
         </details>
-        <details><summary>For officers: deciding a file</summary>
-          <p class="note">Each file opens with a <b>Suggestion</b> (Release, Detain or Seize), the reason for it, and what can be done. Below it are all the points the check raised.</p>
-          <p class="note">You choose one of the three. For Detain, write what the post must do or which papers to get. For Release, say who ordered it and when.</p>
-          <p class="note">A suggestion to seize means critical points were found. Confirm them on the paper and the goods first: a blurred photo can cause a false one.</p>
+        <details class="off-only"><summary>For officers: deciding a case</summary>
+          <p class="note">A new case shows <b>Detained</b>, blinking, with <b>Release, Detain, Seize</b> buttons on its tile. You can decide there, or open the file first.</p>
+          <p class="note">The file opens with a <b>Suggestion</b> and one line of reason. Tap <b>Why</b> to read the points found. Confirm a critical point on the paper and the goods before you seize: a blurred photo can cause a false one.</p>
+          <p class="note">Your name is recorded with every decision. <b>On whose order</b> is optional. For Detain, write what the post must do or which papers to get.</p>
+          <p class="note">What can be changed later: a Detain can become Release or Seize. A Seize can only become Release. A Release cannot be changed, except by the Owner to correct a mistake.</p>
+          <p class="note">A clean scan is released by the system itself and needs no decision.</p>
+        </details>
+        <details><summary>Finding your way</summary>
+          <p class="note"><b>Database:</b> Current cases are those still waiting for a decision. Past cases are those already decided or released by the system.</p>
+          <p class="note"><b>Bell:</b> the red number is how many notices you have not read. Tap a notice to go straight to its case or to the person it is about.</p>
+          <p class="note off-only"><b>Hold a finger on a case</b> to share it or delete it. What is shared carries the Coast Guards band and leaves out decisions, the points found and the driver's CNIC.</p>
+          <p class="note off-only"><b>Manage:</b> the day's summary, members, the watchlist and phone alerts. A watchlist entry shows the vehicle or the identity card and opens onto its papers.</p>
         </details>
         <details><summary>Checking a paper yourself</summary>
           <p class="note"><b>GD:</b> a real one is printed from the Customs system. It has numbered boxes, a machine number in box 58, a payment number in box 65, and a line at the foot saying it is a system generated document. It needs no stamp or signature.</p>
@@ -679,8 +690,10 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         </details>
         <details><summary>Rules for your account</summary>
           <p class="note"><b>One phone.</b> Your account works on one phone only. For a new phone, an officer taps "Allow new phone" beside your name.</p>
-          <p class="note"><b>Your own results.</b> Post Staff see only their own scans. Officers see all.</p>
-          <p class="note"><b>Bn Staff.</b> Bn Staff can scan and can see all files, but cannot change other people's files or decide. He is shown "Restricted Access".</p>
+          <p class="note"><b>PIN.</b> Asked each time the app opens. If you forget it, an officer resets it and you choose a new one.</p>
+          <p class="note"><b>Your name.</b> Ask for a change under Your account. It takes effect when an officer approves it.</p>
+          <p class="note"><b>What you can see.</b> Post Staff see only their own scans. Officers and Bn Staff see all. Bn Staff cannot decide or change other people's files: they are shown "Restricted Access".</p>
+          <p class="note"><b>Removed.</b> If an officer removes you, the app closes on your phone and forgets your PIN. It opens again only when you are added back.</p>
           <p class="note"><b>Location.</b> The phone's location is recorded with every scan.</p>
           <p class="note"><b>Photos are official property.</b> Each photo is marked "Pakistan Coast Guards" with your name, post and time. When a photo is opened, the viewer's name is shown over it.</p>
         </details>
@@ -710,7 +723,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.45.1';
+var APPV = '2.46.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -805,7 +818,7 @@ async function refresh() {
     if (Array.isArray(j.notices)) { S.notices = j.notices; drawBell(); if ((j.nameAsk || '') !== (S.nameAsk || '')) { S.nameAsk = j.nameAsk || ''; try { drawSettings(); } catch (e) {} } } if (Array.isArray(j.items) && JSON.stringify(j.items) !== JSON.stringify(S.items)) { S.items = j.items; keep('gd.items', S.items); if (!scanFound.read()) { $('found-scan').textContent = ''; scanFound = foundFields(); $('found-scan').appendChild(scanFound.el); } }
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
-    if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the officer\'s decision on this phone as a notification.'; pushCheck();
+    if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a new case needs your decision.' : 'Get the officer\'s decision on this phone as a notification.'; pushCheck();
     S.list = j.list; try { announceResults(j.list); } catch (e) {} try { drawWatch(); } catch (e) {} keep('gd.list', j.list.slice(0, 50)); if (S.search && $('q').value.trim().length >= 2) runSearch(); } catch (e) {}
   drawConn(); drawFiles(); }
 function orderAlert(list) { var seen = load('gd.ord') || {}, first = !load('gd.ordinit'), hit = null; list.forEach(function (c) { if (c.order && seen[c.id] !== c.order.at) { if (!first) hit = c; seen[c.id] = c.order.at; } }); keep('gd.ord', seen); keep('gd.ordinit', 1);
@@ -1037,7 +1050,7 @@ function advise(c) {
   return { k: 'ok', a: 'clear', head: 'CLEAR TO GO', text: 'Papers are in order. Match the goods and the vehicle number with the papers by eye, then release.', items: [], foot: '' };
 }
 var ORD = { release: 'Release', seize: 'Seize', docs: 'Detain', detain: 'Seize' };
-var DEC = { seized: 'Seized: goods to warehouse, case to be filed', released: 'Released', held: 'Detained', detained: 'Seized: goods to warehouse, case to be filed', handed: 'Seized' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
+var DEC = { seized: 'Seized', released: 'Released', held: 'Detained', detained: 'Seized', handed: 'Seized' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
 // ---- goods found: a pick list of what is commonly carried, each with its usual packing; anything else can be typed in
 var UNITS = ['Bags', 'Cartons', 'Boxes', 'Barrels', 'Drums', 'Jerry cans', 'Tins', 'Bottles', 'Cylinders', 'Bales', 'Rolls', 'Bundles', 'Crates', 'Packets', 'Pieces', 'Vehicles', 'Animals', 'Kg (loose)', 'Tons', 'Litres (loose)'];
 // Each item: name, usual packing, how it is measured ('kg' or 'L' in each pack, 'pcs' = pieces in each pack, 'n' = simply counted), the word for one piece, its own list of units, the hint in the amount box.
@@ -1143,7 +1156,7 @@ function relWho(sel, val) { var nm = 'rw' + (++RELN), r1 = h('input', { type: 'r
   var el = h('div', { class: 'relwho', hidden: '' }, h('span', { text: 'Release ordered by' }), h('label', null, r1, h('span', { text: 'Comdt' })), h('label', null, r2, h('span', { text: 'Other (enter name)' })), other, h('span', { text: 'Date and time of release' }), dt, h('small', { text: 'Set to now. Change it if the release was ordered or carried out on another day.' }));
   var show = function () { el.hidden = sel.value !== val; other.hidden = !r2.checked; }; sel.addEventListener('change', show); r1.addEventListener('change', show); r2.addEventListener('change', show); show();
   return { el: el, on: function () { return sel.value === val; }, get: function () { return r1.checked ? 'Comdt' : other.value.trim(); }, when: function () { var d = new Date(dt.value); return isNaN(d) ? '' : d.toISOString(); } }; }
-function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me && S.me.admin), o = c.order;
+function orderBox(c, fix) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me && S.me.admin), o = c.order;
   box.appendChild(h('b', { text: 'Officer decision' }));
   if (o) { box.appendChild(h('div', { class: 'act ' + (o.order === 'release' ? 'ok' : o.order === 'docs' ? 'amber' : 'red') }, h('b', { text: ORD[o.order].toUpperCase() }), o.note ? h('span', { text: o.note }) : null, h('small', { text: 'Decided by ' + o.byName + (o.onOrderOf ? ', on the order of ' + o.onOrderOf : '') + ', ' + when(o.at) })));
     if (c.ack) box.appendChild(h('span', { text: 'Carried out by ' + c.ack.byName + ', ' + when(c.ack.at) + (c.ack.remark ? ' · ' + c.ack.remark : '') }));
@@ -1153,13 +1166,15 @@ function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me &
   else if (!adm) box.appendChild(h('div', { class: 'act amber' }, h('b', { text: 'WAITING FOR THE OFFICER\'S DECISION' }), h('span', { text: 'Hold the vehicle. Do not release it. The decision will appear here and you will be alerted.' })));
   // What can still be changed: nothing after a release (the vehicle has gone); a seizure can only be released; a detained vehicle can be released or seized.
   var NEXT = c.release || (o && o.order === 'release') ? [] : !o ? ['release', 'docs', 'seize'] : o.order === 'docs' ? ['release', 'seize'] : ['release'];
+  var wasRel = !!(c.release || (o && o.order === 'release')); if (fix && wasRel && S.me && S.me.owner) NEXT = ['docs', 'seize'];
+  if (adm && wasRel && !fix && S.me && S.me.owner) box.appendChild(h('button', { class: 'linkbtn', type: 'button', text: 'Released by mistake? Correct it (Owner only)', onclick: function () { box.replaceWith(orderBox(c, true)); } }));
   if (adm && NEXT.length) { var sel = h('select', { 'aria-label': 'Decision' }); sel.appendChild(h('option', { value: '', text: o ? 'Change the decision…' : 'Choose the decision…' })); NEXT.forEach(function (k) { sel.appendChild(h('option', { value: k, text: ORD[k] })); });
     var note = h('input', { type: 'text', maxlength: '300', placeholder: 'Instruction to the post, e.g. which papers to get' }), m2 = h('span'), rw = ordWho(sel), sb = h('button', { class: 'btn small', text: 'Send decision to the post', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } if (sel.value === 'docs' && !note.value.trim()) { m2.textContent = 'Tell the post what to do or which papers to get.'; return; } sb.disabled = true;
       try { await api('/api/order/' + c.id, { method: 'POST', body: JSON.stringify({ order: sel.value, note: note.value, orderedBy: rw.get(), releasedOn: rw.when() }) }); toast('Decision sent: ' + ORD[sel.value]); S.ver = ''; refresh(); } catch (e) { sb.disabled = false; m2.textContent = e && e.status === 403 ? 'This file is locked by a release order. Only the Owner can change it.' : 'Could not send. The server is not reachable or has not updated yet.'; } } });
     sel.classList.add('vh'); sel.setAttribute('tabindex', '-1'); var row = h('div', { class: 'dbtns none' }), BT = {};
     row.style.gridTemplateColumns = 'repeat(' + NEXT.length + ',1fr)'; [['release', 'rel', 'Release'], ['docs', 'det', 'Detain'], ['seize', 'sz', 'Seize']].filter(function (k) { return NEXT.indexOf(k[0]) >= 0; }).forEach(function (k) { BT[k[0]] = h('button', { type: 'button', class: 'qb ' + k[1], text: k[2], onclick: function () { sel.value = k[0]; sel.dispatchEvent(new Event('change', { bubbles: true })); } }); row.appendChild(BT[k[0]]); });
     var sync = function () { var val = sel.value; row.classList.toggle('none', !val); Object.keys(BT).forEach(function (k) { BT[k].classList.toggle('on', k === val); }); note.hidden = !(val === 'docs' || val === 'seize'); note.placeholder = val === 'docs' ? 'Instruction to the post, e.g. which papers to get' : 'Instruction to the post (optional)'; sb.hidden = !val; sb.textContent = val ? 'Send to the post: ' + ORD[val] : 'Send decision to the post'; m2.textContent = ''; };
-    sel.addEventListener('change', sync); if (o) box.appendChild(h('small', { class: 'note', text: NEXT.length === 1 ? 'This can still be changed to:' : 'Change the decision to:' }));
+    sel.addEventListener('change', sync); if (o || fix) box.appendChild(h('small', { class: 'note', text: fix ? 'Correction by the Owner. The release record is removed and the earlier decision stays on record. Change to:' : NEXT.length === 1 ? 'This can still be changed to:' : 'Change the decision to:' }));
     [sel, row, rw.el, note, sb, m2].forEach(function (x) { box.appendChild(x); }); sync(); }
   return box; }
 function driverBox(c) { var box = h('div', { class: 'dec' }), d = c.driver, msg = h('span'), ims = [null, null], locked = !!c.release && !(S.me && S.me.owner);
@@ -1298,6 +1313,7 @@ function isCargo(p) { return !!p && p.type === 'goods' && !DOCISH.test((p.goods 
 function goodsN(c) { var pg = c.pages || []; for (var i = 0; i < pg.length; i++) if (isCargo(pg[i])) return i; return -1; }
 function isPast(c) { if (c.local || c.status !== 'done') return false; return !(advise(c).a !== 'clear' && !c.order && !c.release && !c.decision); }   // current = a decision is still pending; once decided (or released by the system) it is past
 function NOTI(c) { return h('div', { class: 'meta', style: 'background:var(--grey-soft);border-radius:9px;padding:8px 10px;color:var(--ink)' }, h('b', { text: 'On the notified list (S.R.O. 566(I)/2005): ' }), h('span', { text: c.notified.join('; ') + '. For notified goods the holder is expected to show lawful import: a GD, or the sales tax invoices leading back to one.' })); }
+function roleHelp() { var off = !!(S.me && S.me.admin && !S.me.viewer); document.querySelectorAll('.off-only').forEach(function (e) { if (e.hidden === off) e.hidden = !off; }); }
 function isPost() { return !(S.me && S.me.admin); }
 function actBox(a) { return h('div', { class: 'act hasico ' + a.k }, icon(ICON[a.a] || ICON.query), h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
@@ -1470,7 +1486,7 @@ async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf
   try { var j = await api('/api/admin'); S.adminOk = true; S.vapid = j.vapid || ''; drawPush();
     $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
     S.watch = j.watch; drawWatch();
-  } catch (e) { if (!e || !e.net) setStatus('s-admin', 'The watchlist and alerts appear once the server has updated itself (within about 30 minutes).'); } }
+  } catch (e) { if (!e || !e.net) setStatus('s-admin', 'The watchlist and alerts appear once the server has updated itself (within a few minutes).'); } }
 // ---- watchlist: each entry shows the vehicle or the identity card it is about, and opens onto everything scanned for it
 function watchInfo(w) { var an = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }, dgs = function (x) { return String(x || '').replace(/\D/g, ''); }, v = an(w.value), dg = dgs(w.dg), L = S.list.filter(function (c) { return c.status === 'done'; });
   var vehF = v.length >= 4 ? L.filter(function (c) { return (c.vehicles || []).some(function (x) { return an(x) === v; }); }) : [];
@@ -1586,7 +1602,7 @@ $('g-forgot').addEventListener('click', async function () { var bt = $('g-forgot
   if (!cfg.ph) return;   // the server confirmed the PIN was reset: the "choose a new PIN" screen is already showing
   setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an officer to open Manage, People, and tap Reset PIN beside your name. Then open the app again.', true); });
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
-function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
+function drawSettings() { try { roleHelp(); } catch (e) {} var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
   if (me.admin && !getLoc()) { $('f-locsel').value = 'Bn HQ'; locChanged(); }   // admins sit at Bn HQ
   if (me.owner) { var inp = h('input', { type: 'text', maxlength: '40', placeholder: 'Your rank and name' }), msg = h('span', { class: 'note' }); inp.value = me.name && me.name !== 'Owner' ? me.name : '';
     var sv = h('button', { class: 'btn small', text: 'Save name', onclick: async function () { var v = inp.value.trim(); if (v.length < 2) { msg.textContent = 'Type your name first.'; return; } sv.disabled = true; try { var j = await api('/api/me', { method: 'POST', body: JSON.stringify({ name: v }) }); S.me.name = j.name; keep('gd.me', S.me); toast('Name saved'); S.ver = ''; refresh(); drawSettings(); } catch (e) { sv.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
