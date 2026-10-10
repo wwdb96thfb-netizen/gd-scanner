@@ -7,8 +7,8 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 50;
-const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
+const VERSION = 51;
+const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -63,9 +63,9 @@ const km = (a, b) => { const R = 6371, r = x => x * Math.PI / 180, dl = r(b.lat 
 const med = L => { const a = L.slice().sort((x, y) => x - y); return a[Math.floor(a.length / 2)]; };
 const tOf = m => String(m.takenAt || m.receivedAt || '');
 // What the post actually found on the vehicle, matched to the GD item it belongs to.
-const cleanOne = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), unit = clip(b.unit, 20).trim(), eachUnit = b.eachUnit === 'L' ? 'L' : 'kg', pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? +(+b.pkgs).toFixed(2) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null;
-  let kg = null, litres = null; if (pk && /^kg/i.test(unit)) kg = pk; else if (pk && /^ton/i.test(unit)) kg = pk * 1000; else if (pk && /^litre/i.test(unit)) litres = pk; else if (pk && each) { if (eachUnit === 'L') litres = +(pk * each).toFixed(2); else kg = +(pk * each).toFixed(2); } else if (+b.kg > 0 && isFinite(+b.kg)) kg = +b.kg;
-  if (!what && !pk) return null; const f = { what, pkgs: pk, unit, each, eachUnit, kg, litres };
+const cleanOne = b => { if (!b || typeof b !== 'object') return null; const what = clip(b.what, 80).trim(), unit = clip(b.unit, 20).trim(), eachUnit = b.eachUnit === 'L' ? 'L' : b.eachUnit === 'pcs' ? 'pcs' : b.eachUnit === 'none' ? 'none' : 'kg', word = clip(b.word, 16).trim(), pk = +b.pkgs > 0 && isFinite(+b.pkgs) ? +(+b.pkgs).toFixed(2) : null, each = +b.each > 0 && isFinite(+b.each) ? +b.each : null;
+  let kg = null, litres = null, pieces = null; if (pk && /^kg/i.test(unit)) kg = pk; else if (pk && /^ton/i.test(unit)) kg = pk * 1000; else if (pk && /^litre/i.test(unit)) litres = pk; else if (pk && each && eachUnit === 'pcs') pieces = Math.round(pk * each); else if (pk && each && eachUnit !== 'none') { if (eachUnit === 'L') litres = +(pk * each).toFixed(2); else kg = +(pk * each).toFixed(2); } else if (+b.kg > 0 && isFinite(+b.kg)) kg = +b.kg;
+  if (!what && !pk) return null; const f = { what, pkgs: pk, unit, each: eachUnit === 'none' ? null : each, eachUnit, kg, litres }; if (pieces) f.pieces = pieces; if (word) f.word = word;
   if (b.custom && what && !cfg.items.some(x => x.name.toLowerCase() === what.toLowerCase())) { cfg.items.push({ name: what, unit, eachUnit }); if (cfg.items.length > 300) cfg.items.shift(); saveCfg(); xver++; }
   return f; };
 // One vehicle can carry several kinds of goods: the goods found are a list.
@@ -190,7 +190,7 @@ function listFor(user) {
 function viewOf(m, L) { {
     const flags = L.flags.get(m.id) || m.flags || [];
     const verdict = m.status !== 'done' ? null : flags.some(f => f.l === 'red') ? 'red' : flags.some(f => f.l === 'amber') ? 'amber' : 'ok';
-    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, driver: m.driver || null, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, already: L.again.get(m.id) || null, notified: m.status === 'done' ? notifiedOf(m) : [], release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null };
+    return { id: m.id, byName: m.byName, takenAt: m.takenAt, receivedAt: m.receivedAt, doneAt: m.doneAt, location: m.location, seller: m.seller, note: m.note, driver: m.driver || null, offeredKg: m.offeredKg, vehicles: m.vehicles || [], thumbN: thumbOf(m), nPages: m.nPages, status: m.status, msg: m.msg, pages: m.pages || [], flags, verdict, gdNos: m.gdNos || [], containers: m.containers || [], history: L.hist.get(m.id) || [], decision: m.decision || null, found: foundList(m).length ? foundList(m) : null, foundBy: m.foundBy || null, report: m.report || null, courtCase: m.courtCase || null, already: L.again.get(m.id) || null, notified: m.status === 'done' ? notifiedOf(m) : [], release: m.release || null, order: m.order || null, orders: m.orders || [], ack: m.ack || null, review: m.review || null, gps: m.gps || null, idBusy: !!(m.idBusy && Date.now() - m.idBusy < 6 * 60e3), idTried: !!m.idTried };
   }
 }
 // ---- search across the whole database (admins): every word typed must be found somewhere in the file
@@ -354,6 +354,16 @@ function readOnce(dir, n, mode, kind) {
     });
   });
 }
+// The driver is read from his CNIC: the front gives the name and number, the back gives the address. Both sides are joined into one record.
+const driverFrom = pages => { const ids = (pages || []).filter(p => p && p.type === 'id' && p.id); if (!ids.some(p => p.id.name || p.id.id_no)) return null; const g = k => (ids.find(p => p.id[k]) || { id: {} }).id[k] || ''; return { name: g('name'), idn: g('id_no'), father: g('father_name'), dob: g('dob'), expiry: g('expiry'), address: g('address'), auto: true }; };
+// CNIC photos added to a file after the scan: only the new photos are read, then the file is checked again.
+async function readId(m, first, k) {
+  const dir = path.join(CAP, m.id);
+  for (let n = first; n < first + k; n++) { try { const r = await readPage(dir, n, 'doc'); countPage(); m.pages[n] = r.type === 'other' ? { type: 'goods', what: clip(r.what, 80) } : r; } catch (e) { m.pages[n] = { type: 'unread', err: e.wait ? 'The reader is busy. Take the CNIC photos again later.' : e.message }; } }
+  try { const res = runChecks(m.pages, { seller: m.seller, takenAt: m.takenAt || m.receivedAt, location: m.location, offeredKg: m.offeredKg }); Object.assign(m, { flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles }); } catch (e) { log('  could not re-check', m.id, '-', e.message); }
+  const dv = driverFrom(m.pages.slice(first, first + k)) || (!m.driver || m.driver.auto ? driverFrom(m.pages) : null); if (dv) m.driver = dv;
+  m.idBusy = 0; m.idTried = true; save(m); saveCfg(); autoWatch(m); log('  CNIC read for', m.id, dv ? 'ok' : 'not readable');
+}
 async function vet(m) {
   const dir = path.join(CAP, m.id);
   m.status = 'reading'; m.msg = ''; save(m);
@@ -372,7 +382,7 @@ async function vet(m) {
   // With no quantity typed in, the quantity on the seller's invoice is what counts towards an oversold GD.
   m.invoiceKg = pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
   // The driver is taken from his CNIC or licence when one is among the photos; details typed by hand are never overwritten.
-  if (!m.driver || m.driver.auto) { const idp = pages.find(p => p.type === 'id' && p.id && (p.id.name || p.id.id_no)); if (idp) m.driver = { name: idp.id.name, idn: idp.id.id_no, auto: true }; }
+  if (!m.driver || m.driver.auto) { const dv = driverFrom(pages); if (dv) m.driver = dv; }
   m.checksV = CHECKS_V;
   Object.assign(m, { pages, flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, status: 'done', doneAt: new Date().toISOString(), msg: '' });
   save(m); saveCfg(); alertAdmins(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
@@ -608,6 +618,19 @@ const server = http.createServer(async (req, res) => {
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
       const b = await body(req); if (['prep', 'filed', 'confiscated', 'released', 'paid', 'other'].indexOf(b.status) < 0) return send(res, 400, { error: 'form' });
       m.courtCase = { status: b.status, warehouse: clip(b.warehouse, 120).trim(), caseNo: clip(b.caseNo, 60).trim(), filedOn: clip(b.filedOn, 20).trim(), court: clip(b.court, 120).trim(), hearing: clip(b.hearing, 20).trim(), decidedOn: clip(b.decidedOn, 20).trim(), remark: clip(b.remark, 400).trim(), byName: user.name, at: new Date().toISOString() }; save(m); log(user.name, 'updated the court case for', m.id, '-', b.status);
+      return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'idcard' && p[2] && req.method === 'POST') {   // front and back of the driver's CNIC, added to a checked file; the server reads them itself
+      const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' }); if (LOCK(m)) return send(res, 403, { error: 'locked' });
+      const b = await body(req), pg = (Array.isArray(b.pages) ? b.pages : []).slice(0, 2).filter(x => x && jpg(x.top));
+      if (!pg.length) return send(res, 400, { error: 'photo' });
+      if (pg.some(x => /^[0-9a-f]{16}$/.test(x.ph || '') && (m.hashes || []).includes(x.ph))) return send(res, 200, { ok: true, dup: true });
+      if (m.status !== 'done' || (m.idBusy && Date.now() - m.idBusy < 6 * 60e3)) return send(res, 409, { error: 'busy' });
+      if (m.nPages + pg.length > 12) return send(res, 400, { error: 'full' });
+      const dir = path.join(CAP, m.id), first = m.nPages; m.kinds = m.kinds || []; m.hashes = m.hashes || [];
+      pg.forEach((x, i) => { const n = first + i; ['view', 'top', 'thumb'].forEach(k => { const buf = jpg(x[k]); if (buf) fs.writeFileSync(path.join(dir, 'p' + n + '-' + k + '.jpg'), buf); }); m.kinds[n] = 'doc'; m.hashes[n] = /^[0-9a-f]{16}$/.test(x.ph || '') ? x.ph : null; m.pages[n] = { type: 'unread', err: 'Being read.' }; });
+      m.nPages = first + pg.length; m.idBusy = Date.now(); save(m); log(user.name, 'added', pg.length, 'CNIC photo(s) to', m.id);
+      readId(m, first, pg.length).catch(e => { m.idBusy = 0; m.idTried = true; save(m); log('  CNIC read failed', e.message); });
       return send(res, 200, { ok: true });
     }
     if (p[1] === 'driver' && p[2] && req.method === 'POST') {   // the driver's name and CNIC or phone, entered or corrected after the scan

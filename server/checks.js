@@ -131,7 +131,7 @@ function runChecks(pages,meta){
     else if(p.type==='veh'){ var reg=String((p.veh||{}).reg_no||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
-    else if(p.type==='id'){ var pi=p.id||{}; if(pi.name||pi.id_no) add('ok',0,'Driver identity recorded',[pi.name,pi.id_no].filter(Boolean).join(' · ')); else add('amber',0,'Driver identity card could not be read','Retake the photo of the CNIC, flat, sharp and filling the frame.'); }
+    else if(p.type==='id'){ var pi=p.id||{}; if(pi.name||pi.id_no) add('ok',0,'Driver identity recorded',[pi.name,pi.id_no].filter(Boolean).join(' · ')); else if(pages.some(function(q){return q&&q.type==='id'&&q.id&&(q.id.name||q.id.id_no);})){} else add('amber',0,'Driver identity card could not be read','Retake the photo of the CNIC, flat, sharp and filling the frame.'); }
     else if(p.type==='auc'){ aucs.push({a:p.auc||{},p:i+1}); add('ok',0,'Auction paper recorded',[(p.auc||{}).kind,(p.auc||{}).lot_no?'lot '+p.auc.lot_no:'',(p.auc||{}).goods].filter(Boolean).join(' · ')); }
     else if(p.type==='doc'){ docs.push({d:p.doc||{},p:i+1,name:String((p.doc||{}).title||p.what||'document')}); add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
     else if(p.type==='goods'){ var gl=p.goods||{}; if(String(gl.product||gl.label_text||'').trim().length>=4||gl.made_in||gl.mfg_date) labels.push({g:gl,p:i+1}); }
