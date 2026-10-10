@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 43;
+const VERSION = 44;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -459,7 +459,7 @@ function applyUpdate() {
   try { for (const f of Object.keys(pendingUpdate)) { fs.writeFileSync(path.join(ROOT, f + '.tmp'), pendingUpdate[f]); fs.renameSync(path.join(ROOT, f + '.tmp'), path.join(ROOT, f)); } } catch (e) { log('Update could not be written:', e.message); pendingUpdate = null; return; }
   log('Updated the server files. Restarting now.'); process.exit(0);
 }
-setInterval(selfUpdate, 30 * 60e3); setTimeout(selfUpdate, 45e3);
+setInterval(selfUpdate, 2 * 60e3); setTimeout(selfUpdate, 45e3);   // look for a new version every 2 minutes, so an update arrives almost at once
 
 // ---- web API
 const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
