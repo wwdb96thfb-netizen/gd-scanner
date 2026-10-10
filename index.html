@@ -377,6 +377,8 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 .devb{border-color:var(--red)!important;background:var(--red-soft)!important;margin-bottom:14px}
 .rolesel{width:auto;flex:0 1 auto;padding:8px 30px 8px 10px;font-size:13.5px;border-radius:8px}
 #toast.bad{background:var(--red);color:#fff;font:700 15px/1.2 var(--head);letter-spacing:.12em;text-transform:uppercase;text-align:center}
+#zoom-wm{position:absolute;inset:-40%;transform:rotate(-24deg);pointer-events:none;color:rgba(255,255,255,.16);font:700 12px/4.6 var(--body);letter-spacing:.05em;text-transform:uppercase;overflow:hidden;text-align:center;text-shadow:0 0 2px rgba(0,0,0,.35)}
+.photos img{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -635,13 +637,13 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     </nav>
   </div>
 </div>
-<div id="zoom" hidden><div id="zoom-in"><img id="zoom-img" alt="Enlarged photo"></div><button id="zoom-x" aria-label="Close photo">Close</button><span id="zoom-tip">Tap the photo to enlarge. Drag to move.</span></div>
+<div id="zoom" hidden><div id="zoom-in"><img id="zoom-img" alt="Enlarged photo"></div><button id="zoom-x" aria-label="Close photo">Close</button><div id="zoom-wm" aria-hidden="true"></div><span id="zoom-tip">Tap the photo to enlarge. Drag to move.</span></div>
 <div id="sheet" hidden><div class="sheet-head"><b>Goods found on the vehicle</b><button class="btn small" id="sheet-done">Done</button></div><div id="sheet-body"></div></div>
 <div id="print"></div>
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.33.1';
+var APPV = '2.34.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -830,6 +832,20 @@ function drawThumbs() { $('thumbs').textContent = '';
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
 function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
+// The copy of each photo that people see in the app is marked as Coast Guards property before it leaves the phone:
+// a faint repeated line across the picture and a strip at the foot saying who took it, where and when.
+// The sharp copies the server reads are left clean, so the marking never disturbs the reading. They are not shown to anyone.
+function wmView(im, edge, q, who) { var sw = im.naturalWidth, sh = im.naturalHeight, k = Math.min(1, edge / Math.max(sw, sh)), c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+  var x = c.getContext('2d'), W = c.width, H = c.height; x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(im, 0, 0, sw, sh, 0, 0, W, H);
+  try { var fs = Math.max(13, Math.round(Math.min(W, H) / 26)), txt = 'PAKISTAN COAST GUARDS  ·  OFFICIAL USE ONLY', stepY = fs * 7;
+    x.save(); x.translate(W / 2, H / 2); x.rotate(-Math.PI / 7); x.font = '700 ' + fs + 'px Arial, Helvetica, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    var tw = x.measureText(txt).width + fs * 4, R = Math.sqrt(W * W + H * H) / 2;
+    for (var yy = -R, row = 0; yy <= R; yy += stepY, row++) for (var xx = -R - (row % 2 ? tw / 2 : 0); xx <= R + tw; xx += tw) { x.fillStyle = 'rgba(255,255,255,.2)'; x.fillText(txt, xx + 1, yy + 1); x.fillStyle = 'rgba(1,65,28,.2)'; x.fillText(txt, xx, yy); }
+    x.restore();
+    var bh = Math.round(fs * 1.9), line = 'PAKISTAN COAST GUARDS · ' + who; x.fillStyle = 'rgba(1,65,28,.86)'; x.fillRect(0, H - bh, W, bh); x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.textAlign = 'left';
+    var f2 = Math.round(fs * .82); x.font = '700 ' + f2 + 'px Arial, Helvetica, sans-serif'; while (f2 > 8 && x.measureText(line).width > W - fs) { f2--; x.font = '700 ' + f2 + 'px Arial, Helvetica, sans-serif'; } x.fillText(line, fs / 2, H - bh / 2); } catch (e) {}
+  var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
+function wmWho(at) { var d = new Date(at), p = function (n) { return (n < 10 ? '0' : '') + n; }; return [(S.me && S.me.name) || '', getLoc(), p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes())].filter(Boolean).join(' · '); }
 function fingerprint(im) { try { var c = document.createElement('canvas'); c.width = 9; c.height = 8; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 9, 8); var d = x.getImageData(0, 0, 9, 8).data, g = [], hex = ''; for (var i = 0; i < 72; i++) g.push(d[i * 4] * 0.299 + d[i * 4 + 1] * 0.587 + d[i * 4 + 2] * 0.114);
     for (var r = 0; r < 8; r++) { var b = 0; for (var k = 0; k < 8; k++) b = (b << 1) | (g[r * 9 + k] > g[r * 9 + k + 1] ? 1 : 0); hex += ('0' + b.toString(16)).slice(-2); } return hex; } catch (e) { return null; } }
 function thumbOf(im) { var c = document.createElement('canvas'), d = Math.min(im.naturalWidth, im.naturalHeight); c.width = c.height = 160; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 160, 160); x.drawImage(im, (im.naturalWidth - d) / 2, (im.naturalHeight - d) / 2, d, d, 0, 0, 160, 160); var u = c.toDataURL('image/jpeg', 0.6); c.width = c.height = 0; return u; }
@@ -838,11 +854,11 @@ $('b-send').addEventListener('click', async function () {
   if (!picked.length || picked.some(function (f) { return f.warn; })) return; $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
   var gps = await getGPS(); if (!gps) { setStatus('s-scan', 'Location is required with every scan. Turn on Location (GPS) on this phone, allow it for this app, and press Send again.', true); $('b-send').disabled = false; return; }
   setStatus('s-scan', 'Preparing photos…');
-  var pages = [];
+  var pages = [], takenAt = new Date().toISOString(), who = wmWho(takenAt);
   for (var i = 0; i < picked.length; i++) { try { var im = await loadImg(picked[i].url), kind = picked[i].kind, tall = im.naturalHeight > im.naturalWidth * 1.15;
-      pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: draw(im, 0, 1, 1000, 0.5), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
+      pages.push({ kind: kind, ph: fingerprint(im), thumb: thumbOf(im), view: wmView(im, 1100, 0.55, who), top: kind === 'goods' ? null : (tall ? draw(im, 0, 0.56, 1700, 0.86) : draw(im, 0, 1, 2000, 0.86)), bottom: tall ? draw(im, 0.44, 1, 1700, 0.86) : null }); }
     catch (e) { setStatus('s-scan', 'Photo ' + (i + 1) + ' could not be opened. Remove it and take it again.', true); $('b-send').disabled = false; return; } }
-  var item = { id: newId(), takenAt: new Date().toISOString(), gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), driver: null, found: scanFound.read(), offeredKg: null, pages: pages };
+  var item = { id: newId(), takenAt: takenAt, gps: gps, location: getLoc(), seller: '', note: $('f-note').value.trim(), driver: null, found: scanFound.read(), offeredKg: null, pages: pages };
   try { await outPut(item); } catch (e) { setStatus('s-scan', 'This phone could not save the capture. Free some storage and try again.', true); $('b-send').disabled = false; return; }
   picked.forEach(function (f) { URL.revokeObjectURL(f.url); }); picked = []; drawThumbs(); $('f-note').value = ''; $('l-note').hidden = true; $('b-note').hidden = false; scanFound.reset();
   setStatus('s-scan', ''); S.outbox.push(item); drawConn(); drawFiles(); window.scrollTo(0, 0); toast('Sent. The result will show at the top. You can take the next vehicle now.'); sync();
@@ -1358,6 +1374,7 @@ document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEvent
 document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { $('zoom-img').src = t.src; $('zoom').classList.remove('big'); $('zoom').hidden = false; } });
 $('zoom-img').addEventListener('click', function (e) { var z = $('zoom'), box = $('zoom-in'), r = e.target.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; z.classList.toggle('big');
   if (z.classList.contains('big')) { var n = e.target.getBoundingClientRect(); box.scrollLeft = fx * n.width - box.clientWidth / 2; box.scrollTop = fy * n.height - box.clientHeight / 2; } });
+document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { var one = 'Pakistan Coast Guards · viewed by ' + ((S.me && S.me.name) || 'user') + ' · ' + new Date().toLocaleString() + ' ·', all = ''; for (var i = 0; i < 60; i++) all += one + ' '; $('zoom-wm').textContent = all; } });
 $('zoom-x').addEventListener('click', function () { $('zoom').hidden = true; $('zoom-img').removeAttribute('src'); });
 // keep the app fitted to the screen: no pinch or double-tap zoom
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
