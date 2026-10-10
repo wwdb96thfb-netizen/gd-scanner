@@ -148,6 +148,9 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 .np-item.tap{cursor:pointer}.np-item.tap b::after{content:' ›';color:var(--muted)}
 .qact{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.qact.asking{grid-template-columns:1fr 1fr}.qact .qmsg{grid-column:1/-1;font:600 13px/1.35 var(--body);color:var(--ink)}
 .qb{font:700 13px/1 var(--head);letter-spacing:.06em;text-transform:uppercase;padding:11px 6px;border-radius:10px;border:0;color:#fff;cursor:pointer}.qb.rel{background:#17854a}.qb.det{background:#b97a08}.qb.sz{background:#c62f26}.qb.back{background:var(--grey-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);text-transform:none;letter-spacing:0;font:600 13px/1 var(--body)}.qb:disabled{opacity:.55}
+.addm{border:1px solid var(--line);border-radius:14px;background:var(--card);padding:0 12px;margin-bottom:6px}.addm>summary{list-style:none;cursor:pointer;padding:13px 2px;font:700 15px var(--body);color:var(--stamp);display:flex;align-items:center;gap:10px}.addm>summary::-webkit-details-marker{display:none}.addm .plus{width:26px;height:26px;border-radius:50%;background:var(--stamp);color:#fff;display:inline-flex;align-items:center;justify-content:center;font:700 18px/1 var(--body)}.addm[open]{padding-bottom:12px}
+.person .phead{display:flex;align-items:center;justify-content:space-between;gap:10px}.person .pbtns .btn{padding:7px 11px;font-size:12.5px}.pextra{display:flex;flex-direction:column;gap:8px}.pextra[hidden]{display:none}
+.wrow{display:flex;gap:11px;align-items:center;cursor:pointer}.wpic{flex:0 0 58px;width:58px;height:58px;border-radius:10px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:flex;align-items:center;justify-content:center}.wrow .wt{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}.wrow .wt b{font-size:15px}.wkind{font:700 10.5px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}.wdet{display:flex;flex-direction:column;gap:9px;margin-top:10px;border-top:1px solid var(--line);padding-top:10px}.wdet[hidden]{display:none}.wdet .photos{display:flex;gap:6px;flex-wrap:wrap}.wdet .photos img{width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:zoom-in}.wfile{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 #b-bell{flex:0 0 34px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(1,45,20,.72);color:#fff;display:flex;align-items:center;justify-content:center;position:relative;padding:0;cursor:pointer}#b-bell[hidden]{display:none}
 #bell-n{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#e11d2e;color:#fff;font:700 11px/18px var(--body);text-align:center;box-shadow:0 0 0 2px #01411C}#bell-n[hidden]{display:none}
 #npanel,#amenu{position:fixed;inset:0;z-index:75;background:rgba(6,14,10,.6);display:flex;align-items:flex-end;justify-content:center}#npanel[hidden],#amenu[hidden]{display:none}
@@ -533,11 +536,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     </section>
 
     <section id="p-files" hidden>
-      <h2 class="sec">Checked files</h2>
-      <details class="more helpd"><summary>What do the colours mean?</summary><div class="legend">
-        <span class="pill red">Seize, or Detain and wait for HQ</span><span class="pill amber">Detain and get papers</span><span class="pill ok">Release</span>
-        <span>Open a file to see what to do. A red point marked Critical must not be ignored. A blurred photo can also turn a file red, so retake the photo before you decide.</span>
-      </div></details>
+      <h2 class="sec">Database</h2>
       <div class="qnote" id="push-ask" hidden style="margin-bottom:10px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span id="push-txt">Get an alert on this phone when a post gets a Detain result.</span><button class="btn small" id="b-push2">Turn on</button></div>
       <div id="admin-tools" hidden>
         <div class="chips" id="chips" style="margin-bottom:10px">
@@ -594,6 +593,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         <h2 class="sec" style="margin-bottom:10px">Waiting for approval</h2>
         <div class="list" id="requests"></div>
       </div>
+      <details class="addm" id="addm"><summary><span class="plus">+</span> Add new member</summary>
       <h2 class="sec">Invite with the join link</h2>
       <div class="panel">
         <p class="note">Send this one link to anyone who should join. They enter their name and ask for access. Nobody gets in until an officer approves them here.</p>
@@ -609,8 +609,9 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         <button class="btn" id="b-person">Add and get their link</button>
         <p class="note">A person you add is approved straight away and gets a personal link.</p>
       </div>
+      </details>
       <p class="status" id="s-people" role="status"></p>
-      <h2 class="sec">People with access</h2>
+      <h2 class="sec">Members</h2>
       
       <div class="list" id="people"></div>
       </div>
@@ -709,7 +710,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.44.0';
+var APPV = '2.45.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -805,7 +806,7 @@ async function refresh() {
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
     if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the officer\'s decision on this phone as a notification.'; pushCheck();
-    S.list = j.list; try { announceResults(j.list); } catch (e) {} keep('gd.list', j.list.slice(0, 50)); if (S.search && $('q').value.trim().length >= 2) runSearch(); } catch (e) {}
+    S.list = j.list; try { announceResults(j.list); } catch (e) {} try { drawWatch(); } catch (e) {} keep('gd.list', j.list.slice(0, 50)); if (S.search && $('q').value.trim().length >= 2) runSearch(); } catch (e) {}
   drawConn(); drawFiles(); }
 function orderAlert(list) { var seen = load('gd.ord') || {}, first = !load('gd.ordinit'), hit = null; list.forEach(function (c) { if (c.order && seen[c.id] !== c.order.at) { if (!first) hit = c; seen[c.id] = c.order.at; } }); keep('gd.ord', seen); keep('gd.ordinit', 1);
   if (hit) { toast('ORDER FROM HQ: ' + ORD[hit.order.order].toUpperCase() + (hit.vehicles && hit.vehicles[0] ? ' · ' + hit.vehicles[0] : '')); try { if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]); } catch (e) {} try { showOrder(hit, true); } catch (e) {} } }
@@ -1466,11 +1467,30 @@ function summaryText(csv) { var s = summary(), L = csv ? [['Day', 'Post', 'Check
 async function loadAdmin() { if (!$('sum-day').value) $('sum-day').value = dayOf(new Date()); drawSummary();
   try { var j = await api('/api/admin'); S.adminOk = true; S.vapid = j.vapid || ''; drawPush();
     $('sum-usage').textContent = 'Photos read by the server today: ' + (j.usage.pages || 0) + '. Waiting in queue now: ' + j.q.ahead + '.' + (j.usage.lastLimit ? ' Reading limit last reached: ' + when(j.usage.lastLimit) + '.' : ' Reading limit not reached so far.');
-    var wsig = JSON.stringify(j.watch); if (wsig === S.watchSig) return; S.watchSig = wsig;   // redraw the list only when it has changed
-    var wb = $('watch'); wb.textContent = '';
-    var item = function (box, title, sub, path) { var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function () { del.disabled = true; try { await api(path, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (e) { del.disabled = false; } } }); box.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, h('b', { text: title }), h('div', { class: 'meta', text: sub }), del))); };
-    j.watch.forEach(function (w) { item(wb, w.value, (w.note ? w.note + ' · ' : '') + 'by ' + w.by + ', ' + when(w.at), '/api/watch/' + w.id); });
+    S.watch = j.watch; drawWatch();
   } catch (e) { if (!e || !e.net) setStatus('s-admin', 'The watchlist and alerts appear once the server has updated itself (within about 30 minutes).'); } }
+// ---- watchlist: each entry shows the vehicle or the identity card it is about, and opens onto everything scanned for it
+function watchInfo(w) { var an = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }, dgs = function (x) { return String(x || '').replace(/\D/g, ''); }, v = an(w.value), dg = dgs(w.dg), L = S.list.filter(function (c) { return c.status === 'done'; });
+  var vehF = v.length >= 4 ? L.filter(function (c) { return (c.vehicles || []).some(function (x) { return an(x) === v; }); }) : [];
+  var perF = L.filter(function (c) { var d = c.driver; if (!d) return false; var di = dgs(d.idn), dn = an(d.name); return (dg.length >= 7 && di === dg) || (w.kind === 'driver' && w.nm && dn === w.nm) || (dgs(w.value).length >= 7 && di === dgs(w.value)) || (v.length >= 5 && dn === v); });
+  var person = w.kind === 'driver' || (!vehF.length && perF.length > 0), files = person ? perF : vehF; if (w.src && !files.some(function (c) { return c.id === w.src; })) { var sc = L.filter(function (c) { return c.id === w.src; })[0]; if (sc) files = [sc].concat(files); }
+  var pic = null; files.some(function (c) { var pg = c.pages || []; for (var i = 0; i < pg.length; i++) if (pg[i] && pg[i].type === (person ? 'id' : 'veh')) { pic = { id: c.id, n: i }; return true; } return false; });
+  return { kind: person ? 'Person' : vehF.length || /^[a-z]{2,4}[- ]?\d{2,5}$/i.test(String(w.value).trim()) ? 'Vehicle' : 'Other', person: person, files: files, pic: pic }; }
+function drawWatch() { var wb = $('watch'); if (!wb) return; var W = S.watch || [], sig = JSON.stringify([W, S.list.map(function (c) { return [c.id, c.status, (c.pages || []).length, !!c.driver]; }), !!S.server]); if (sig === S.watchSig && wb.firstChild) return; S.watchSig = sig; var openIds = {}; wb.querySelectorAll('.wdet:not([hidden])').forEach(function (e) { openIds[e.dataset.w] = 1; }); wb.textContent = '';
+  var purl = function (kind, id, n) { return S.server + '/api/' + kind + '/' + id + '/' + n + '?code=' + encodeURIComponent(cfg.c) + pinq(); };
+  W.forEach(function (w) { var I = watchInfo(w), det = h('div', { class: 'wdet', hidden: '' }); det.dataset.w = w.id; if (openIds[w.id]) det.hidden = false;
+    var pic = I.pic && S.server ? h('img', { class: 'wpic', alt: '', loading: 'lazy', src: purl('thumb', I.pic.id, I.pic.n) }) : h('span', { class: 'wpic' }, CI(I.person ? 'id' : I.kind === 'Vehicle' ? 'truck' : 'doc', 26));
+    var del = h('button', { class: 'btn ghost small', text: 'Remove', onclick: async function (e) { e.stopPropagation(); del.disabled = true; try { await api('/api/watch/' + w.id, { method: 'DELETE' }); S.ver = ''; loadAdmin(); refresh(); } catch (x) { del.disabled = false; } } });
+    var head = h('div', { class: 'wrow' }, pic, h('div', { class: 'wt' }, h('span', { class: 'wkind', text: I.kind }), h('b', { text: w.value }), h('span', { class: 'meta', text: (w.note ? w.note + ' · ' : '') + 'by ' + w.by + ', ' + when(w.at) })), h('span', { class: 'rgo', text: '›' }));
+    head.addEventListener('click', function () { det.hidden = !det.hidden; });
+    if (!I.files.length) det.appendChild(h('span', { class: 'note', text: 'Nothing scanned so far matches this entry. Its photos and papers will appear here once it is scanned.' }));
+    else { var f0 = I.files[0];
+      if (I.person && f0.driver) det.appendChild(kv([['Name', f0.driver.name], ['Father / husband', f0.driver.father], ['CNIC', f0.driver.idn], ['Address', f0.driver.address], ['Card valid until', f0.driver.expiry]]));
+      var ph = h('div', { class: 'photos' }), np = 0; I.files.slice(0, 4).forEach(function (c) { (c.pages || []).forEach(function (p, n) { if (!p || np >= 12) return; var isId = p.type === 'id'; if (I.person ? !isId : isId) return; if (!I.person && c !== f0) return; ph.appendChild(h('img', { src: purl('photo', c.id, n) + '&_=' + c.id, alt: (I.person ? 'Identity paper ' : 'Paper ') + (n + 1), loading: 'lazy' })); np++; }); });
+      if (S.server && np) { det.appendChild(h('b', { class: 'wkind', text: I.person ? 'Identity card and licence' : 'Vehicle and its papers (latest scan)' })); det.appendChild(ph); }
+      det.appendChild(h('b', { class: 'wkind', text: 'Seen in ' + I.files.length + ' file' + (I.files.length > 1 ? 's' : '') }));
+      I.files.slice(0, 8).forEach(function (c) { det.appendChild(h('div', { class: 'wfile' }, h('span', { text: [(c.vehicles || [])[0], c.location, when(c.takenAt || c.receivedAt), PAST[postView(c).w]].filter(Boolean).join(' · ') }), h('button', { class: 'btn ghost small', text: 'Open file', onclick: function () { goTo('file:' + c.id); } }))); }); }
+    det.appendChild(del); wb.appendChild(h('div', { class: 'case' }, h('div', { class: 'body' }, head, det))); }); }
 $('sum-day').addEventListener('change', drawSummary);
 $('b-sumshare').addEventListener('click', async function () { var t = summaryText(false); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Summary copied'); } } catch (e) {} });
 $('b-sumcsv').addEventListener('click', function () { var a = h('a', { href: URL.createObjectURL(new Blob([summaryText(true)], { type: 'text/csv' })), download: 'gd-verification-' + $('sum-day').value + '.csv' }); document.body.appendChild(a); a.click(); a.remove(); });
@@ -1500,7 +1520,10 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
       rask.appendChild(h('button', { class: 'btn ghost small', text: 'No, keep ' + RN[p.role], onclick: function () { role.value = p.role; rask.hidden = true; } })); });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } }); if (guard) ask.hidden = true;
     var yes = h('button', { class: 'btn danger small', text: 'Yes, remove', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
-    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Officer' : p.role === 'viewer' ? 'Bn Staff' : 'Post Staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin && p.code !== cfg.c ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes), rask)); });
+    var roleRow = h('div', { class: 'row', hidden: '' }, role), extra = h('div', { class: 'pextra', hidden: '' }, h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin && p.code !== cfg.c ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null));
+    var crb = h('button', { class: 'btn ghost small', text: 'Change role', onclick: function () { roleRow.hidden = !roleRow.hidden; if (roleRow.hidden) { role.value = p.role; rask.hidden = true; } } }), mb = h('button', { class: 'btn ghost small', text: 'More', onclick: function () { extra.hidden = !extra.hidden; mb.textContent = extra.hidden ? 'More' : 'Less'; } }); if (guard) crb.hidden = true;
+    if (window.__openRows) { roleRow.hidden = false; extra.hidden = false; }
+    box.appendChild(h('div', { class: 'person' }, h('div', { class: 'phead' }, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Officer' : p.role === 'viewer' ? 'Bn Staff' : 'Post Staff' })), h('div', { class: 'row pbtns' }, crb, ask, yes, mb), roleRow, rask, extra)); });
   if ((S.removed || []).length) { var rd = h('details', { class: 'more' }, h('summary', { text: 'Removed people (' + S.removed.length + ')' })); S.removed.slice().reverse().forEach(function (p) { var ab = h('button', { class: 'btn ghost small', text: 'Add again', onclick: async function () { ab.disabled = true; try { await api('/api/people/' + p.code + '/restore', { method: 'POST' }); toast(p.name + ' is added again. His old link works; he chooses a new PIN.'); loadPeople(); } catch (e) { ab.disabled = false; } } });
       rd.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role', text: p.role === 'admin' ? 'Officer' : p.role === 'viewer' ? 'Bn Staff' : 'Post Staff' })), h('span', { class: 'note', text: 'Removed ' + when(p.at) }), h('div', { class: 'row' }, ab))); }); box.appendChild(rd); } }
 $('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
