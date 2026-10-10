@@ -709,7 +709,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.41.0';
+var APPV = '2.41.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1302,6 +1302,7 @@ function stampOf(c) { if (!c || c.local || c.status !== 'done') return null; var
   if (o && o.order === 'docs') return S1('Detained', 'amber', o.at, o.byName ? 'Order of ' + o.byName : '');
   if (o && (o.order === 'seize' || o.order === 'detain')) return S1('Seizure ordered', 'red', o.at, o.byName ? 'Order of ' + o.byName : '');
   if (d && d.action === 'held') return S1('Detained', 'amber', d.at, d.byName);
+  if (advise(c).a === 'clear') return S1('Released', 'green', c.doneAt || c.receivedAt || c.takenAt, 'System decision');   // a clean scan is released by the system itself, with no officer involved
   return null; }
 var STN = 0;
 // An official-looking round seal: service name round the top, the authority round the bottom, status with date and time in the middle.
