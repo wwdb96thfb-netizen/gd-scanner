@@ -376,6 +376,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .morechip{border-style:dashed}
 .devb{border-color:var(--red)!important;background:var(--red-soft)!important;margin-bottom:14px}
 .rolesel{width:auto;flex:0 1 auto;padding:8px 30px 8px 10px;font-size:13.5px;border-radius:8px}
+#toast.bad{background:var(--red);color:#fff;font:700 15px/1.2 var(--head);letter-spacing:.12em;text-transform:uppercase;text-align:center}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -640,7 +641,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.33.0';
+var APPV = '2.33.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -699,7 +700,7 @@ async function findServer() {
     return null; })();
   var s = await S.finding; S.finding = null; S.server = s; drawConn(); return s; }
 // A save that fails because the server has just restarted or moved to a new address is tried again by itself.
-function viewOnly() { toast('View only. This action is for admins.'); }
+function viewOnly() { toast('Restricted Access', true); }
 async function api(path, opts) {
   var small = !!(opts && opts.method && opts.method !== 'GET') && (!/^\/api\/(page|capture)(\/|\?|$)/.test(path) || opts.method === 'DELETE');
   for (var n = 0; ; n++) { try { return await api1(path, opts); } catch (e) { if (!e || !e.net || !small || n >= 2 || !navigator.onLine) throw e; await new Promise(function (ok) { setTimeout(ok, n ? 6000 : 2500); }); } } }
@@ -724,7 +725,7 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   var adm = !!(S.me && S.me.admin); if ($('t-people').hidden !== !adm) $('t-people').hidden = !adm; if (adm && !$('f-locsel').value) { $('f-locsel').value = 'Bn HQ'; locChanged(); } $('admin-tools').hidden = !adm; $('t-files-l').textContent = adm ? 'All files' : 'My files';
   var vw = !!(S.me && S.me.viewer); if ($('chip-people').hidden !== vw) $('chip-people').hidden = vw; }
 
-function toast(msg) { var t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
+function toast(msg, bad) { var t = $('toast'); t.textContent = msg; t.classList.toggle('bad', !!bad); t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 5000); }
 
 async function refresh() {
   if (cfg.c && cfg.ph && !cfg.pinSync) { var pr = await pinPost(cfg.ph); if (pr === 'ok') { cfg.pinSync = true; keep('gd.cfg', cfg); } else if (pr === 'wrong' || pr === 'locked') { pinRejected(); return; } }
