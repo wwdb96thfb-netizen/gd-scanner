@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 46;
+const VERSION = 47;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -26,6 +26,8 @@ if (!cfg.vapid) { const k = crypto.generateKeyPairSync('ec', { namedCurve: 'prim
 if (!Array.isArray(cfg.subs)) cfg.subs = [];
 if (!Array.isArray(cfg.watch)) cfg.watch = [];
 if (!cfg.pins || typeof cfg.pins !== 'object') cfg.pins = {};
+if (!cfg.devs || typeof cfg.devs !== 'object') cfg.devs = {};   // one phone per account: the phone each account is tied to
+const devWarned = new Map();
 if (!Array.isArray(cfg.items)) cfg.items = [];
 if (!Array.isArray(cfg.values)) cfg.values = [];
 if (!cfg.usage) cfg.usage = { day: '', pages: 0, lastLimit: null };
@@ -492,6 +494,16 @@ const server = http.createServer(async (req, res) => {
     }
     const presented = req.headers['x-code'] || u.searchParams.get('code'), user = who(presented);
     if (!user) return cfg.requests.some(x => x.code === presented) ? send(res, 403, { error: 'pending' }) : send(res, 401, { error: 'code' });
+    // One phone per account. The first phone to use an account is remembered; any other phone is refused until an admin releases the account.
+    // For 15 minutes after the first use the account may move once, because adding the app to the home screen counts as a new phone on an iPhone.
+    if (!process.env.GD_NO_DEVLOCK) { const dk = idOf(user.code), sentDev = String(u.searchParams.get('dev') || ''), okDev = /^[a-f0-9]{24,64}$/.test(sentDev);
+      if (user.owner && cfg.devs[dk] && fs.existsSync(path.join(ROOT, 'RESET-DEVICE.txt'))) { delete cfg.devs[dk]; saveCfg(); try { fs.unlinkSync(path.join(ROOT, 'RESET-DEVICE.txt')); } catch (e) {} log('Owner phone lock was released with RESET-DEVICE.txt'); }
+      const D = cfg.devs[dk];
+      if (!D) { if (okDev) { cfg.devs[dk] = { id: sentDev, at: Date.now(), moves: 0 }; saveCfg(); log(user.name, 'is now tied to one phone'); } }
+      else if (D.id !== sentDev) {
+        if (okDev && Date.now() - D.at < 15 * 60e3 && (D.moves || 0) < 1) { D.id = sentDev; D.moves = (D.moves || 0) + 1; saveCfg(); log(user.name, 'moved once during set-up (browser to home-screen app)'); }
+        else { const last = devWarned.get(dk) || 0; if (Date.now() - last > 3600e3) { devWarned.set(dk, Date.now()); log('REFUSED: a second phone tried to use the account of', user.name); try { notifyAdmins({ title: 'Second phone refused', body: 'Another phone tried to use the account of ' + user.name + '. It was refused.' }); } catch (e) {} }
+          return send(res, 401, { error: 'device' }); } } }
     // PIN: each person chooses one on first use. From then on their link alone is not enough; the PIN must come with it.
     // What is stored and sent is a one-way hash, never the PIN itself.
     const pinKey = idOf(user.code), sentPin = String(u.searchParams.get('pin') || ''), HEX = /^[a-f0-9]{64}$/;
@@ -639,12 +651,13 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'retry' && p[2] && req.method === 'POST') { const m = index.get(p[2]); if (!m) return send(res, 404, { error: 'none' }); if (LOCK(m)) return send(res, 403, { error: 'locked' }); m.status = 'queued'; m.msg = ''; save(m); work(); return send(res, 200, { ok: true }); }
     if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (LOCK(m)) return send(res, 403, { error: 'locked' }); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
-      people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
+      people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], dev: !!cfg.devs[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
       requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
     if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: b.role === 'admin' ? 'admin' : 'field', added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
+    if (p[1] === 'people' && p[2] && p[3] === 'device' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.devs[idOf(x.code)]; saveCfg(); log(user.name, 'released the phone lock of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'pin' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.pins[idOf(x.code)]; pinFails.delete(idOf(x.code)); saveCfg(); log(user.name, 'reset the PIN of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = b.role === 'admin' ? 'admin' : 'field'; saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);

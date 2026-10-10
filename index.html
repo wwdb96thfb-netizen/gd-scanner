@@ -374,6 +374,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 .rrow .rs{flex:none;max-width:48%;font:700 12px/1.2 var(--head);letter-spacing:.06em;text-transform:uppercase;text-align:right}.rrow.red .rs{color:var(--red)}.rrow.amber .rs{color:var(--amber)}.rrow.ok .rs{color:var(--green)}.rrow .rgo{flex:none;color:var(--muted);font-size:20px;line-height:1}
 .thumbs figure.warn img{outline:3px solid var(--red)}.thumbs figure .keepit{position:absolute;left:0;right:0;top:auto;bottom:-22px;width:auto;height:20px;border-radius:5px;background:var(--card);color:var(--muted);border:1px solid var(--line);font:600 10px/1 var(--body);padding:0}.thumbs:has(figure.warn){padding-bottom:24px}.thumbs figure figcaption{position:absolute;left:0;right:0;bottom:0;background:var(--red);color:#fff;font:700 10px/1.5 var(--body);text-align:center}
 details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .morechip{border-style:dashed}
+.devb{border-color:var(--red)!important;background:var(--red-soft)!important;margin-bottom:14px}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -461,6 +462,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 
   <div id="main" hidden>
 
+    <div class="empty devb" id="dev-block" hidden><b>This account is already in use on another phone.</b> One account works on one phone only. If this is your new phone, ask an admin to open Admin, People, and tap "Allow new phone" beside your name. Then open the app again.</div>
     <section id="p-scan">
       <div id="recent" hidden></div>
       <h2 class="sec">New scan</h2>
@@ -637,7 +639,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.30.0';
+var APPV = '2.31.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -684,7 +686,7 @@ async function announced() { if (!cfg.t) return null; try { var r = await fx('ht
 async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
   for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
 function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
-async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
+async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } if (e401.error === 'device') { S.server = url; devBlocked(); drawConn(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
   S.finding = (async function () {
@@ -701,7 +703,7 @@ async function api(path, opts) { var small = !!(opts && opts.method && opts.meth
 async function api1(path, opts) { var s = await findServer(); if (!s) throw { net: true }; var r;
   try { r = await fx(s + path + (path.indexOf('?') < 0 ? '?' : '&') + '_=' + Date.now() + pinq(), Object.assign({}, opts, { headers: Object.assign({ 'x-code': cfg.c }, opts && opts.body ? { 'content-type': 'application/json' } : {}) }), (opts && opts.ms) || 15000); }
   catch (e) { S.server = null; drawConn(); throw { net: true }; }
-  if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { pinRejected(); throw { pin: true }; } revoked(); drawConn(); throw { code: true }; }
+  if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { pinRejected(); throw { pin: true }; } if (e401.error === 'device') { devBlocked(); drawConn(); throw { code: true }; } revoked(); drawConn(); throw { code: true }; }
   if (r.status >= 500) { S.server = null; drawConn(); throw { net: true }; }
   if (!r.ok) throw { status: r.status };
   return r.json(); }
@@ -709,6 +711,7 @@ async function api1(path, opts) { var s = await findServer(); if (!s) throw { ne
 function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' waiting.' : '';
   if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an admin to approve you.'; }
   else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.j ? 'Not a member yet' : 'Not set up'; }
+  else if (S.devBlock) { e.className = 'conn bad'; e.textContent = 'In use on another phone'; }
   else if (S.bad) { e.className = 'conn bad'; e.textContent = 'This link is no longer valid. Ask for a new one.' + held; }
   else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Scans wait on this phone.' + held; }
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
@@ -1276,7 +1279,7 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
     var role = h('button', { class: 'btn ghost small', text: adm ? 'Make post staff' : 'Make admin', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: adm ? 'field' : 'admin' }) }); loadPeople(); } catch (e) {} } });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
     var yes = h('button', { class: 'btn danger small', text: 'Yes, cancel this link', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
-    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Post staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.pin ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); }); }
+    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : 'Post staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); }); }
 $('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
 $('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Verification System: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
 $('join-link').addEventListener('focus', function (e) { e.target.select(); });
@@ -1302,7 +1305,9 @@ setInterval(checkApproval, 10000);
 $('b-link').addEventListener('click', function () { if (takeLink($('f-link').value)) start(); else setStatus('s-setup', 'That does not look like a GD Verification System link.', true); });
 // ---- location consent and PIN lock
 var locOK = !!load('gd.locok');
-function pinq() { return cfg.ph ? '&pin=' + cfg.ph : ''; }
+var DEV = (function () { var d = load('gd.dev'); if (typeof d !== 'string' || !/^[a-f0-9]{32}$/.test(d)) { var a = new Uint8Array(16); crypto.getRandomValues(a); d = Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); keep('gd.dev', d); } return d; })();   // this phone's own identity: an account works on one phone only
+function pinq() { return (cfg.ph ? '&pin=' + cfg.ph : '') + '&dev=' + DEV; }
+function devBlocked() { S.devBlock = true; S.bad = true; var b = $('dev-block'); if (b) b.hidden = false; }
 async function sha(t) { var b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
 function gate() { var needIntro = !load('gd.intro'), ready = !!cfg.c && !cfg.pending, needLoc = !needIntro && ready && !locOK, needPin = !needIntro && ready && !needLoc && !S.unlocked;
   $('gate').hidden = !(needIntro || needLoc || needPin); $('g-intro').hidden = !needIntro; $('g-loc').hidden = !needLoc; $('g-pin').hidden = !needPin;
@@ -1310,7 +1315,7 @@ function gate() { var needIntro = !load('gd.intro'), ready = !!cfg.c && !cfg.pen
     $('g-text').textContent = fresh ? 'Choose a PIN of 4 to 6 digits and remember it. It is asked every time you open the app. If you already chose a PIN for this link on another phone, enter that same PIN in both boxes.' : 'Sign in with your personal PIN.'; $('g-ver').textContent = 'Version ' + APPV + ' · © 2026'; } }
 function pinRejected() { if (cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); } if (S.unlocked !== false || $('gate').hidden) { S.unlocked = false; gate(); setStatus('s-gpin', 'The server did not accept the PIN on this phone. Enter the PIN for this link.', true); } }
 async function pinPost(H, old) { var s = S.server || await findServer(); if (!s) return 'net';
-  try { var r = await fx(s + '/api/pin?_=' + Date.now() + (old ? '&pin=' + old : ''), { method: 'POST', headers: { 'x-code': cfg.c, 'content-type': 'application/json' }, body: JSON.stringify({ pin: H }) }, 10000);
+  try { var r = await fx(s + '/api/pin?_=' + Date.now() + (old ? '&pin=' + old : '') + '&dev=' + DEV, { method: 'POST', headers: { 'x-code': cfg.c, 'content-type': 'application/json' }, body: JSON.stringify({ pin: H }) }, 10000);
     if (r.ok) return 'ok'; if (r.status === 404) return 'old'; if (r.status === 401) { var j = await r.json().catch(function () { return {}; }); return j.error === 'pin' ? (j.locked ? 'locked' : 'wrong') : 'code'; } return 'net'; } catch (e) { return 'net'; } }
 function unlock() { S.unlocked = true; $('g-p1').value = ''; $('g-p2').value = ''; setStatus('s-gpin', ''); gate(); refresh(); sync(); }
 $('g-start').addEventListener('click', function () { keep('gd.intro', 1); gate(); });
