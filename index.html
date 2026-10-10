@@ -524,9 +524,9 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div id="admin-tools" hidden>
         <div class="chips" id="chips" style="margin-bottom:10px">
           <button data-f="all" aria-pressed="true">All</button>
-          <button data-f="red" aria-pressed="false">Detain: serious</button>
-          <button data-f="amber" aria-pressed="false">Detain: papers</button>
-          <button data-f="ok" aria-pressed="false">Release</button>
+          <button data-f="rel" aria-pressed="false">Release</button>
+          <button data-f="det" aria-pressed="false">Detain</button>
+          <button data-f="sz" aria-pressed="false">Seize</button>
           <button type="button" id="b-morechips" class="morechip">More…</button>
           <button data-f="wait" aria-pressed="false" class="xchip" hidden>Awaiting decision</button>
           <button data-f="due" aria-pressed="false" class="xchip" hidden>Report due</button>
@@ -687,7 +687,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.37.1';
+var APPV = '2.37.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1302,12 +1302,12 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
   var useSrv = adm && term && S.search && S.search.q.toLowerCase() === term;
   (useSrv ? S.search.list : local.concat(S.list)).forEach(function (c) {
-    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'wait' ? !(c.status === 'done' && !c.decision && (!c.order || c.order.order === 'docs') && advise(c).a === 'detain') && !(c.order && c.order.order === 'docs') : S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && v !== S.filter)) return;
+    if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'wait' ? !(c.status === 'done' && !c.decision && (!c.order || c.order.order === 'docs') && advise(c).a === 'detain') && !(c.order && c.order.order === 'docs') : S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && (c.status !== 'done' || ({ rel: 'Release', det: 'Detain', sz: 'Seize' })[S.filter] !== postView(c).w))) return;
       if (term && !useSrv && !localMatch(c, term)) return; }
     n++; var cv = caseView(c); if (term) markHits(cv, term, !c.hits); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
   if (y) window.scrollTo(0, y);
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
-document.querySelectorAll('#chips button').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
+document.querySelectorAll('#chips button[data-f]').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button[data-f]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
 // Fallback when the server cannot search: look through everything this phone holds about each file. Plural endings are ignored, as on the server.
 function stemW(w) { return w.length >= 5 && /[a-z]ies$/.test(w) ? w.slice(0, -3) : w.length >= 5 && /[a-z](ches|shes|xes|sses)$/.test(w) ? w.slice(0, -2) : w.length >= 4 && /[a-rt-z]s$/.test(w) ? w.slice(0, -1) : w; }
 // Highlights what was typed wherever it appears in a result, so the eye lands on the match.
