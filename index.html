@@ -485,7 +485,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 
   <div id="main" hidden>
 
-    <div class="empty devb" id="dev-block" hidden><b>This account is already in use on another phone.</b> One account works on one phone only. If this is your new phone, ask an officer to open HQ, People, and tap "Allow new phone" beside your name. Then open the app again.</div>
+    <div class="empty devb" id="dev-block" hidden><b>This account is already in use on another phone.</b> One account works on one phone only. If this is your new phone, ask an officer to open Manage, People, and tap "Allow new phone" beside your name. Then open the app again.</div>
     <section id="p-scan">
       <div id="recent" hidden></div>
       <h2 class="sec">New scan</h2>
@@ -607,7 +607,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div class="panel"><dl class="kv" id="st-acct"></dl></div>
       <h2 class="sec">PIN</h2>
       <div class="panel">
-        <p class="note">The app asks for your PIN each time it is opened, and again after 5 minutes away. If you forget it, it cannot be changed from the phone: an officer resets it under HQ, People, and you then choose a new one.</p>
+        <p class="note">The app asks for your PIN each time it is opened, and again after 5 minutes away. If you forget it, it cannot be changed from the phone: an officer resets it under Manage, People, and you then choose a new one.</p>
         <div class="row" id="pin-btns"><button class="btn ghost small" id="b-pinopen">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
         <div id="pin-form" hidden style="display:flex;flex-direction:column;gap:10px">
           <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
@@ -682,7 +682,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><span class="ci" data-ci="camera"></span><span>Scan</span></button>
       <button role="tab" aria-selected="false" data-p="files" id="t-files"><span class="ci" data-ci="folder"></span><span id="t-files-l">Files</span></button>
-      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><span class="ci" data-ci="people"></span><span>HQ<span class="badge" id="req-badge" hidden></span></span></button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><span class="ci" data-ci="people"></span><span>Manage<span class="badge" id="req-badge" hidden></span></span></button>
       <button role="tab" aria-selected="false" data-p="settings"><span class="ci" data-ci="gear"></span><span>Settings</span></button>
     </nav>
   </div>
@@ -694,7 +694,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.38.2';
+var APPV = '2.38.3';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1461,7 +1461,7 @@ $('g-ok').addEventListener('click', async function () { var p = $('g-p1').value;
 function pinState(j) { if (j && j.pinSet === false && cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; gate(); setStatus('s-gpin', 'Your PIN was reset by an officer. Choose a new one.'); } }
 $('g-forgot').addEventListener('click', async function () { var bt = $('g-forgot'); bt.disabled = true; setStatus('s-gpin', 'Checking…'); S.server = null; try { await findServer(); } catch (e) {} bt.disabled = false;
   if (!cfg.ph) return;   // the server confirmed the PIN was reset: the "choose a new PIN" screen is already showing
-  setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an officer to open HQ, People, and tap Reset PIN beside your name. Then open the app again.', true); });
+  setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an officer to open Manage, People, and tap Reset PIN beside your name. Then open the app again.', true); });
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
 function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
   if (me.admin && !getLoc()) { $('f-locsel').value = 'Bn HQ'; locChanged(); }   // admins sit at Bn HQ
