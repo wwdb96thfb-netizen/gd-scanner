@@ -708,7 +708,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.40.1';
+var APPV = '2.40.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1137,7 +1137,7 @@ function relWho(sel, val) { var nm = 'rw' + (++RELN), r1 = h('input', { type: 'r
   var show = function () { el.hidden = sel.value !== val; other.hidden = !r2.checked; }; sel.addEventListener('change', show); r1.addEventListener('change', show); r2.addEventListener('change', show); show();
   return { el: el, on: function () { return sel.value === val; }, get: function () { return r1.checked ? 'Comdt' : other.value.trim(); }, when: function () { var d = new Date(dt.value); return isNaN(d) ? '' : d.toISOString(); } }; }
 function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me && S.me.admin), o = c.order;
-  box.appendChild(h('b', { text: 'Officer decision (critical file)' }));
+  box.appendChild(h('b', { text: 'Officer decision' }));
   if (o) { box.appendChild(h('div', { class: 'act ' + (o.order === 'release' ? 'ok' : o.order === 'docs' ? 'amber' : 'red') }, h('b', { text: ORD[o.order].toUpperCase() }), o.note ? h('span', { text: o.note }) : null, h('small', { text: 'Decided by ' + o.byName + ', ' + when(o.at) })));
     if (c.ack) box.appendChild(h('span', { text: 'Carried out by ' + c.ack.byName + ', ' + when(c.ack.at) + (c.ack.remark ? ' · ' + c.ack.remark : '') }));
     else if (o.order === 'docs') box.appendChild(h('span', { text: adm ? 'Waiting for the post to scan the extra documents.' : 'Keep holding the vehicle. Scan the documents asked for as a new scan with the same vehicle, then wait for the next decision.' }));
@@ -1344,7 +1344,7 @@ function caseView(c) {
   if (c.location) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'Checked at: ' }), h('span', { text: c.location })));
   var st = stampEl(c), side = pic || st ? h('div', { class: 'side' }, pic, st) : null, main = h('div', { class: 'main' }, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), !done ? h('div', { class: 'meta', text: line }) : null, c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null);
   gl.forEach(function (x) { main.appendChild(x); }); var sum = h('summary', side ? null : { class: 'nopic' }, side, main); d.appendChild(sum); if (!c.local && S.me && S.me.admin && !S.me.viewer) pressMenu(sum, c);
-  if (done && !c.local && S.me && S.me.admin && !S.me.viewer && !c.order && !c.release && !c.decision && adv.a === 'detain') sum.appendChild(quickBar(c));
+  if (done && !c.local && S.me && S.me.admin && !S.me.viewer && !c.order && !c.release && !c.decision && adv.a !== 'clear') sum.appendChild(quickBar(c));
   var info = done ? h('div', { class: 'cinfo' }, h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR THE OFFICER\'S DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Officer decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Detain', check: 'result was Detain', clear: 'result was Release' }[c.already.result] || '') + (c.already.order ? ' · officer decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })) : null;
   var body = h('div', { class: 'body' }); d.appendChild(body);
   // The opened file reads top to bottom in the order the work happens: what it is, what was found, what to do, what was decided, then the records.
@@ -1358,7 +1358,7 @@ function caseView(c) {
     else if (hot.length) { var nr = hot.filter(function (f) { return f.l === 'red'; }).length; put(h('details', { class: 'more' }, h('summary', { text: isPost() ? 'Why (details for officers)' : 'Why: ' + hot.length + ' point' + (hot.length > 1 ? 's' : '') + ' found' + (nr ? ', ' + nr + ' critical' : '') + '. Tap to read' }), flagList(hot))); } }
   if (real) { sec('Goods found on the vehicle', 'box'); put(foundBox(c)); }
   if (real) put(driverBox(c));
-  var crit = real && ((adv && adv.a === 'detain') || !!c.order);
+  var crit = real && ((adv && adv.a !== 'clear') || !!c.order);   // every file that is not clean gets the officer's three-way decision
   if (real && (!isPost() || c.release || c.order)) { sec('Decision', 'gavel'); if (c.release) put(h('div', { class: 'act ok relbox' }, h('b', { text: 'RELEASED ON THE ORDER OF ' + String(c.release.byName || '').toUpperCase() }), h('span', { text: when(c.release.on || c.release.at) + (c.release.on ? ' · recorded ' + when(c.release.at) : '') + ' · ' + (c.release.via || '') + (c.release.remark ? ' · ' + c.release.remark : '') + (c.release.enteredBy && c.release.enteredBy !== c.release.byName ? ' · entered by ' + c.release.enteredBy : '') }), h('small', { text: S.me && S.me.owner ? 'Permanent record. Only you, the Owner, can change or remove it.' : 'Permanent record. It cannot be changed or removed, and this file cannot be deleted, except by the Owner.' }))); if (crit) put(orderBox(c)); else if (!isPost()) put(decBox(c)); }
   var hasRpt = real && rptState(c), hasCourt = real && (c.courtCase || rptState(c) === 'confirmed');
   if (hasRpt || hasCourt) { sec('Seizure report and court case', 'report'); if (hasRpt) put(reportBox(c)); if (hasCourt) put(courtBox(c)); }
