@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 57;
+const VERSION = 58;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -267,7 +267,8 @@ async function pushTo(sub, msg) {
 const RPT = ['vehicle', 'driver', 'contact', 'owner', 'goods', 'packages', 'weight', 'marks', 'from', 'to', 'kept', 'reason', 'remarks'], RPT_MUST = ['vehicle', 'driver', 'goods', 'packages', 'kept', 'reason'];
 const adminSubs = () => cfg.subs.filter(x => [cfg.adminCode].concat(cfg.people.filter(y => y.role === 'admin').map(y => y.code)).some(c => idOf(c) === x.who));
 // Every alert is also kept as a short notice, so the app can show a count on the bell and a list to read, whether or not the phone has alerts turned on.
-function note(to, msg, by) { cfg.notices = (cfg.notices || []); cfg.nid = (cfg.nid || 0) + 1; cfg.notices.push({ id: cfg.nid, at: new Date().toISOString(), title: clip(msg.title, 120), body: clip(msg.body, 300), to, by: by || '' }); if (cfg.notices.length > 80) cfg.notices = cfg.notices.slice(-80); saveCfg(); xver++; }
+function note(to, msg, by, key) { cfg.notices = (cfg.notices || []); if (key) cfg.notices = cfg.notices.filter(n => !(n.key === key && n.to === to));   // a newer notice about the same file replaces the older one
+  cfg.nid = (cfg.nid || 0) + 1; cfg.notices.push({ id: cfg.nid, at: new Date().toISOString(), title: clip(msg.title, 120), body: clip(msg.body, 300), to, by: by || '', key: key || '' }); if (cfg.notices.length > 80) cfg.notices = cfg.notices.slice(-80); saveCfg(); xver++; }
 const noticesFor = user => (cfg.notices || []).filter(n => n.by !== user.code && (n.to === idOf(user.code) || (n.to === 'admins' && user.admin && !user.viewer))).slice(-40).map(n => ({ id: n.id, at: n.at, title: n.title, body: n.body }));
 async function notifyAdmins(msg, by) { note('admins', msg, by); for (const x of adminSubs()) { if (by && x.who === idOf(by)) continue; try { await pushTo(x, msg); } catch (e) {} } }
 // Tell the admins at once when a file comes out as "detain".
@@ -389,7 +390,10 @@ async function vet(m) {
   if (!m.driver || m.driver.auto) { const dv = driverFrom(pages); if (dv) m.driver = dv; }
   m.checksV = CHECKS_V;
   Object.assign(m, { pages, flags: res.flags, gdNos: res.gdNos, containers: res.containers, vehicles: res.vehicles, status: 'done', doneAt: new Date().toISOString(), msg: '' });
-  save(m); saveCfg(); alertAdmins(m); log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
+  save(m); saveCfg(); alertAdmins(m);
+  try { const rr = resultOf(live().flags.get(m.id) || res.flags), veh = (m.vehicles || []).join(', ') || 'vehicle not read';   // the post is told what to do; the officer's order later replaces this notice
+    note(idOf(m.by), rr === 'clear' ? { title: 'Release: ' + veh, body: 'The papers are in order. Let the vehicle go.' } : rr === 'detain' ? { title: 'Detain: ' + veh, body: 'Hold the vehicle. Do not release it. Wait for the officer\'s decision.' } : { title: 'Detain: ' + veh, body: 'Hold the vehicle. Get the papers the app asks for and scan them.' }, '', m.id); } catch (e) {}
+  log('  done:', res.verdict, '-', res.flags.filter(f => f.l === 'red').length, 'red,', res.flags.filter(f => f.l === 'amber').length, 'amber');
   return true;
 }
 // Bring files checked by an older version up to date. Uses the readings already saved, so it costs no Claude usage.
@@ -537,7 +541,10 @@ const server = http.createServer(async (req, res) => {
     const LOCK = m => !!(m && m.release && !user.owner);
     const ordered = (m, via, remark, by, on) => { by = clip(by, 60).replace(/\s+/g, ' ').trim(); const od = new Date(String(on || '')), okOn = on && !isNaN(od) && od.getTime() < Date.now() + 864e5 && od.getTime() > Date.now() - 3 * 365 * 864e5; m.release = { byName: by || user.name, enteredBy: user.name, at: new Date().toISOString(), ...(okOn ? { on: od.toISOString() } : {}), via, remark: clip(remark, 300).trim() }; log(user.name, 'RECORDED RELEASE of', m.id, 'on the order of', m.release.byName, '(' + via + ')'); };
     if (p[1] === 'me' && req.method === 'POST') {   // the Owner sets the name shown for him; everyone else's name is set by an admin in People
-      if (!user.owner) return send(res, 403, { error: 'owner' }); const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
+      const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
+      if (!user.owner) {   // everyone else asks; an officer approves under Manage, People
+        cfg.nameReqs = (cfg.nameReqs || []).filter(x => x.code !== user.code); if (name !== user.name) { cfg.nameReqs.push({ code: user.code, from: user.name, name, at: new Date().toISOString() }); notifyAdmins({ title: 'Name change asked', body: user.name + ' asks to be shown as ' + name + '. Approve or refuse under Manage, People.' }, user.code); }
+        saveCfg(); xver++; log(user.name, 'asked to be shown as', name); return send(res, 200, { ok: true, pending: name !== user.name, name: user.name }); }
       cfg.ownerName = name; saveCfg(); xver++; log('Owner name set to', name); return send(res, 200, { ok: true, name });
     }
     // View-only accounts see everything an admin sees. For any change they count as post staff: they can send scans and work on their own files
@@ -583,7 +590,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user), notices: noticesFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user), notices: noticesFor(user), nameAsk: ((cfg.nameReqs || []).find(x => x.code === user.code) || {}).name || '' }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
@@ -647,6 +654,7 @@ const server = http.createServer(async (req, res) => {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const b = await body(req); if (['released', 'held', 'detained', 'seized', 'handed'].indexOf(b.action) < 0 || m.status !== 'done') return send(res, 400, { error: 'form' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' }); 
+      if (!user.admin) return send(res, 403, { error: 'officer' });   // only an officer decides; the post carries the decision out
       if (!user.admin && resultOf(live().flags.get(m.id) || []) === 'detain') return send(res, 403, { error: 'await' });   // critical: the admin decides
       if (user.admin && b.action === 'released') ordered(m, 'recorded as released', b.remark, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: b.action, remark: clip(b.remark, 200).trim(), byName: user.name, at: new Date().toISOString() }; save(m); autoWatch(m); log(user.name, 'recorded', b.action, 'for', m.id);
@@ -666,7 +674,7 @@ const server = http.createServer(async (req, res) => {
       if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
       m.decision = { action: act, remark: o.note, byName: user.name, at: o.at, ordered: true }; save(m); autoWatch(m); log(user.name, 'decided', b.order, 'for', m.id);
       const W = { release: 'RELEASE the vehicle', detain: 'SEIZE the goods', seize: 'SEIZE the goods', docs: 'ASK FOR MORE DOCUMENTS' }[b.order];
-      note(idOf(m.by), { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '.' + (o.note ? ' ' + o.note + '.' : '') }, user.code);
+      note(idOf(m.by), { title: 'Order from HQ: ' + W + ' · ' + ((m.vehicles || []).join(', ') || 'vehicle not read'), body: (o.order === 'release' ? 'Let the vehicle go.' : o.order === 'docs' ? 'Keep holding the vehicle and get the papers asked for.' : 'Seize the goods, unload them to the warehouse and fill in the seizure report.') + (o.note ? ' Instruction: ' + o.note + '.' : '') }, user.code, m.id);
       for (const x of cfg.subs.filter(y => y.who === idOf(m.by))) { try { await pushTo(x, { title: 'Decision: ' + W, body: 'Vehicle ' + ((m.vehicles || []).join(', ') || 'not read') + '. ' + (o.note ? o.note + '. ' : '') + 'By ' + user.name + '.' }); } catch (e) {} }
       return send(res, 200, { ok: true });
     }
@@ -687,7 +695,7 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (LOCK(m)) return send(res, 403, { error: 'locked' }); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
       people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], dev: !!cfg.devs[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
-      requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })), removed: (cfg.removed || []).map(x => ({ name: x.name, code: x.code, role: x.role, at: x.removedAt })) });
+      requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })), nameReqs: (cfg.nameReqs || []).map(x => ({ code: x.code, from: x.from, name: x.name, at: x.at })), removed: (cfg.removed || []).map(x => ({ name: x.name, code: x.code, role: x.role, at: x.removedAt })) });
     if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: ROLE(b.role), added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
     if (p[1] === 'people' && p[2] && p[3] === 'restore' && req.method === 'POST') {   // a removed person is added back with the same link; he chooses a new PIN on his phone
       const x = (cfg.removed || []).find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' });
@@ -700,6 +708,14 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); if (x.code === user.code) return send(res, 400, { error: 'self' }); if (x.role === 'admin' && !user.owner) return send(res, 403, { error: 'owner' }); const RN = { admin: 'Officer', viewer: 'Bn Staff', field: 'Post Staff' }, was = x.role; x.role = ROLE(b.role); saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); if (was !== x.role) notifyAdmins({ title: 'Role changed: ' + x.name, body: x.name + ' was ' + RN[was] + ' and is now ' + RN[x.role] + '. Changed by ' + user.name + '.' }); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (p[2] === user.code) return send(res, 400, { error: 'self' }); if (x && x.role === 'admin' && !user.owner) return send(res, 403, { error: 'owner' });   // nobody removes himself, and only the Owner removes an officer
       cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; if (x) { cfg.removed = (cfg.removed || []).filter(y => y.code !== x.code).concat([{ name: x.name, code: x.code, role: x.role, added: x.added, removedAt: new Date().toISOString(), removedBy: user.name }]).slice(-60); } saveCfg(); writeLinks(); if (x) { log(user.name, 'removed', x.name); notifyAdmins({ title: 'Person removed: ' + x.name, body: x.name + ' can no longer use the app. Removed by ' + user.name + '.' }); } return send(res, 200, { ok: true }); }
+    if (p[1] === 'namereq' && p[2] && req.method === 'POST') {
+      const b = await body(req), r = (cfg.nameReqs || []).find(y => y.code === p[2]); if (!r) return send(res, 404, { error: 'none' }); if (!user.admin) return send(res, 403, { error: 'officer' });
+      if (r.code === user.code && !user.owner) return send(res, 400, { error: 'self' });
+      cfg.nameReqs = cfg.nameReqs.filter(y => y.code !== r.code); const x = cfg.people.find(y => y.code === r.code);
+      if (b.action === 'approve' && x) { x.name = r.name; writeLinks(); log(user.name, 'approved the name', r.name, 'for', r.from); note(idOf(r.code), { title: 'Name changed', body: 'You are now shown as ' + r.name + '. Approved by ' + user.name + '.' }, '', 'name'); }
+      else { log(user.name, 'refused the name', r.name, 'for', r.from); note(idOf(r.code), { title: 'Name change refused', body: 'Your name stays ' + r.from + '. Refused by ' + user.name + '.' }, '', 'name'); }
+      saveCfg(); xver++; return send(res, 200, { ok: true });
+    }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);
