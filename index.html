@@ -141,6 +141,7 @@ dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;font-family:var(--mono);font-vari
 #zoom{position:fixed;inset:0;z-index:80;background:#0b0f1a}
 .srv{display:inline-flex;align-items:center;gap:8px;font-weight:600}.srv i{width:11px;height:11px;border-radius:50%;display:inline-block}.srv.on{color:#1b7a3d}.srv.on i{background:#22c55e;box-shadow:0 0 0 4px rgba(34,197,94,.22)}.srv.off{color:#b3261e}.srv.off i{background:#e11d2e;box-shadow:0 0 0 4px rgba(225,29,46,.2)}
 .pwrong{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--card)}.pwrong b{display:block;font:700 12px var(--head);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}.pwrong ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;font-size:14px}.pwrong li.red{color:#b3261e;font-weight:600}
+.fsec{display:flex;align-items:center;gap:8px;margin:14px 2px 2px;font:700 13px/1 var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--ink)}.fsec i{font:700 11px/18px var(--body);font-style:normal;min-width:18px;height:18px;padding:0 5px;border-radius:9px;text-align:center;color:#fff;background:#b97a08;letter-spacing:0}.fsec.past{color:var(--muted)}.fsec.past i{background:var(--muted)}.fsec:first-child{margin-top:4px}
 .pill.flash{animation:pf 1s steps(2,jump-none) infinite}@keyframes pf{50%{opacity:.25}}
 .qact{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.qact.asking{grid-template-columns:1fr 1fr}.qact .qmsg{grid-column:1/-1;font:600 13px/1.35 var(--body);color:var(--ink)}
 .qb{font:700 13px/1 var(--head);letter-spacing:.06em;text-transform:uppercase;padding:11px 6px;border-radius:10px;border:0;color:#fff;cursor:pointer}.qb.rel{background:#17854a}.qb.det{background:#b97a08}.qb.sz{background:#c62f26}.qb.back{background:var(--grey-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line);text-transform:none;letter-spacing:0;font:600 13px/1 var(--body)}.qb:disabled{opacity:.55}
@@ -709,7 +710,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.41.1';
+var APPV = '2.42.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1275,6 +1276,9 @@ function quickBar(c) { var bar = h('div', { class: 'qact' }), veh = (c.vehicles 
   var ask = function (q, yes, cls, fn, alt, altFn) { bar.textContent = ''; bar.className = 'qact asking'; bar.appendChild(h('span', { class: 'qmsg', text: q })); bar.appendChild(B(yes, cls, fn)); if (alt) bar.appendChild(B(alt, 'back', altFn)); bar.appendChild(B('Back', 'back', function () { home(); })); };
   home(); return bar; }
 var PAST = { Release: 'Released', Detain: 'Detained', Seize: 'Seized' };   // on tiles and in past cases the state is written as what has happened
+function goodsN(c) { var pg = c.pages || []; for (var i = 0; i < pg.length; i++) if (pg[i] && pg[i].type === 'goods') return i; return -1; }
+// A case is past once nothing more is expected on it: released (by the system or on an order), or decided by the court. Everything else is still current.
+function isPast(c) { if (c.local || c.status !== 'done') return false; var k = c.courtCase; if (c.release || (c.decision && c.decision.action === 'released')) return true; if (k && k.status !== 'prep' && k.status !== 'filed') return true; return advise(c).a === 'clear' && !c.order && !c.decision; }
 function isPost() { return !(S.me && S.me.admin); }
 function actBox(a) { return h('div', { class: 'act hasico ' + a.k }, icon(ICON[a.a] || ICON.query), h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
@@ -1337,10 +1341,10 @@ function caseView(c) {
   var d = h('details', { class: 'case ' + v }); d.dataset.v = v; d.dataset.id = c.id; if (S.open === c.id) d.setAttribute('open', '');
   d.addEventListener('toggle', function () { if (d.open) S.open = c.id; else if (S.open === c.id) S.open = null; });
   var pic = null;
-  if (c.local) { var lp = (c.localPages || []), lt = (lp.filter(function (x) { return x.kind === 'goods'; })[0] || lp.filter(function (x) { return x.kind === 'veh'; })[0] || lp[0] || {}).thumb; if (lt) pic = h('img', { class: 'pic', src: lt, alt: '' }); }
-  else if (c.nPages) { var tk = c.id + ':' + (c.thumbN || 0), saved = TH[tk];
+  if (c.local) { var lp = (c.localPages || []), lt = (lp.filter(function (x) { return x.kind === 'goods'; })[0] || {}).thumb; if (lt) pic = h('img', { class: 'pic', src: lt, alt: '' }); }
+  else if (c.nPages && goodsN(c) >= 0) { var gN = goodsN(c), tk = c.id + ':' + gN, saved = TH[tk];   // the tile shows the cargo only, never a paper, a vehicle or an identity card
     if (saved) { pic = h('img', { class: 'pic', alt: '', src: saved }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; delete TH[tk]; keep('gd.th', TH); }); }
-    else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + (c.thumbN || 0) + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
+    else if (S.server) { pic = h('img', { class: 'pic', alt: '', loading: 'lazy', src: S.server + '/api/thumb/' + c.id + '/' + gN + '?code=' + encodeURIComponent(cfg.c) + pinq() }); pic.addEventListener('error', function () { pic.style.visibility = 'hidden'; }); keepThumb(tk, pic.src); } }
   var gl = [];
   if (done && c.found && (Array.isArray(c.found) ? c.found.length : 1)) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'Found: ' }), h('span', { text: foundText(c.found) })));
   if (c.location) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'Checked at: ' }), h('span', { text: c.location })));
@@ -1391,11 +1395,12 @@ function drawFiles() { var box = $('files'), adm = !!(S.me && S.me.admin), term 
   var openMore = {}; box.querySelectorAll('details.case').forEach(function (d) { var L = []; d.querySelectorAll('details.more').forEach(function (m, i) { if (m.open) L.push(i); }); if (L.length) openMore[d.dataset.id] = L; });
   var y = window.scrollY; box.textContent = '';
   var local = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, progress: o.progress, localPages: o.pages, status: 'local', nPages: o.pages.length, pages: [], flags: [], takenAt: o.takenAt, location: o.location, seller: o.seller, note: o.note, offeredKg: o.offeredKg }; });
-  var useSrv = adm && term && S.search && S.search.q.toLowerCase() === term;
+  var useSrv = adm && term && S.search && S.search.q.toLowerCase() === term, curL = [], pastL = [];
   (useSrv ? S.search.list : local.concat(S.list)).forEach(function (c) {
     if (adm && !c.local) { var v = c.status === 'done' ? advise(c).k : 'busy', rs = rptState(c); if (S.filter === 'wait' ? !(c.status === 'done' && !c.decision && (!c.order || c.order.order === 'docs') && advise(c).a === 'detain') && !(c.order && c.order.order === 'docs') : S.filter === 'due' ? rs !== 'due' && rs !== 'redo' : S.filter === 'rev' ? rs !== 'sent' : S.filter === 'court' ? !caseOpen(c) : (S.filter !== 'all' && (c.status !== 'done' || ({ rel: 'Release', det: 'Detain', sz: 'Seize' })[S.filter] !== postView(c).w))) return;
       if (term && !useSrv && !localMatch(c, term)) return; }
-    n++; var cv = caseView(c); if (term) markHits(cv, term, !c.hits); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); box.appendChild(cv); });
+    n++; var cv = caseView(c); if (term) markHits(cv, term, !c.hits); (openMore[c.id] || []).forEach(function (i) { var m = cv.querySelectorAll('details.more')[i]; if (m) m.open = true; }); (isPast(c) ? pastL : curL).push(cv); });
+  [['Current cases', curL, 'cur'], ['Past cases', pastL, 'past']].forEach(function (g) { if (!g[1].length) return; box.appendChild(h('h3', { class: 'fsec ' + g[2] }, h('span', { text: g[0] }), h('i', { text: String(g[1].length) }))); g[1].forEach(function (x) { box.appendChild(x); }); });
   if (y) window.scrollTo(0, y);
   if (!n) box.appendChild(h('div', { class: 'empty', text: (S.list.length || local.length) ? 'No files match this filter.' : 'Nothing yet. Files appear here as soon as they are sent, with the result when the server has checked them.' })); }
 document.querySelectorAll('#chips button[data-f]').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.dataset.f; document.querySelectorAll('#chips button[data-f]').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); drawFiles(); }); });
