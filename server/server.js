@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 53;
+const VERSION = 54;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -690,8 +690,9 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'people' && p[2] && p[3] === 'forget' && req.method === 'DELETE') { cfg.removed = (cfg.removed || []).filter(y => y.code !== p[2]); saveCfg(); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'device' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.devs[idOf(x.code)]; saveCfg(); log(user.name, 'released the phone lock of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'pin' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.pins[idOf(x.code)]; pinFails.delete(idOf(x.code)); saveCfg(); log(user.name, 'reset the PIN of', x.name); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = ROLE(b.role); saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; if (x) { cfg.removed = (cfg.removed || []).filter(y => y.code !== x.code).concat([{ name: x.name, code: x.code, role: x.role, added: x.added, removedAt: new Date().toISOString(), removedBy: user.name }]).slice(-60); } saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); if (x.code === user.code) return send(res, 400, { error: 'self' }); if (x.role === 'admin' && !user.owner) return send(res, 403, { error: 'owner' }); x.role = ROLE(b.role); saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (p[2] === user.code) return send(res, 400, { error: 'self' }); if (x && x.role === 'admin' && !user.owner) return send(res, 403, { error: 'owner' });   // nobody removes himself, and only the Owner removes an officer
+      cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; if (x) { cfg.removed = (cfg.removed || []).filter(y => y.code !== x.code).concat([{ name: x.name, code: x.code, role: x.role, added: x.added, removedAt: new Date().toISOString(), removedBy: user.name }]).slice(-60); } saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);

@@ -416,7 +416,8 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div class="wrap">
 
   <section id="p-setup" hidden>
-    <div class="empty"><b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.</div>
+    <div class="empty" id="setup-msg"><b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.</div>
+    <button class="btn ghost" id="b-recheck" hidden>I have been added again: check now</button>
     <label class="f">Your link<input type="text" id="f-link" placeholder="Paste the whole link here" autocapitalize="off" autocomplete="off"></label>
     <button class="btn" id="b-link">Set up this phone</button>
     <p class="status" id="s-setup" role="status"></p>
@@ -597,7 +598,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       </div>
       <p class="status" id="s-people" role="status"></p>
       <h2 class="sec">People with access</h2>
-      <p class="note">Post Staff scan and see only their own files. An Officer sees every file, decides and manages people. HQ Staff see every file but cannot decide or change them.</p>
+      <p class="note">Post Staff scan and see only their own files. An Officer sees every file, decides and manages people. HQ Staff see every file but cannot decide or change them. Only the Owner can remove an Officer or change his role, and nobody can remove himself.</p>
       <div class="list" id="people"></div>
       </div>
     </section>
@@ -694,7 +695,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.38.3';
+var APPV = '2.38.4';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -740,7 +741,10 @@ async function announced() { if (!cfg.t) return null; try { var r = await fx('ht
     (await r.text()).split('\n').forEach(function (l) { try { var m = JSON.parse(l); if (m.event === 'message' && /^https:\/\/[a-z0-9.-]+$/.test(m.message || '')) url = m.message; } catch (e) {} }); return url; } catch (e) { return null; } }
 async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
   for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
-function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
+// Access removed by an officer: the phone forgets the PIN and everything it had stored, and shows only the set-up screen. The old link is remembered so that "Add again" brings the person straight back.
+function revoked() { S.bad = true; S.list = []; keep('gd.list', []); if (cfg.c) { cfg.gone = cfg.c; cfg.c = null; cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; S.me = null; try { ['gd.me', 'gd.th', 'gd.items', 'gd.ord', 'gd.ordinit'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {} if (!S.rechecking) setTimeout(function () { start(); }, 0); } }
+async function recheckGone() { if (!cfg.gone || S.rechecking) return false; S.rechecking = true; setStatus('s-setup', 'Checking…'); cfg.c = cfg.gone; S.bad = false; S.server = null; try { await findServer(); } catch (e) {}
+  var back = !!(S.server && !S.bad && cfg.c); if (back) delete cfg.gone; else cfg.c = null; keep('gd.cfg', cfg); S.rechecking = false; start(); setStatus('s-setup', back ? '' : S.bad ? 'Your access is still removed.' : 'The server could not be reached. Try again in a minute.', !back); return back; }
 async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } if (e401.error === 'device') { S.server = url; devBlocked(); drawConn(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: j.owner }; pinState(j); keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
@@ -767,7 +771,7 @@ async function api1(path, opts) { var s = await findServer(); if (!s) throw { ne
 
 function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' waiting.' : '';
   if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an officer to approve you.'; }
-  else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.j ? 'Not a member yet' : 'Not set up'; }
+  else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.gone ? 'Access removed' : cfg.j ? 'Not a member yet' : 'Not set up'; }
   else if (S.devBlock) { e.className = 'conn bad'; e.textContent = 'In use on another phone'; }
   else if (S.bad) { e.className = 'conn bad'; e.textContent = 'Your access was removed. Ask an officer to add you again, then close and open the app.' + held; }
   else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Scans wait on this phone.' + held; }
@@ -1399,8 +1403,8 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
   if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'No one else has been added yet.' }));
   S.people.forEach(function (p) { var link = linkFor(p.code), adm = p.role === 'admin', field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
     var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Verification System link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
-    var role = h('select', { class: 'rolesel', 'aria-label': 'Role of ' + p.name }); [['field', 'Post Staff'], ['admin', 'Officer'], ['viewer', 'HQ Staff']].forEach(function (o) { var op = h('option', { value: o[0], text: o[1] }); if (p.role === o[0]) op.selected = true; role.appendChild(op); }); role.addEventListener('change', async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: role.value }) }); toast(p.name + ' is now ' + role.options[role.selectedIndex].text); loadPeople(); } catch (e) { loadPeople(); } });
-    var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
+    var self = p.code === cfg.c, guard = self || (adm && !(S.me && S.me.owner)); var role = h('select', { class: 'rolesel', 'aria-label': 'Role of ' + p.name }); if (guard) role.disabled = true; [['field', 'Post Staff'], ['admin', 'Officer'], ['viewer', 'HQ Staff']].forEach(function (o) { var op = h('option', { value: o[0], text: o[1] }); if (p.role === o[0]) op.selected = true; role.appendChild(op); }); role.addEventListener('change', async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: role.value }) }); toast(p.name + ' is now ' + role.options[role.selectedIndex].text); loadPeople(); } catch (e) { loadPeople(); } });
+    var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } }); if (guard) ask.hidden = true;
     var yes = h('button', { class: 'btn danger small', text: 'Yes, remove', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
     box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Officer' : p.role === 'viewer' ? 'HQ Staff' : 'Post Staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin && p.code !== cfg.c ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); });
   if ((S.removed || []).length) { var rd = h('details', { class: 'more' }, h('summary', { text: 'Removed people (' + S.removed.length + ')' })); S.removed.slice().reverse().forEach(function (p) { var ab = h('button', { class: 'btn ghost small', text: 'Add again', onclick: async function () { ab.disabled = true; try { await api('/api/people/' + p.code + '/restore', { method: 'POST' }); toast(p.name + ' is added again. His old link works; he chooses a new PIN.'); loadPeople(); } catch (e) { ab.disabled = false; } } });
@@ -1488,7 +1492,10 @@ $('zoom-x').addEventListener('click', function () { $('zoom').hidden = true; $('
 // keep the app fitted to the screen: no pinch or double-tap zoom
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
 document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
-function start() { var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); gate(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
+$('b-recheck').addEventListener('click', function () { recheckGone(); });
+function start() { if (cfg.c && cfg.gone && !S.rechecking) { delete cfg.gone; keep('gd.cfg', cfg); S.bad = false; }
+  var gone = !cfg.c && !!cfg.gone; $('b-recheck').hidden = !gone; $('setup-msg').innerHTML = gone ? '<b>Your access was removed.</b> This phone no longer opens the app. Ask an officer to add you again. If he taps "Add again", press the button below. If he sends you a new link, paste it in the box.' : '<b>This phone is not set up yet.</b> Open the personal link you were sent. If you only have the link as text, paste it below.';
+  var ready = !!cfg.c && !cfg.pending, joining = !ready && !!cfg.j && !gone; $('p-setup').hidden = ready || joining; $('p-join').hidden = !joining; $('join-form').hidden = !!cfg.pending; $('join-wait').hidden = !cfg.pending; $('main').hidden = !ready; drawConn(); gate(); if (ready) { drawFiles(); sync(); } else if (cfg.pending) checkApproval(); }
 document.querySelectorAll('.legal .lv').forEach(function (e) { e.textContent = 'Version ' + APPV; });
 // ---- automatic update: when a newer version is published, reload onto it at a quiet moment
 async function checkUpdate() { if (navigator.onLine) { try { var r = await fx('index.html?_=' + Date.now(), {}, 10000); if (r.ok) { var m = (await r.text()).match(/var APPV = '([^']+)'/); if (m && m[1] !== APPV) S.newV = m[1]; } } catch (e) {} } applyUpdate(); }
@@ -1499,6 +1506,7 @@ try { if (sessionStorage.getItem('gd.updtried') === APPV) { sessionStorage.remov
 setTimeout(checkUpdate, 4000); setInterval(function () { if (!document.hidden) checkUpdate(); }, 10 * 60e3);
 document.addEventListener('visibilitychange', function () { if (!document.hidden) checkUpdate(); });
 start();
+if (cfg.gone && !cfg.c) recheckGone();
 (function () { var show = function () { document.documentElement.classList.remove('boot'); }, t = setTimeout(show, 900); try { Promise.all([document.fonts.load('400 15px Inter'), document.fonts.load('700 16px "Barlow Semi Condensed"'), document.fonts.load('600 12px "Barlow Semi Condensed"')]).then(function () { clearTimeout(t); show(); }, function () { clearTimeout(t); show(); }); } catch (e) { clearTimeout(t); show(); } })();
 (function () { var a = $('b-reset'), y = $('b-reset-yes'), n = $('b-reset-no'), show = function (on) { a.hidden = on; y.hidden = n.hidden = !on; };
   a.addEventListener('click', function () { show(true); }); n.addEventListener('click', function () { show(false); });
