@@ -695,7 +695,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.38.5';
+var APPV = '2.38.6';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -731,16 +731,16 @@ function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), functio
 async function uidOf(code) { return hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(code))).slice(0, 16); }
 async function proofOf(code, n) { var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(code), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(n))); }
 async function hello(url, key) { var a = new Uint8Array(16); crypto.getRandomValues(a); var n = hex(a);
-  var r = await fx(url + '/api/hello?u=' + (await uidOf(key)) + '&n=' + n + '&_=' + Date.now(), {}, 8000);
-  if (r.status === 401) return 'old'; if (r.status === 404) return 'unknown'; if (!r.ok) return 'no';
+  var uid = await uidOf(key), r = await fx(url + '/api/hello?u=' + uid + '&n=' + n + '&_=' + Date.now(), {}, 8000);
+  if (r.status === 401) return 'old'; if (r.status === 404) { var g = await r.json().catch(function () { return {}; }); return (g && g.gone && cfg.t && g.gone === await proofOf(cfg.t, n + ':' + uid)) ? 'gone' : 'unknown'; } if (!r.ok) return 'no';
   var j = await r.json(); return (j && j.proof && j.proof === await proofOf(key, n)) ? 'ok' : 'no'; }
 async function verify(url) { var hres = await hello(url, cfg.c); if (hres === 'ok') return true;
   if (hres === 'old') return url === cfg.trusted;   // a server from before this check existed: only the address this phone already used
-  if (hres === 'unknown' && url === cfg.trusted) revoked(); return false; }
+  if (hres === 'gone' || (hres === 'unknown' && url === cfg.trusted)) revoked(); return false; }   // 'gone' is proved by the real server, at whatever address it now has
 async function announced() { if (!cfg.t) return null; try { var r = await fx('https://ntfy.sh/' + cfg.t + '/json?poll=1&since=12h', {}, 10000), url = null;
     (await r.text()).split('\n').forEach(function (l) { try { var m = JSON.parse(l); if (m.event === 'message' && /^https:\/\/[a-z0-9.-]+$/.test(m.message || '')) url = m.message; } catch (e) {} }); return url; } catch (e) { return null; } }
 async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
-  for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
+  for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown' || hres === 'gone') return { unknown: true }; } catch (e) {} } return {}; }
 // Access removed by an officer: the phone forgets the PIN and everything it had stored, and shows only the set-up screen. The old link is remembered so that "Add again" brings the person straight back.
 function revoked() { S.bad = true; S.list = []; keep('gd.list', []); if (cfg.c) { cfg.gone = cfg.c; cfg.c = null; cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; S.me = null; try { ['gd.me', 'gd.th', 'gd.items', 'gd.ord', 'gd.ordinit'].forEach(function (k) { localStorage.removeItem(k); }); } catch (e) {} if (!S.rechecking) setTimeout(function () { start(); }, 0); } }
 async function recheckGone() { if (!cfg.gone || S.rechecking) return false; S.rechecking = true; setStatus('s-setup', 'Checking…'); cfg.c = cfg.gone; S.bad = false; S.server = null; try { await findServer(); } catch (e) {}

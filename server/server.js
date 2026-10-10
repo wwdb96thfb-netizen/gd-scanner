@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 55;
+const VERSION = 56;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -492,7 +492,9 @@ const server = http.createServer(async (req, res) => {
     if (p[0] !== 'api') { res.writeHead(200, { 'content-type': 'text/plain' }); return res.end('GD Verification System server is running.'); }
     if (p[1] === 'hello') {   // lets the app confirm this is the real server before it sends its code
       const n = u.searchParams.get('n') || '', uid = u.searchParams.get('u') || '', code = [cfg.adminCode, cfg.joinKey].concat(cfg.people.map(x => x.code), cfg.requests.map(x => x.code)).find(c => idOf(c) === uid);
-      if (!code || !/^[a-f0-9]{16,64}$/.test(n)) return send(res, 404, { error: 'unknown' });
+      if (!/^[a-f0-9]{16,64}$/.test(n)) return send(res, 404, { error: 'unknown' });
+      // An account this server does not know: say so with a proof made from the unit's private topic, so a removed phone can trust the answer even after the server's address has changed.
+      if (!code) return send(res, 404, { error: 'unknown', gone: crypto.createHmac('sha256', cfg.topic).update(n + ':' + uid).digest('hex') });
       return send(res, 200, { ok: true, proof: crypto.createHmac('sha256', code).update(n).digest('hex'), version: VERSION });
     }
     if (p[1] === 'join' && req.method === 'POST') {   // a new person asks for access; nothing is granted until an admin approves
