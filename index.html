@@ -713,7 +713,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.43.0';
+var APPV = '2.43.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -793,7 +793,7 @@ function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n
   else if (S.devBlock) { e.className = 'conn bad'; e.textContent = 'In use on another phone'; }
   else if (S.bad) { e.className = 'conn bad'; e.textContent = 'Your access was removed. Ask an officer to add you again, then close and open the app.' + held; }
   else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Scans wait on this phone.' + held; }
-  else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
+  else if (S.server) { e.className = 'conn ok'; e.textContent = (S.me && S.me.name ? S.me.name : 'Connected') + (n ? ' · ' + n + ' waiting to upload' : ''); }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
   else { e.className = 'conn wait'; e.textContent = 'Server not reachable. Scans wait on this phone.' + held; }
   e.title = e.textContent;
@@ -1290,8 +1290,7 @@ var PAST = { Release: 'Released', Detain: 'Detained', Seize: 'Seized' };   // on
 var DOCISH = /declaration|invoice|challan|gate ?pass|release order|\border\b|letter|receipt|\bform\b|certificate|permit|bilty|document|manifest|\bbill\b|identity|cnic|licen[cs]e/i;
 function isCargo(p) { return !!p && p.type === 'goods' && !DOCISH.test((p.goods && p.goods.product) || p.what || ''); }
 function goodsN(c) { var pg = c.pages || []; for (var i = 0; i < pg.length; i++) if (isCargo(pg[i])) return i; return -1; }
-// A case is past once nothing more is expected on it: released (by the system or on an order), or decided by the court. Everything else is still current.
-function isPast(c) { if (c.local || c.status !== 'done') return false; var k = c.courtCase; if (c.release || (c.decision && c.decision.action === 'released')) return true; if (k && k.status !== 'prep' && k.status !== 'filed') return true; return advise(c).a === 'clear' && !c.order && !c.decision; }
+function isPast(c) { if (c.local || c.status !== 'done') return false; return !(advise(c).a !== 'clear' && !c.order && !c.release && !c.decision); }   // current = a decision is still pending; once decided (or released by the system) it is past
 function NOTI(c) { return h('div', { class: 'meta', style: 'background:var(--grey-soft);border-radius:9px;padding:8px 10px;color:var(--ink)' }, h('b', { text: 'On the notified list (S.R.O. 566(I)/2005): ' }), h('span', { text: c.notified.join('; ') + '. For notified goods the holder is expected to show lawful import: a GD, or the sales tax invoices leading back to one.' })); }
 function isPost() { return !(S.me && S.me.admin); }
 function actBox(a) { return h('div', { class: 'act hasico ' + a.k }, icon(ICON[a.a] || ICON.query), h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
@@ -1568,7 +1567,7 @@ function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me =
       try { await api('/api/me', { method: 'POST', body: JSON.stringify({ name: v }) }); S.nameAsk = v === me.name ? '' : v; toast('Sent. An officer has to approve the new name.'); drawSettings(); } catch (e) { nb.disabled = false; nm.textContent = 'Could not send. Try again when the server is reachable.'; } } });
     nameNode = h('div', { style: 'display:flex;flex-direction:column;gap:7px' }, cur, ni, nb, nm); }
   var srv = h('span', { class: 'srv ' + (S.server ? 'on' : 'off') }, h('i'), h('span', { text: S.server ? 'Connected' : 'Not reachable now' }));
-  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', !S.me ? 'Not known yet' : me.owner ? 'Owner (officer)' : me.viewer ? 'Bn Staff' : me.admin ? 'Officer' : 'Post Staff'], ['Server', srv], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
+  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', !S.me ? 'Not known yet' : me.owner ? 'Owner (officer)' : me.viewer ? 'Bn Staff' : me.admin ? 'Officer' : 'Post Staff'], ['Server', srv]].concat(S.outbox.length ? [['Scans not yet uploaded', S.outbox.length + '. They go up by themselves when the server is reachable.']] : []).forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
 $('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
 function pinForm(open) { $('pin-form').hidden = !open; $('pin-form').style.display = open ? 'flex' : 'none'; $('pin-btns').hidden = open; if (!open) { ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); } else { setStatus('s-pin', ''); $('c-old').focus(); } }
 $('b-pinopen').addEventListener('click', function () { pinForm(true); }); $('b-pincancel').addEventListener('click', function () { pinForm(false); setStatus('s-pin', ''); }); pinForm(false);
