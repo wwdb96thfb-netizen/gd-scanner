@@ -377,7 +377,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 .devb{border-color:var(--red)!important;background:var(--red-soft)!important;margin-bottom:14px}
 .rolesel{width:auto;flex:0 1 auto;padding:8px 30px 8px 10px;font-size:13.5px;border-radius:8px}
 #toast.bad{background:var(--red);color:#fff;font:700 15px/1.2 var(--head);letter-spacing:.12em;text-transform:uppercase;text-align:center}
-#zoom-wm{position:absolute;inset:-40%;transform:rotate(-24deg);pointer-events:none;color:rgba(255,255,255,.16);font:700 12px/4.6 var(--body);letter-spacing:.05em;text-transform:uppercase;overflow:hidden;text-align:center;text-shadow:0 0 2px rgba(0,0,0,.35)}
+#zoom-wm{position:absolute;inset:-45%;transform:rotate(-24deg);pointer-events:none;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:70px 56px;overflow:hidden}#zoom-wm div{flex:none;width:230px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;color:rgba(150,160,155,.42);text-shadow:0 0 1px rgba(0,0,0,.55),0 0 1px rgba(255,255,255,.4)}#zoom-wm div:nth-child(even){transform:translateY(34px)}#zoom-wm b{font:700 14px/1.1 var(--head);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}#zoom-wm span{font:600 11px/1.2 var(--body);white-space:nowrap}
 .photos img{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
@@ -643,7 +643,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.34.0';
+var APPV = '2.34.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -837,10 +837,11 @@ function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw =
 // The sharp copies the server reads are left clean, so the marking never disturbs the reading. They are not shown to anyone.
 function wmView(im, edge, q, who) { var sw = im.naturalWidth, sh = im.naturalHeight, k = Math.min(1, edge / Math.max(sw, sh)), c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'), W = c.width, H = c.height; x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.drawImage(im, 0, 0, sw, sh, 0, 0, W, H);
-  try { var fs = Math.max(13, Math.round(Math.min(W, H) / 26)), txt = 'PAKISTAN COAST GUARDS  ·  OFFICIAL USE ONLY', stepY = fs * 7;
-    x.save(); x.translate(W / 2, H / 2); x.rotate(-Math.PI / 7); x.font = '700 ' + fs + 'px Arial, Helvetica, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
-    var tw = x.measureText(txt).width + fs * 4, R = Math.sqrt(W * W + H * H) / 2;
-    for (var yy = -R, row = 0; yy <= R; yy += stepY, row++) for (var xx = -R - (row % 2 ? tw / 2 : 0); xx <= R + tw; xx += tw) { x.fillStyle = 'rgba(255,255,255,.2)'; x.fillText(txt, xx + 1, yy + 1); x.fillStyle = 'rgba(1,65,28,.2)'; x.fillText(txt, xx, yy); }
+  try { var fs = Math.max(13, Math.round(Math.min(W, H) / 30)), t1 = 'PAKISTAN COAST GUARDS', t2 = 'OFFICIAL USE ONLY', stepY = fs * 7.5;
+    x.save(); x.translate(W / 2, H / 2); x.rotate(-Math.PI / 7); x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.font = '700 ' + fs + 'px Arial, Helvetica, sans-serif'; var tw = x.measureText(t1).width + fs * 5, R = Math.sqrt(W * W + H * H) / 2, f3 = Math.round(fs * .72);
+    var put = function (t, px, py) { x.fillStyle = 'rgba(255,255,255,.18)'; x.fillText(t, px + 1, py + 1); x.fillStyle = 'rgba(1,65,28,.18)'; x.fillText(t, px, py); };
+    for (var yy = -R, row = 0; yy <= R; yy += stepY, row++) for (var xx = -R - (row % 2 ? tw / 2 : 0); xx <= R + tw; xx += tw) { x.font = '700 ' + fs + 'px Arial, Helvetica, sans-serif'; put(t1, xx, yy); x.font = '700 ' + f3 + 'px Arial, Helvetica, sans-serif'; put(t2, xx, yy + fs * 1.15); }
     x.restore();
     var bh = Math.round(fs * 1.9), line = 'PAKISTAN COAST GUARDS · ' + who; x.fillStyle = 'rgba(1,65,28,.86)'; x.fillRect(0, H - bh, W, bh); x.fillStyle = '#fff'; x.textBaseline = 'middle'; x.textAlign = 'left';
     var f2 = Math.round(fs * .82); x.font = '700 ' + f2 + 'px Arial, Helvetica, sans-serif'; while (f2 > 8 && x.measureText(line).width > W - fs) { f2--; x.font = '700 ' + f2 + 'px Arial, Helvetica, sans-serif'; } x.fillText(line, fs / 2, H - bh / 2); } catch (e) {}
@@ -1374,7 +1375,7 @@ document.querySelectorAll('#grp-chips button').forEach(function (b) { b.addEvent
 document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { $('zoom-img').src = t.src; $('zoom').classList.remove('big'); $('zoom').hidden = false; } });
 $('zoom-img').addEventListener('click', function (e) { var z = $('zoom'), box = $('zoom-in'), r = e.target.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height; z.classList.toggle('big');
   if (z.classList.contains('big')) { var n = e.target.getBoundingClientRect(); box.scrollLeft = fx * n.width - box.clientWidth / 2; box.scrollTop = fy * n.height - box.clientHeight / 2; } });
-document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { var one = 'Pakistan Coast Guards · viewed by ' + ((S.me && S.me.name) || 'user') + ' · ' + new Date().toLocaleString() + ' ·', all = ''; for (var i = 0; i < 60; i++) all += one + ' '; $('zoom-wm').textContent = all; } });
+document.addEventListener('click', function (e) { var t = e.target; if (t && t.tagName === 'IMG' && t.closest && t.closest('.photos')) { var box = $('zoom-wm'), d = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; }, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], l2 = 'Viewed by ' + ((S.me && S.me.name) || 'user') + ' · ' + p2(d.getDate()) + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() + ' ' + p2(d.getHours()) + ':' + p2(d.getMinutes()); box.textContent = ''; for (var i = 0; i < 90; i++) box.appendChild(h('div', null, h('b', { text: 'Pakistan Coast Guards' }), h('span', { text: l2 }))); } });
 $('zoom-x').addEventListener('click', function () { $('zoom').hidden = true; $('zoom-img').removeAttribute('src'); });
 // keep the app fitted to the screen: no pinch or double-tap zoom
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (ev) { document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false }); });
