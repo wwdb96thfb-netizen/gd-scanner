@@ -347,6 +347,18 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 .si-marks{list-style:none;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:16px 12px 0;padding:0}
 .si-marks li{display:flex;align-items:center;gap:5px;font:600 11.5px/1 var(--body);color:var(--muted);border:1px solid var(--line);background:var(--card);border-radius:20px;padding:6px 10px 6px 7px}.si-marks svg{width:15px;height:15px;color:var(--stamp)}
 .si-foot{margin:auto 24px 0;padding:14px 0 calc(14px + env(safe-area-inset-bottom,0px));text-align:center;font:400 11.5px/1.5 var(--body);color:var(--muted)}.si-foot span{display:inline-block;margin-top:6px;font:500 11px var(--mono);letter-spacing:.04em}
+.appbar{background:linear-gradient(90deg,#01411C 0%,rgba(1,65,28,.96) 24%,rgba(1,65,28,.3) 52%,rgba(1,65,28,0) 72%),linear-gradient(180deg,rgba(1,48,22,.9) 0%,rgba(1,48,22,.25) 34%,rgba(1,48,22,0) 55%),url(boat.jpg) right -34px bottom 0/auto 80% no-repeat,linear-gradient(180deg,#01411C,#0a4f4a)}
+.appbar::before{display:none}
+.appbar .strip{margin-top:50px}
+.appbar h1,.appbar .tag{text-shadow:0 1px 3px rgba(0,25,10,.7)}
+.appbar .flag{width:44px}
+.appbar .conn{flex:0 1 auto!important;max-width:58%;background:rgba(1,45,20,.72);border-color:rgba(255,255,255,.22);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.appbar .svc{display:none}
+@media (max-width:370px){.appbar .conn{max-width:46%}.appbar{background-position:0 0,0 0,right -44px bottom 0,0 0}}
+@media (min-width:600px){.appbar{background:linear-gradient(90deg,#01411C 0%,rgba(1,65,28,.92) 30%,rgba(1,65,28,.2) 60%,rgba(1,65,28,0) 100%),url(boat.jpg) right 56%/auto 190% no-repeat,#01411C}.appbar .conn{max-width:40%}}
+.si-hero{padding-bottom:178px;background:linear-gradient(180deg,rgba(1,50,22,.96) 0%,rgba(1,65,28,.86) 40%,rgba(1,65,28,.18) 72%,rgba(1,65,28,.05) 100%),url(boat.jpg) 46% 100%/auto 62% no-repeat,#01411C}
+.si-moon{display:none}
+.si-hero h1,.si-org{text-shadow:0 1px 4px rgba(0,25,10,.6)}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -608,7 +620,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.27.0';
+var APPV = '2.28.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
