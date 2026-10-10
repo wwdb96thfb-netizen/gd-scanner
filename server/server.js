@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 47;
+const VERSION = 48;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -31,7 +31,8 @@ const devWarned = new Map();
 if (!Array.isArray(cfg.items)) cfg.items = [];
 if (!Array.isArray(cfg.values)) cfg.values = [];
 if (!cfg.usage) cfg.usage = { day: '', pages: 0, lastLimit: null };
-cfg.people.forEach(x => { if (x.role !== 'admin') x.role = 'field'; });
+const ROLE = r => r === 'admin' ? 'admin' : r === 'viewer' ? 'viewer' : 'field';   // viewer: sees what an admin sees, changes nothing
+cfg.people.forEach(x => { x.role = ROLE(x.role); });
 const saveCfg = () => { fs.writeFileSync(CFG + '.tmp', JSON.stringify(cfg, null, 2)); fs.renameSync(CFG + '.tmp', CFG); };
 saveCfg();
 
@@ -47,7 +48,7 @@ const claim = (dir, user, create) => { const f = path.join(dir, 'owner.txt'); if
 // The picture shown on a file's card: the goods if photographed, else any non-paper photo, else the vehicle, else page one.
 const thumbOf = m => { const P = m.pages || [], f = t => P.findIndex(p => p.type === t); for (const t of ['goods', 'other', 'veh']) { if (f(t) >= 0) return f(t); } return 0; };
 const pinFails = new Map();
-const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: cfg.ownerName || 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin', owner: false, code } : null; };
+const who = code => { if (!code) return null; if (code === cfg.adminCode) return { name: cfg.ownerName || 'Owner', admin: true, owner: true, code }; const p = cfg.people.find(x => x.code === code); return p ? { name: p.name, admin: p.role === 'admin' || p.role === 'viewer', viewer: p.role === 'viewer', owner: false, code } : null; };
 
 // ---- flags that depend on other files or on what the admins have entered: worked out fresh whenever anything changes
 const AN = v => String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -489,7 +490,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req), name = clip(b.name, 40).trim(), code = String(b.code || '');
       if (!name || !/^[a-z0-9]{16,40}$/.test(code)) return send(res, 400, { error: 'form' });
       if (who(code)) return send(res, 200, { ok: true, approved: true });
-      if (!cfg.requests.some(x => x.code === code)) { if (cfg.requests.length >= 50) return send(res, 429, { error: 'full' }); cfg.requests.push({ id: rnd(8), name, role: b.role === 'admin' ? 'admin' : 'field', code, at: new Date().toISOString() }); saveCfg(); log('Access request from', name); }
+      if (!cfg.requests.some(x => x.code === code)) { if (cfg.requests.length >= 50) return send(res, 429, { error: 'full' }); cfg.requests.push({ id: rnd(8), name, role: ROLE(b.role), code, at: new Date().toISOString() }); saveCfg(); log('Access request from', name); }
       return send(res, 200, { ok: true });
     }
     const presented = req.headers['x-code'] || u.searchParams.get('code'), user = who(presented);
@@ -523,7 +524,9 @@ const server = http.createServer(async (req, res) => {
       if (!user.owner) return send(res, 403, { error: 'owner' }); const b = await body(req), name = clip(b.name, 40).trim(); if (name.length < 2) return send(res, 400, { error: 'form' });
       cfg.ownerName = name; saveCfg(); xver++; log('Owner name set to', name); return send(res, 200, { ok: true, name });
     }
-    if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, owner: !!user.owner, version: VERSION });
+    // View-only accounts: they may look at everything an admin sees, and may set their own PIN. Every other change is refused.
+    if (user.viewer && (req.method !== 'GET' || p[1] === 'people')) { log('Refused (view only):', user.name, req.method, p[1]); return send(res, 403, { error: 'readonly' }); }
+    if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {
       if (!ID.test(p[2])) return send(res, 400, { error: 'id' });
@@ -562,7 +565,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
@@ -653,15 +656,15 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
       people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], dev: !!cfg.devs[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
       requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
-    if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: b.role === 'admin' ? 'admin' : 'field', added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
+    if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: ROLE(b.role), added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
     if (p[1] === 'people' && p[2] && p[3] === 'device' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.devs[idOf(x.code)]; saveCfg(); log(user.name, 'released the phone lock of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'pin' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.pins[idOf(x.code)]; pinFails.delete(idOf(x.code)); saveCfg(); log(user.name, 'reset the PIN of', x.name); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = b.role === 'admin' ? 'admin' : 'field'; saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = ROLE(b.role); saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);
-      if (b.action === 'approve') { cfg.people.push({ name: r.name, code: r.code, role: b.role === 'admin' ? 'admin' : 'field', added: new Date().toISOString(), by: user.name }); log(user.name, 'approved', r.name, 'as', b.role === 'admin' ? 'admin' : 'field'); } else log(user.name, 'rejected', r.name);
+      if (b.action === 'approve') { cfg.people.push({ name: r.name, code: r.code, role: ROLE(b.role), added: new Date().toISOString(), by: user.name }); log(user.name, 'approved', r.name, 'as', ROLE(b.role)); } else log(user.name, 'rejected', r.name);
       saveCfg(); writeLinks(); return send(res, 200, { ok: true });
     }
     return send(res, 404, { error: 'none' });
@@ -674,7 +677,7 @@ const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '
 function writeLinks() {
   const L = ['GD Verification System links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
   L.push('JOIN LINK (anyone who opens it can ask for access; an admin must approve them):', APP_URL + '?t=' + cfg.topic + '&j=' + cfg.joinKey + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : ''), '');
-  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (admin):' : ':'), link(x.code), ''); });
+  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (admin):' : x.role === 'viewer' ? ' (view only):' : ':'), link(x.code), ''); });
   fs.writeFileSync(path.join(ROOT, 'LINKS.txt'), L.join('\n'));
 }
 async function announce() {
