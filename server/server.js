@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 54;
+const VERSION = 55;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -709,7 +709,7 @@ const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '
 function writeLinks() {
   const L = ['GD Verification System links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
   L.push('JOIN LINK (anyone who opens it can ask for access; an officer must approve them):', APP_URL + '?t=' + cfg.topic + '&j=' + cfg.joinKey + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : ''), '');
-  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (officer):' : x.role === 'viewer' ? ' (HQ staff):' : ':'), link(x.code), ''); });
+  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (officer):' : x.role === 'viewer' ? ' (Bn staff):' : ':'), link(x.code), ''); });
   fs.writeFileSync(path.join(ROOT, 'LINKS.txt'), L.join('\n'));
 }
 async function announce() {
