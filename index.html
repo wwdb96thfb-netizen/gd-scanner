@@ -643,7 +643,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.34.1';
+var APPV = '2.34.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -690,7 +690,7 @@ async function announced() { if (!cfg.t) return null; try { var r = await fx('ht
 async function findWith(key) { var c = []; if (cfg.s) c.push(cfg.s); var a = await announced(); if (a && c.indexOf(a) < 0) c.push(a);
   for (var i = 0; i < c.length; i++) { try { var hres = await hello(c[i], key); if (hres === 'ok') return { url: c[i] }; if (hres === 'unknown') return { unknown: true }; } catch (e) {} } return {}; }
 function revoked() { S.bad = true; S.list = []; keep('gd.list', []); }
-async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } if (e401.error === 'device') { S.server = url; devBlocked(); drawConn(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: j.owner }; keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
+async function ping(url) { try { if (!(await verify(url))) return false; var r = await fx(url + '/api/ping?_=' + Date.now() + pinq(), { headers: { 'x-code': cfg.c } }, 8000); if (r.status === 401) { var e401 = await r.json().catch(function () { return {}; }); if (e401.error === 'pin') { S.server = url; pinRejected(); return true; } if (e401.error === 'device') { S.server = url; devBlocked(); drawConn(); return true; } revoked(); return false; } if (!r.ok) return false; var j = await r.json(); if (!j || !j.ok) return false; S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: j.owner }; pinState(j); keep('gd.me', S.me); S.bad = false; if (cfg.trusted !== url) { cfg.trusted = url; keep('gd.cfg', cfg); } return true; } catch (e) { return false; } }
 async function findServer() {
   if (S.server) return S.server; if (S.finding) return S.finding;
   S.finding = (async function () {
@@ -731,7 +731,7 @@ function toast(msg, bad) { var t = $('toast'); t.textContent = msg; t.classList.
 
 async function refresh() {
   if (cfg.c && cfg.ph && !cfg.pinSync) { var pr = await pinPost(cfg.ph); if (pr === 'ok') { cfg.pinSync = true; keep('gd.cfg', cfg); } else if (pr === 'wrong' || pr === 'locked') { pinRejected(); return; } }
-  try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: !!j.owner || !!(S.me && S.me.owner && j.owner === undefined) }; keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ(); if (Array.isArray(j.items) && JSON.stringify(j.items) !== JSON.stringify(S.items)) { S.items = j.items; keep('gd.items', S.items); if (!scanFound.read()) { $('found-scan').textContent = ''; scanFound = foundFields(); $('found-scan').appendChild(scanFound.el); } }
+  try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: !!j.owner || !!(S.me && S.me.owner && j.owner === undefined) }; pinState(j); keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ(); if (Array.isArray(j.items) && JSON.stringify(j.items) !== JSON.stringify(S.items)) { S.items = j.items; keep('gd.items', S.items); if (!scanFound.read()) { $('found-scan').textContent = ''; scanFound = foundFields(); $('found-scan').appendChild(scanFound.el); } }
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
     if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the admin\'s decision on this phone as a notification.'; pushCheck();
@@ -1352,8 +1352,13 @@ $('g-ok').addEventListener('click', async function () { var p = $('g-p1').value;
   if (r === 'wrong') { setStatus('s-gpin', 'This link already has a different PIN. Enter that PIN, or ask an admin to reset it.', true); return; }
   if (r === 'locked') { setStatus('s-gpin', 'Too many wrong tries. Wait 15 minutes, or ask an admin to reset the PIN.', true); return; }
   if (r === 'code') { revoked(); drawConn(); return; }
-  cfg.ph = H; cfg.pinSync = r === 'ok'; keep('gd.cfg', cfg); unlock(); });
-$('g-forgot').addEventListener('click', function () { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); gate(); setStatus('s-gpin', 'Ask an admin to reset your PIN in the Admin tab, then choose a new one here.'); });
+  if (r !== 'ok') { setStatus('s-gpin', 'The server cannot be reached. A PIN can only be set while connected. Check the internet and try again.', true); return; }
+  cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); unlock(); });
+// The server tells the phone whether a PIN exists for this account. Only when an admin has reset it there may a new one be chosen.
+function pinState(j) { if (j && j.pinSet === false && cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; gate(); setStatus('s-gpin', 'Your PIN was reset by an admin. Choose a new one.'); } }
+$('g-forgot').addEventListener('click', async function () { var bt = $('g-forgot'); bt.disabled = true; setStatus('s-gpin', 'Checking…'); S.server = null; try { await findServer(); } catch (e) {} bt.disabled = false;
+  if (!cfg.ph) return;   // the server confirmed the PIN was reset: the "choose a new PIN" screen is already showing
+  setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an admin to open Admin, People, and tap Reset PIN beside your name. Then open the app again.', true); });
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
 function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
   if (me.admin && !getLoc()) { $('f-locsel').value = 'Bn HQ'; locChanged(); }   // admins sit at Bn HQ

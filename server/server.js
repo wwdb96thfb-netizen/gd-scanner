@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 49;
+const VERSION = 50;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -528,7 +528,7 @@ const server = http.createServer(async (req, res) => {
     // (goods found, driver, action taken), and nothing else. They cannot touch another person's file or use any admin function.
     if (user.viewer && p[1] === 'people') return send(res, 403, { error: 'readonly' });
     if (user.viewer && req.method !== 'GET') user.admin = false;
-    if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, version: VERSION });
+    if (p[1] === 'ping') return send(res, 200, { ok: true, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, version: VERSION });
 
     if (p[1] === 'have' && p[2] && req.method === 'GET') {
       if (!ID.test(p[2])) return send(res, 400, { error: 'id' });
@@ -567,7 +567,7 @@ const server = http.createServer(async (req, res) => {
       index.set(m.id, m); save(m); log('Received', m.id, 'from', m.byName); work();
       return send(res, 200, { ok: true });
     }
-    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
+    if (p[1] === 'captures' && req.method === 'GET') { const ver = BOOT + ':' + xver; if (u.searchParams.get('v') === ver) return send(res, 200, { ok: true, same: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo() }); return send(res, 200, { ok: true, ver, name: user.name, admin: user.admin, viewer: !!user.viewer, pinSet: !!cfg.pins[idOf(user.code)], owner: !!user.owner, vapid: cfg.vapid.pub, q: queueInfo(), items: cfg.items, list: listFor(user) }); }
     if (p[1] === 'thumb' && p[2] && req.method === 'GET') {
       const m = index.get(p[2]); if (!m || (!user.admin && m.by !== user.code)) return send(res, 404, { error: 'none' });
       const n = parseInt(p[3], 10) || 0, f = [path.join(CAP, m.id, 'p' + n + '-thumb.jpg'), path.join(CAP, m.id, 'p' + n + '-view.jpg')].find(x => fs.existsSync(x));
