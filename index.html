@@ -372,7 +372,7 @@ details.case>summary>.main{grid-column:2;grid-row:1;display:flex;flex-direction:
 .rrow .rdot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--stamp)}.rrow.red .rdot{background:var(--red)}.rrow.amber .rdot{background:var(--amber)}.rrow.ok .rdot{background:var(--green)}.rrow.busy .rdot{animation:rp 1.1s ease-in-out infinite}@keyframes rp{50%{opacity:.25}}
 .rrow .rt{flex:1;min-width:0;display:flex;flex-direction:column}.rrow .rt b{font:700 15px/1.2 var(--head);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rrow .rt small{font-size:11.5px;color:var(--muted)}
 .rrow .rs{flex:none;max-width:48%;font:700 12px/1.2 var(--head);letter-spacing:.06em;text-transform:uppercase;text-align:right}.rrow.red .rs{color:var(--red)}.rrow.amber .rs{color:var(--amber)}.rrow.ok .rs{color:var(--green)}.rrow .rgo{flex:none;color:var(--muted);font-size:20px;line-height:1}
-.thumbs figure.warn img{outline:3px solid var(--amber)}.thumbs figure figcaption{position:absolute;left:0;right:0;bottom:0;background:var(--amber);color:#fff;font:700 10px/1.5 var(--body);text-align:center}
+.thumbs figure.warn img{outline:3px solid var(--red)}.thumbs figure .keepit{position:absolute;left:0;right:0;top:auto;bottom:-22px;width:auto;height:20px;border-radius:5px;background:var(--card);color:var(--muted);border:1px solid var(--line);font:600 10px/1 var(--body);padding:0}.thumbs:has(figure.warn){padding-bottom:24px}.thumbs figure figcaption{position:absolute;left:0;right:0;bottom:0;background:var(--red);color:#fff;font:700 10px/1.5 var(--body);text-align:center}
 details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .morechip{border-style:dashed}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
@@ -637,7 +637,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.29.0';
+var APPV = '2.30.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -788,7 +788,7 @@ setTimeout(function () { document.querySelectorAll('[data-ci]').forEach(function
 $('b-note').addEventListener('click', function () { $('l-note').hidden = false; $('b-note').hidden = true; $('f-note').focus(); });
 $('b-morechips').addEventListener('click', function () { document.querySelectorAll('#chips .xchip').forEach(function (x) { x.hidden = false; }); $('b-morechips').hidden = true; });
 function recentTitle(c) { return (c.vehicles && c.vehicles[0]) || (c.gdNos && c.gdNos[0]) || (c.nPages || (c.localPages || []).length || '') + ' photos'; }
-function drawRecent() { var box = $('recent'); if (!box) return; var me = S.me || {}, now = Date.now(), L = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, takenAt: o.takenAt, localPages: o.pages }; }).concat(S.list.filter(function (c) { return (!me.admin || c.byName === me.name) && now - (Date.parse(c.takenAt || c.receivedAt) || 0) < 12 * 3600e3; })).slice(0, 4);
+function drawRecent() { var box = $('recent'); if (!box) return; var me = S.me || {}, now = Date.now(), L = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, takenAt: o.takenAt, localPages: o.pages }; }).concat(S.list.filter(function (c) { return (c.mine != null ? c.mine : (!me.admin || c.byName === me.name)) && now - (Date.parse(c.takenAt || c.receivedAt) || 0) < 12 * 3600e3; })).slice(0, 4);
   box.textContent = ''; box.hidden = !L.length; if (!L.length) return; box.appendChild(h('b', { class: 'rhead', text: 'Latest results' }));
   L.forEach(function (c) { var done = c.status === 'done', adv = done ? advise(c) : null, k = done ? adv.k : 'busy', st = c.local ? (c.sending ? 'Uploading' : 'Waiting to upload') : done ? adv.head : c.status === 'waiting' ? 'Server busy' : 'Being checked', tm = new Date(c.takenAt || c.receivedAt || 0);
     var row = h('button', { type: 'button', class: 'rrow ' + k, onclick: function () { if (c.local) { showTab('files'); return; } S.open = c.id; S.filesSig = ''; showTab('files'); drawFiles(); var el = document.querySelector('details.case[data-id="' + c.id + '"]'); if (el) el.scrollIntoView({ block: 'start' }); } },
@@ -796,7 +796,7 @@ function drawRecent() { var box = $('recent'); if (!box) return; var me = S.me |
 var _drawFiles = drawFiles; drawFiles = function () { _drawFiles(); try { drawRecent(); } catch (e) {} };
 // A result that has just come back is announced, so nobody has to keep looking at the phone.
 function announceResults(list) { var seen = S.seenSt = S.seenSt || null, cur = {}, me = S.me || {}; list.forEach(function (c) { cur[c.id] = c.status; });
-  if (seen) list.forEach(function (c) { if (c.status === 'done' && seen[c.id] && seen[c.id] !== 'done' && (!me.admin || c.byName === me.name)) { var a = advise(c); toast(recentTitle(c) + ': ' + a.head); try { if (navigator.vibrate) navigator.vibrate(a.k === 'red' ? [300, 120, 300, 120, 300] : a.k === 'amber' ? [250, 120, 250] : 200); } catch (e) {} } });
+  if (seen) list.forEach(function (c) { if (c.status === 'done' && seen[c.id] && seen[c.id] !== 'done' && (c.mine != null ? c.mine : (!me.admin || c.byName === me.name))) { var a = advise(c); toast(recentTitle(c) + ': ' + a.head); try { if (navigator.vibrate) navigator.vibrate(a.k === 'red' ? [300, 120, 300, 120, 300] : a.k === 'amber' ? [250, 120, 250] : 200); } catch (e) {} } });
   S.seenSt = cur; S.outbox.forEach(function (o) { S.seenSt[o.id] = S.seenSt[o.id] || 'local'; }); }
 // A blurred or dark photo is the usual cause of a wrong result: warn before it is sent.
 function photoQuality(im) { try { var c = document.createElement('canvas'), k = 160 / Math.max(im.naturalWidth, im.naturalHeight); c.width = Math.max(8, Math.round(im.naturalWidth * k)); c.height = Math.max(8, Math.round(im.naturalHeight * k)); var x = c.getContext('2d'); x.drawImage(im, 0, 0, c.width, c.height);
@@ -812,13 +812,13 @@ $('f-loc').addEventListener('input', locChanged);
 (function () { var l = load('gd.loc'); if (l && typeof l.sel === 'string') { $('f-locsel').value = l.sel; if ($('f-locsel').value !== l.sel) $('f-locsel').value = ''; $('f-loc').value = l.text || ''; } $('f-loc').hidden = $('f-locsel').value !== 'other'; })();
 var picked = [];
 $('l-files').addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('f-files').click(); } });
-$('f-files').addEventListener('change', function (e) { var over = false; Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 12) { var pk = { file: f, url: URL.createObjectURL(f), kind: 'doc' }; picked.push(pk); loadImg(pk.url).then(function (im) { pk.warn = photoQuality(im); if (pk.warn) drawThumbs(); }).catch(function () {}); } else over = true; }); e.target.value = ''; drawThumbs(); if (over) toast('12 photos at most in one file'); });
+$('f-files').addEventListener('change', function (e) { var over = false; Array.prototype.forEach.call(e.target.files, function (f) { if (picked.length < 12) { var pk = { file: f, url: URL.createObjectURL(f), kind: 'doc' }; picked.push(pk); loadImg(pk.url).then(function (im) { pk.warn = pk.okd ? '' : photoQuality(im); if (pk.warn) drawThumbs(); }).catch(function () {}); } else over = true; }); e.target.value = ''; drawThumbs(); if (over) toast('12 photos at most in one file'); });
 function setStatus(id, msg, bad) { var e = $(id); e.textContent = msg || ''; e.className = 'status' + (bad ? ' bad' : ''); }
 function drawThumbs() { $('thumbs').textContent = '';
   picked.forEach(function (f, i) { var label = 'Photo ' + (i + 1);
-    $('thumbs').appendChild(h('figure', f.warn ? { class: 'warn' } : null, h('img', { src: f.url, alt: label }), f.warn ? h('figcaption', { text: f.warn }) : null, h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
-  $('b-send').disabled = !picked.length;
-  var nw = picked.filter(function (f) { return f.warn; }).length; setStatus('s-scan', picked.length ? picked.length + ' photo' + (picked.length === 1 ? '' : 's') + ' ready.' + (nw ? ' ' + nw + (nw === 1 ? ' looks' : ' look') + ' blurred or dark: remove and retake, or send as it is.' : '') : '', nw > 0); }
+    $('thumbs').appendChild(h('figure', f.warn ? { class: 'warn' } : null, h('img', { src: f.url, alt: label }), f.warn ? h('figcaption', { text: f.warn }) : null, f.warn ? h('button', { type: 'button', class: 'keepit', text: 'It is clear', onclick: function () { f.warn = ''; f.okd = true; drawThumbs(); } }) : null, h('button', { 'aria-label': 'Remove ' + label, text: '×', onclick: function () { URL.revokeObjectURL(f.url); picked.splice(picked.indexOf(f), 1); drawThumbs(); } }))); });
+  var nbad = picked.filter(function (f) { return f.warn; }).length; $('b-send').disabled = !picked.length || nbad > 0;
+  var nw = picked.filter(function (f) { return f.warn; }).length; setStatus('s-scan', picked.length ? picked.length + ' photo' + (picked.length === 1 ? '' : 's') + ' ready.' + (nw ? ' ' + nw + (nw === 1 ? ' is' : ' are') + ' blurred or dark and cannot be sent. Remove ' + (nw === 1 ? 'it' : 'them') + ' with the × and take ' + (nw === 1 ? 'it' : 'them') + ' again.' : '') : '', nw > 0); }
 function loadImg(url) { return new Promise(function (res, rej) { var im = new Image(); im.onload = function () { res(im); }; im.onerror = function () { rej(new Error('decode')); }; im.src = url; }); }
 function draw(im, y0, y1, edge, q) { var sh = im.naturalHeight * (y1 - y0), sw = im.naturalWidth, k = Math.min(1, edge / Math.max(sw, sh)); var c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
   var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, im.naturalHeight * y0, sw, sh, 0, 0, c.width, c.height); var d = c.toDataURL('image/jpeg', q); c.width = c.height = 0; return d; }
@@ -827,7 +827,7 @@ function fingerprint(im) { try { var c = document.createElement('canvas'); c.wid
 function thumbOf(im) { var c = document.createElement('canvas'), d = Math.min(im.naturalWidth, im.naturalHeight); c.width = c.height = 160; var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 160, 160); x.drawImage(im, (im.naturalWidth - d) / 2, (im.naturalHeight - d) / 2, d, d, 0, 0, 160, 160); var u = c.toDataURL('image/jpeg', 0.6); c.width = c.height = 0; return u; }
 function newId() { var a = new Uint8Array(8); crypto.getRandomValues(a); return Date.now().toString(36) + '-' + Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join(''); }
 $('b-send').addEventListener('click', async function () {
-  if (!picked.length) return; $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
+  if (!picked.length || picked.some(function (f) { return f.warn; })) return; $('b-send').disabled = true; setStatus('s-scan', 'Getting location…');
   var gps = await getGPS(); if (!gps) { setStatus('s-scan', 'Location is required with every scan. Turn on Location (GPS) on this phone, allow it for this app, and press Send again.', true); $('b-send').disabled = false; return; }
   setStatus('s-scan', 'Preparing photos…');
   var pages = [];
