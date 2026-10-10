@@ -379,6 +379,12 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 #toast.bad{background:var(--red);color:#fff;font:700 15px/1.2 var(--head);letter-spacing:.12em;text-transform:uppercase;text-align:center}
 #zoom-wm{position:absolute;inset:-45%;transform:rotate(-24deg);pointer-events:none;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:70px 56px;overflow:hidden}#zoom-wm div{flex:none;width:230px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;color:rgba(150,160,155,.42);text-shadow:0 0 1px rgba(0,0,0,.55),0 0 1px rgba(255,255,255,.4)}#zoom-wm div:nth-child(even){transform:translateY(34px)}#zoom-wm b{font:700 14px/1.1 var(--head);letter-spacing:.16em;text-transform:uppercase;white-space:nowrap}#zoom-wm span{font:600 11px/1.2 var(--body);white-space:nowrap}
 .photos img{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.ur{font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq","Geeza Pro","Noto Naskh Arabic",Tahoma,sans-serif;direction:rtl}
+.pact{border-radius:14px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;color:#fff;background:var(--stamp)}.pact.red{background:linear-gradient(160deg,#c62f26,#8f1d17)}.pact.amber{background:linear-gradient(160deg,#b97a08,#8a5a00)}.pact.ok{background:linear-gradient(160deg,#17854a,#0b5a31)}
+.pact .pw{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid rgba(255,255,255,.3);padding-bottom:8px}.pact .pw b{font:700 30px/1 var(--head);letter-spacing:.08em;text-transform:uppercase}.pact .pw b.ur{font-size:27px;letter-spacing:0;line-height:1.5}
+.pact p{margin:0;font:500 15px/1.45 var(--body)}.pact p.ur{font-size:19px;line-height:1.9;text-align:right}
+.pact ul{margin:2px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}.pact li{background:rgba(255,255,255,.14);border-radius:9px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;font:500 14px/1.4 var(--body)}.pact li .ur{font-size:17px;line-height:1.8;text-align:right}
+.rrow .rs{white-space:nowrap}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -643,7 +649,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="toast" hidden role="status"></div>
 
 <script>
-var APPV = '2.34.2';
+var APPV = '2.35.0';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -800,13 +806,13 @@ $('b-morechips').addEventListener('click', function () { document.querySelectorA
 function recentTitle(c) { return (c.vehicles && c.vehicles[0]) || (c.gdNos && c.gdNos[0]) || (c.nPages || (c.localPages || []).length || '') + ' photos'; }
 function drawRecent() { var box = $('recent'); if (!box) return; var me = S.me || {}, now = Date.now(), L = S.outbox.map(function (o) { return { id: o.id, local: true, sending: o.sending, takenAt: o.takenAt, localPages: o.pages }; }).concat(S.list.filter(function (c) { return (c.mine != null ? c.mine : (!me.admin || c.byName === me.name)) && now - (Date.parse(c.takenAt || c.receivedAt) || 0) < 12 * 3600e3; })).slice(0, 4);
   box.textContent = ''; box.hidden = !L.length; if (!L.length) return; box.appendChild(h('b', { class: 'rhead', text: 'Latest results' }));
-  L.forEach(function (c) { var done = c.status === 'done', adv = done ? advise(c) : null, k = done ? adv.k : 'busy', st = c.local ? (c.sending ? 'Uploading' : 'Waiting to upload') : done ? adv.head : c.status === 'waiting' ? 'Server busy' : 'Being checked', tm = new Date(c.takenAt || c.receivedAt || 0);
+  L.forEach(function (c) { var done = c.status === 'done', adv = done ? advise(c) : null, k = done ? (isPost() ? postView(c).k : adv.k) : 'busy', st = c.local ? (c.sending ? 'Uploading' : 'Waiting to upload') : done ? (isPost() ? postView(c).w + ' · ' + postView(c).wu : adv.head) : c.status === 'waiting' ? 'Server busy' : 'Being checked', tm = new Date(c.takenAt || c.receivedAt || 0);
     var row = h('button', { type: 'button', class: 'rrow ' + k, onclick: function () { if (c.local) { showTab('files'); return; } S.open = c.id; S.filesSig = ''; showTab('files'); drawFiles(); var el = document.querySelector('details.case[data-id="' + c.id + '"]'); if (el) el.scrollIntoView({ block: 'start' }); } },
       h('span', { class: 'rdot' }), h('span', { class: 'rt' }, h('b', { text: recentTitle(c) }), h('small', { text: isNaN(tm) ? '' : tm.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) })), h('span', { class: 'rs', text: st }), h('span', { class: 'rgo', text: '›' })); box.appendChild(row); }); }
 var _drawFiles = drawFiles; drawFiles = function () { _drawFiles(); try { drawRecent(); } catch (e) {} };
 // A result that has just come back is announced, so nobody has to keep looking at the phone.
 function announceResults(list) { var seen = S.seenSt = S.seenSt || null, cur = {}, me = S.me || {}; list.forEach(function (c) { cur[c.id] = c.status; });
-  if (seen) list.forEach(function (c) { if (c.status === 'done' && seen[c.id] && seen[c.id] !== 'done' && (c.mine != null ? c.mine : (!me.admin || c.byName === me.name))) { var a = advise(c); toast(recentTitle(c) + ': ' + a.head); try { if (navigator.vibrate) navigator.vibrate(a.k === 'red' ? [300, 120, 300, 120, 300] : a.k === 'amber' ? [250, 120, 250] : 200); } catch (e) {} } });
+  if (seen) list.forEach(function (c) { if (c.status === 'done' && seen[c.id] && seen[c.id] !== 'done' && (c.mine != null ? c.mine : (!me.admin || c.byName === me.name))) { var a = advise(c); if (isPost()) { var pv = postView(c); a = { k: pv.k, head: pv.w.toUpperCase() + ' · ' + pv.wu }; } toast(recentTitle(c) + ': ' + a.head); try { if (navigator.vibrate) navigator.vibrate(a.k === 'red' ? [300, 120, 300, 120, 300] : a.k === 'amber' ? [250, 120, 250] : 200); } catch (e) {} } });
   S.seenSt = cur; S.outbox.forEach(function (o) { S.seenSt[o.id] = S.seenSt[o.id] || 'local'; }); }
 // A blurred or dark photo is the usual cause of a wrong result: warn before it is sent.
 function photoQuality(im) { try { var c = document.createElement('canvas'), k = 160 / Math.max(im.naturalWidth, im.naturalHeight); c.width = Math.max(8, Math.round(im.naturalWidth * k)); c.height = Math.max(8, Math.round(im.naturalHeight * k)); var x = c.getContext('2d'); x.drawImage(im, 0, 0, c.width, c.height);
@@ -966,7 +972,7 @@ function advise(c) {
   return { k: 'ok', a: 'clear', head: 'CLEAR TO GO', text: 'Papers are in order. Match the goods and the vehicle number with the papers by eye, then release.', items: [], foot: '' };
 }
 var ORD = { release: 'Release the vehicle', seize: 'Seize the goods (case to be filed)', docs: 'Ask for more documents', detain: 'Seize the goods (case to be filed)' };
-var DEC = { seized: 'Seized: goods to warehouse, case to be filed', released: 'Released', held: 'Held', detained: 'Seized: goods to warehouse, case to be filed', handed: 'Seized' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
+var DEC = { seized: 'Seized: goods to warehouse, case to be filed', released: 'Released', held: 'Detained', detained: 'Seized: goods to warehouse, case to be filed', handed: 'Seized' }, RES = { detain: 'Detain', hold: 'Hold', check: 'Ask / question', clear: 'Clear' };
 // ---- goods found: a pick list of what is commonly carried, each with its usual packing; anything else can be typed in
 var UNITS = ['Bags', 'Cartons', 'Boxes', 'Barrels', 'Drums', 'Jerry cans', 'Tins', 'Bottles', 'Cylinders', 'Bales', 'Rolls', 'Bundles', 'Crates', 'Packets', 'Pieces', 'Vehicles', 'Animals', 'Kg (loose)', 'Tons', 'Litres (loose)'];
 var GOODS = [
@@ -1111,6 +1117,20 @@ var CIS = {
 function CI(name, size) { var sp = document.createElement('span'); sp.className = 'ci'; sp.setAttribute('aria-hidden', 'true'); sp.innerHTML = '<svg viewBox="0 0 24 24" width="' + (size || 22) + '" height="' + (size || 22) + '">' + (CIS[name] || '') + '</svg>'; return sp; }
 var ICON = { detain: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2zM12 7.5v5.5M12 16.5v.01', hold: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9v6M14 9v6', ask: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v6M9 14h6', query: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.6 9.5a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9M12 16.8v.01', clear: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12.3l2.8 2.8L16.2 9.5' };
 function icon(d) { var NS = 'http://www.w3.org/2000/svg', sv = document.createElementNS(NS, 'svg'), pa = document.createElementNS(NS, 'path'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('class', 'ico'); sv.setAttribute('aria-hidden', 'true'); pa.setAttribute('d', d); sv.appendChild(pa); return sv; }
+// ---- Post staff see one of three plain orders, in English and Urdu: RELEASE, DETAIN or SEIZE. Admins keep the detailed view.
+var URASK = [[/sales tax invoice|invoice/i, 'سیلز ٹیکس انوائس'], [/bilty|transport paper/i, 'بلٹی'], [/goods declaration|\bGD\b/i, 'جی ڈی (گڈز ڈیکلریشن)'], [/release order/i, 'ریلیز آرڈر'], [/number plate/i, 'نمبر پلیٹ کی صاف تصویر'], [/goods found|enter the goods/i, 'گاڑی میں موجود سامان درج کریں'], [/open the packages/i, 'پیکٹ کھول کر سامان دیکھیں'], [/cnic/i, 'ڈرائیور کا شناختی کارڈ']];
+function urAsk(t) { for (var i = 0; i < URASK.length; i++) if (URASK[i][0].test(t)) return URASK[i][1]; return ''; }
+function postView(c) { var a = advise(c), o = c.order, d = c.decision;
+  var R = function (k, w, wu, en, ur, items) { return { k: k, w: w, wu: wu, en: en, ur: ur, items: items || [] }; };
+  if (c.release || (o && o.order === 'release')) return R('ok', 'Release', 'چھوڑ دیں', 'Order from HQ: let the vehicle go.', 'ہیڈکوارٹر کا حکم: گاڑی کو جانے دیں۔');
+  if ((o && (o.order === 'seize' || o.order === 'detain')) || (d && (d.action === 'seized' || d.action === 'detained' || d.action === 'handed'))) return R('red', 'Seize', 'ضبط کریں', 'Order from HQ: seize the goods. Unload them to the warehouse and fill in the seizure report.', 'ہیڈکوارٹر کا حکم: سامان ضبط کریں۔ سامان گودام میں اتاریں اور ضبطی کی رپورٹ بھریں۔');
+  if (o && o.order === 'docs') return R('amber', 'Detain', 'روک لیں', 'Order from HQ: keep the vehicle and get these papers. Scan them as a new scan.', 'ہیڈکوارٹر کا حکم: گاڑی روکے رکھیں اور یہ کاغذات لیں۔ پھر نیا سکین کریں۔', o.note ? [o.note] : []);
+  if (a.a === 'detain') return R('red', 'Detain', 'روک لیں', 'Stop the vehicle. Do not let it go. Wait for the order from HQ.', 'گاڑی روک لیں۔ جانے نہ دیں۔ ہیڈکوارٹر کے حکم کا انتظار کریں۔');
+  if (a.a === 'clear') return R('ok', 'Release', 'چھوڑ دیں', 'The papers are in order. Let the vehicle go.', 'کاغذات درست ہیں۔ گاڑی کو جانے دیں۔');
+  return R('amber', 'Detain', 'روک لیں', 'Stop the vehicle. Ask for the papers below and scan them. If the driver does not have them, tell HQ.', 'گاڑی روک لیں۔ نیچے لکھے کاغذات مانگیں اور سکین کریں۔ کاغذات نہ ہوں تو ہیڈکوارٹر کو بتائیں۔', a.items.filter(function (t) { return !/^Explanation:/i.test(t); })); }
+function postBox(c) { var v = postView(c), box = h('div', { class: 'pact ' + v.k }, h('div', { class: 'pw' }, h('b', { text: v.w }), h('b', { class: 'ur', lang: 'ur', dir: 'rtl', text: v.wu })), h('p', { text: v.en }), h('p', { class: 'ur', lang: 'ur', dir: 'rtl', text: v.ur }));
+  if (v.items.length) { var u = h('ul'); v.items.slice(0, 5).forEach(function (t) { var ur = urAsk(t); u.appendChild(h('li', null, h('span', { text: t }), ur ? h('span', { class: 'ur', lang: 'ur', dir: 'rtl', text: ur }) : null)); }); box.appendChild(u); } return box; }
+function isPost() { return !(S.me && S.me.admin); }
 function actBox(a) { return h('div', { class: 'act hasico ' + a.k }, icon(ICON[a.a] || ICON.query), h('b', { text: a.head }), h('span', { text: a.text }), a.items.length ? (function () { var u = h('ul'); a.items.slice(0, 6).forEach(function (t) { u.appendChild(h('li', { text: t })); }); return u; })() : null, a.foot ? h('small', { text: a.foot }) : null); }
 function flagList(fl) { var ul = h('ul', { class: 'flags' }); fl.forEach(function (f) { ul.appendChild(h('li', { class: f.l }, h('span', { class: 'pill ' + (f.l === 'red' && CRIT[f.n] ? 'crit' : f.l), text: f.l === 'red' && CRIT[f.n] ? 'Critical' : (WORD[f.l] || '') }), h('span', { class: 't', text: f.t }), ((f.l === 'red' || f.l === 'amber') && WHY[f.n]) ? h('span', { class: 'd why', text: 'Likely cause: ' + WHY[f.n] }) : null, f.d ? h('span', { class: 'd', text: f.d }) : null, h('span', { class: 'd n', text: (f.n ? 'Check ' + f.n : '') + (f.p ? (f.n ? ' · ' : '') + 'page ' + f.p : '') }))); }); return ul; }
 function when(s) { var d = new Date(s); return isNaN(d) ? '' : d.toLocaleString(); }
@@ -1136,7 +1156,7 @@ function stampOf(c) { if (!c || c.local || c.status !== 'done') return null; var
   if (d && d.action === 'released') return S1('Released', 'green', d.at, d.byName);
   if (o && o.order === 'docs') return S1('Documents required', 'amber', o.at, o.byName ? 'Order of ' + o.byName : '');
   if (o && (o.order === 'seize' || o.order === 'detain')) return S1('Seizure ordered', 'red', o.at, o.byName ? 'Order of ' + o.byName : '');
-  if (d && d.action === 'held') return S1('Held', 'amber', d.at, d.byName);
+  if (d && d.action === 'held') return S1('Detained', 'amber', d.at, d.byName);
   if (advise(c).a === 'detain') return S1('Decision pending', 'amber', c.receivedAt || c.takenAt, 'Awaiting admin');
   return null; }
 var STN = 0;
@@ -1163,7 +1183,7 @@ function caseView(c) {
   var names = []; (Array.isArray(g.items) ? g.items : []).forEach(function (it) { var nm = goodsName(it.description); if (nm && names.indexOf(nm) < 0) names.push(nm); });
   var item = names.length ? names.slice(0, 2).join(' + ') + (names.length > 2 ? ' + ' + (names.length - 2) + ' more' : '') : goodsName(q.goods), gdRef = (c.gdNos && c.gdNos[0]) || '';
   var title = done ? (item || (c.gdNos && c.gdNos[0]) || (q.ro_no ? 'Release order ' + q.ro_no : (c.vehicles && c.vehicles[0] ? 'Vehicle ' + c.vehicles[0] : 'Unread file'))) : (c.nPages || (c.pages || []).length) + ' page' + ((c.nPages || 0) > 1 ? 's' : '');
-  var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : ACT[adv.a];
+  var label = c.local ? (c.sending ? 'Uploading' : 'On this phone') : c.status === 'queued' ? 'In queue' : c.status === 'reading' ? 'Being checked' : c.status === 'waiting' ? 'Server busy' : (isPost() && !c.local ? postView(c).w : ACT[adv.a]);
   var RS = { due: 'SEIZURE REPORT DUE', redo: 'REPORT SENT BACK: CORRECT AND RESEND', sent: 'Report submitted, waiting for re-verification', confirmed: 'Seizure confirmed: case to be filed in Customs Court', release: 'Release ordered on re-verification' }, rst = done && !c.local ? rptState(c) : '';
   var line = c.local ? (c.sending ? (c.progress || 'Uploading now.') : 'Waiting to upload. It will go up on its own when the server is reachable.') : !done ? (c.msg || 'The server is reading the papers. The result will appear here.') : (nR ? nR + ' doubtful' : '') + (nR && nA ? ', ' : '') + (nA ? nA + ' to check' : '') + (!nR && !nA ? 'No flags raised' : '');
   var top3 = fl.filter(function (f) { return f.l === 'red'; }).concat(fl.filter(function (f) { return f.l === 'amber'; })).filter(function (f, i, L) { return L.findIndex(function (x) { return x.t === f.t; }) === i; });
@@ -1188,9 +1208,10 @@ function caseView(c) {
   var hot = fl.filter(function (f) { return f.l === 'red' || f.l === 'amber'; }).sort(function (a, b) { return (a.l === 'red' ? 0 : 1) - (b.l === 'red' ? 0 : 1); });
   var locked = !!c.release && !(S.me && S.me.owner), real = done && !c.local;
   if (info) { var wy = info.querySelector('.why'); if (wy) wy.remove(); info.lastChild.remove(); }
-  if (adv || info) { sec('What to do', 'shield'); if (adv) put(actBox(adv)); put(info);
+  if (adv || info) { sec('What to do', 'shield'); if (adv) put(isPost() && real ? postBox(c) : actBox(adv)); if (!isPost()) put(info);
     if (c.notified && c.notified.length) put(h('div', { class: 'meta', style: 'background:var(--grey-soft);border-radius:9px;padding:8px 10px;color:var(--ink)' }, h('b', { text: 'On the notified list (S.R.O. 566(I)/2005): ' }), h('span', { text: c.notified.join('; ') + '. For notified goods the holder is expected to show lawful import: a GD, or the sales tax invoices leading back to one.' })));
-    if (hot.length) { var firstN = Math.max(3, hot.filter(function (f) { return f.l === 'red'; }).length); put(flagList(hot.slice(0, firstN))); if (hot.length > firstN) put(h('details', { class: 'more' }, h('summary', { text: 'Show ' + (hot.length - firstN) + ' more point' + (hot.length - firstN > 1 ? 's' : '') + ' to check' }), flagList(hot.slice(firstN)))); } }
+    if (hot.length && isPost()) put(h('details', { class: 'more' }, h('summary', { text: 'Why (details for officers)' }), flagList(hot)));
+    else if (hot.length) { var firstN = Math.max(3, hot.filter(function (f) { return f.l === 'red'; }).length); put(flagList(hot.slice(0, firstN))); if (hot.length > firstN) put(h('details', { class: 'more' }, h('summary', { text: 'Show ' + (hot.length - firstN) + ' more point' + (hot.length - firstN > 1 ? 's' : '') + ' to check' }), flagList(hot.slice(firstN)))); } }
   if (real) { sec('Goods found on the vehicle', 'box'); put(foundBox(c)); }
   if (real && !c.driver && !(c.release && !(S.me && S.me.owner))) put(driverBox(c));
   var crit = real && ((adv && adv.a === 'detain') || !!c.order);
