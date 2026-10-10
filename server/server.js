@@ -7,8 +7,8 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 41;
-const CHECKS_V = 11;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
+const VERSION = 42;
+const CHECKS_V = 12;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
 const PORT = +process.env.GD_PORT || 8787;
@@ -278,7 +278,7 @@ async function alertAdmins(m) {
 }
 // ---- reading a page with Claude
 const SHAPE = '{"type":"gd" | "pq" | "inv" | "veh" | "id" | "auc" | "doc" | "goods" | "other","what":"short name of the document",\n' +
-  '"gd":{"machine_no":"box 58, joined on one line, e.g. GBSI-HC-1117-09-09-2026","gd_date":"","igm_no":"box 8","igm_date":"","index_no":"number after INDEX in box 8","bl_no":"box 23 number only","cash_no":"box 65 C/F/D number","importer":"","importer_address":"","ntn":"","strn":"box 15","exporter":"","exporter_country":"","customs_office":"","container":"box 30 marks / container nos","exchange_rate":0,"packages":0,"package_type":"","gross_wt_mt":0,"net_wt_mt":0,"cfr_usd":0,"insurance_pct":0,"landing_pct":0,"assessed_value_pkr":0,"total_paid_pkr":0,"totals":[{"code":"CD","amount_pkr":0}],\n' +
+  '"gd":{"machine_no":"box 58, joined on one line, e.g. GBSI-HC-1117-09-09-2026","gd_date":"","igm_no":"box 8","igm_date":"","index_no":"number after INDEX in box 8","bl_no":"box 23 number only","cash_no":"box 65 C/F/D number, e.g. F-IPAF-000157-04032021","out_of_charge":"date and time printed in box 63 Out of Charge; null if that box is empty","system_footer":"true if the line saying this is a system generated document that does not require signature or stamp is printed at the foot, else false","importer":"","importer_address":"","ntn":"","strn":"box 15","exporter":"","exporter_country":"","customs_office":"","container":"box 30 marks / container nos","exchange_rate":0,"packages":0,"package_type":"","gross_wt_mt":0,"net_wt_mt":0,"cfr_usd":0,"insurance_pct":0,"landing_pct":0,"assessed_value_pkr":0,"total_paid_pkr":0,"totals":[{"code":"CD","amount_pkr":0}],\n' +
   '"items":[{"no":1,"description":"","hs_code":"","origin":"","qty_kg":0,"unit_declared":0,"unit_assessed":0,"total_declared":0,"total_assessed":0,"customs_value_declared_pkr":0,"customs_value_assessed_pkr":0,"levies":[{"code":"CD","rate_pct":0,"amount_pkr":0}]}]},\n' +
   '"pq":{"ro_no":"","gd_no":"GD number quoted at the top, digits only","gd_date":"","issue_date":"","place_of_issue":"","importer":"","exporter":"","goods":"","quantity_kg":0,"packages":"","container":"box 6","foreign_port":"","arrival_port":"","arrival_date":"","inspection_date":""},\n' +
   '"inv":{"invoice_no":"","date":"","seller":"","seller_ntn":"","seller_strn":"","buyer":"","buyer_ntn":"","description":"","quantity_kg":0,"value_pkr":0,"sales_tax_pkr":0,"gd_no":"GD or machine number if printed on the invoice","seller_address":"","buyer_ntn_or_cnic":"","fbr_invoice_no":"the FBR digital invoice number printed on it, if any","has_qr":"true if a QR code is printed on it, else false"},\n' +
