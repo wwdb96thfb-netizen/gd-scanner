@@ -396,6 +396,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 .dc-top{font:700 12px/1 var(--head);letter-spacing:.18em;text-transform:uppercase;text-align:center;opacity:.9}.dc-word{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid rgba(255,255,255,.3);border-bottom:1px solid rgba(255,255,255,.3);padding:8px 2px}.dc-word b{font:700 34px/1 var(--head);letter-spacing:.08em;text-transform:uppercase}.dc-word b.ur{font-size:30px;letter-spacing:0;line-height:1.5}
 .dc-in p{margin:0;font:500 15px/1.45 var(--body)}.dc-in p.ur{font-size:19px;line-height:1.9;text-align:right}.dc-in .dc-note{background:rgba(255,255,255,.16);border-radius:9px;padding:8px 10px;font-weight:600}
 .dc-in .row{display:flex;gap:8px;margin-top:4px}.dc-in .row .btn{flex:1;background:#fff;color:#111;border-color:#fff}.dc-in .row .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
+.guide{display:flex;flex-direction:column;gap:0;padding:4px 14px}.guide details{border-bottom:1px solid var(--line)}.guide details:last-child{border-bottom:0}.guide summary{list-style:none;cursor:pointer;padding:13px 22px 13px 0;font:600 15px/1.3 var(--body);color:var(--ink);position:relative}.guide summary::-webkit-details-marker{display:none}.guide summary::after{content:'+';position:absolute;right:2px;top:50%;transform:translateY(-50%);font:400 22px/1 var(--body);color:var(--stamp)}.guide details[open] summary::after{content:'\2212'}.guide details[open] summary{color:var(--stamp)}.guide details>*:not(summary){margin:0 0 10px}.guide ol{padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:var(--ink)}.guide .ur{font-size:17px;color:var(--stamp);margin:0 4px}
 #print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
 </style>
 </head>
@@ -605,7 +606,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div class="panel"><dl class="kv" id="st-acct"></dl></div>
       <h2 class="sec">PIN</h2>
       <div class="panel">
-        <p class="note">The PIN is asked every time the app is opened, and again after 5 minutes away. Your link does not work on another phone without it. If you forget it, an admin can reset it from the Admin tab.</p>
+        <p class="note">The app asks for your PIN each time it is opened, and again after 5 minutes away. If you forget it, it cannot be changed from the phone: an admin resets it under Admin, People, and you then choose a new one.</p>
         <div class="row" id="pin-btns"><button class="btn ghost small" id="b-pinopen">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
         <div id="pin-form" hidden style="display:flex;flex-direction:column;gap:10px">
           <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
@@ -615,34 +616,59 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
         </div>
         <p class="status" id="s-pin" role="status"></p>
       </div>
-      <h2 class="sec">About this app</h2>
-      <div class="panel">
-        <p class="note"><b>GD Verification System</b> helps Pakistan Coast Guards posts check goods moving on the roads against their customs papers, quickly and in the same way at every post.</p>
-        <p class="note"><b>What it does:</b> the post photographs the Goods Declaration (GD), other papers, the vehicle and the goods. The server reads them, checks the papers against each other, against the goods found, and against every earlier file, and tells the post what to do.</p>
-        <p class="note"><b>What it catches:</b> a GD used again and again, papers that belong to another consignment, wrong HS codes, goods that are not on the GD, more goods than the GD covers, edited figures, and vehicles or firms on the watchlist.</p>
-        <p class="note"><b>Who decides:</b> on ordinary files the post decides and it is recorded. On critical files an admin at Bn HQ decides: release, seize, or ask for more documents. Every seizure needs a report, is re-verified, and is followed through to the Customs Court.</p>
-        <p class="note"><b>What is recorded:</b> who scanned, where and when, what was found, every decision and who gave it.</p>
-        <p class="note">The app gives guidance from the papers. The officer on the spot and the chain of command remain responsible for the decision.</p>
-      </div>
-      <h2 class="sec">Checking on the ground</h2>
-      <div class="panel">
-        <p class="note"><b>A copy of the GD is normal.</b> An importer who clears 100 bags may send them out 20 at a time on five vehicles, each with a copy. That is ordinary trade. What matters is that the loads together stay within the GD, so always enter the goods found.</p>
-        <p class="note"><b>Papers a part load should carry:</b> a copy of the GD; the importer's sales tax invoice or delivery challan for that quantity, dated after the GD; and a bilty showing this vehicle, the date, and from where to where.</p>
-        <p class="note"><b>Count and weigh.</b> Number of packages × weight marked on each should agree with the invoice and the bilty, and fit inside what the GD still has left.</p>
-        <p class="note"><b>Read the packing.</b> Product name, "Made in", and the manufacturing date. Goods made after the GD date cannot belong to it. Writing in another country's language than the GD's origin needs an answer.</p>
-        <p class="note"><b>Look at the goods, not only the cartons.</b> Open a few packages from the middle and the back, not only the ones nearest the door. Look for mixed goods and hidden layers.</p>
-        <p class="note"><b>Ask simple questions.</b> Who is the owner? Where was it loaded, and where is it going? How many trips on this GD so far? A driver who knows the real story answers these easily, and the answers should match the bilty.</p>
-        <p class="note"><b>Does the route make sense?</b> Goods cleared at a port or dry port travel away from it. A load coming from the coast or the border side under an up-country GD needs an explanation.</p>
-        <p class="note"><b>When in doubt, verify.</b> Photograph everything, hold the vehicle, and let the admin confirm the GD with Customs before a seizure. A genuine importer can produce the original GD on request.</p>
-      </div>
-      <h2 class="sec">What the results mean</h2>
-      <div class="panel">
-        <p class="note"><b>Detain:</b> a critical point failed. Hold the vehicle and wait for the admin's decision: release, seize, or ask for more documents.</p>
-        <p class="note"><b>Hold:</b> figures do not agree. Retake sharp photos and send again; if still red, detain.</p>
-        <p class="note"><b>Ask for documents / Question driver:</b> release only after the papers or answers listed are given.</p>
-        <p class="note"><b>Clear to go:</b> papers are in order. Match goods and vehicle number by eye, then release.</p>
-        <p class="note"><b>Seizure:</b> the goods are seized and kept in the warehouse, a seizure report is sent for re-verification, and a case is filed in Customs Court.</p>
-        <p class="note">After acting, record what you did under "What did you do with this vehicle?" in the file.</p>
+      <h2 class="sec">Help</h2>
+      <div class="panel guide">
+        <details><summary>How to scan a vehicle</summary>
+          <ol>
+            <li>Choose your post under Location. It stays chosen for the next scan.</li>
+            <li>Tap <b>Take photos</b> and photograph, in any order: the GD and every other paper, the number plate, the driver's CNIC, and the goods.</li>
+            <li>Keep each photo sharp and filling the frame. A blurred or dark photo is marked red and cannot be sent: remove it with the &times; and take it again.</li>
+            <li>Choose the goods found on the vehicle and enter how much.</li>
+            <li>Tap <b>Send for check</b>. You can start the next vehicle straight away.</li>
+            <li>The result comes to your screen as a card with the vehicle photo and number. Follow the order on it.</li>
+          </ol>
+          <p class="note">No signal? Send anyway. The scan waits on the phone and goes up by itself.</p>
+        </details>
+        <details><summary>The three orders</summary>
+          <p class="note"><b>Release</b> <span class="ur" lang="ur" dir="rtl">چھوڑ دیں</span>: the papers are in order, or HQ has ordered release. Let the vehicle go.</p>
+          <p class="note"><b>Detain</b> <span class="ur" lang="ur" dir="rtl">روک لیں</span>: stop the vehicle. If the card lists papers, ask for them and scan them. If it says wait for HQ, do not let the vehicle go until the order comes.</p>
+          <p class="note"><b>Seize</b> <span class="ur" lang="ur" dir="rtl">ضبط کریں</span>: only on an order from HQ. Unload the goods to the warehouse and fill in the seizure report in the file.</p>
+          <p class="note">Every order shows the vehicle photo and number. Check both before you act.</p>
+        </details>
+        <details><summary>For admins: deciding a file</summary>
+          <p class="note">Each file opens with a <b>Suggestion</b> (Release, Detain or Seize), the reason for it, and what can be done. Below it are all the points the check raised.</p>
+          <p class="note">You choose one of the three. For Detain, write what the post must do or which papers to get. For Release, say who ordered it and when.</p>
+          <p class="note">A suggestion to seize means critical points were found. Confirm them on the paper and the goods first: a blurred photo can cause a false one.</p>
+          <p class="note">After a seizure the post sends a report, an admin verifies it, and the court case is followed in the same file.</p>
+        </details>
+        <details><summary>Checking a paper yourself</summary>
+          <p class="note"><b>GD:</b> a real one is printed from the Customs system. It has numbered boxes, a machine number in box 58, a payment number in box 65, and a line at the foot saying it is a system generated document. It needs no stamp or signature.</p>
+          <p class="note"><b>Sales tax invoice:</b> from 2026 it should carry an FBR invoice number and a QR code. Scan the QR code with the FBR Tax Asaan app, or send an SMS to 9966, to see whether FBR knows it.</p>
+          <p class="note"><b>Plant Protection papers:</b> system prints carry a QR code. Scan it with the phone camera.</p>
+          <p class="note"><b>Auction papers:</b> goods leave an auction only on a delivery order with a seal, a serial number and a lot number. Ring the office that held the auction and confirm the lot and quantity.</p>
+          <p class="note"><b>Letters, NOCs and permits:</b> these cannot be checked from the paper. Ring the issuing office on a number you find yourself, not one printed on the letter.</p>
+        </details>
+        <details><summary>Checking the load</summary>
+          <p class="note"><b>A copy of the GD is normal.</b> One GD can cover several vehicles. What matters is that all the loads together stay within the GD, so always enter the goods found.</p>
+          <p class="note"><b>A part load should carry:</b> a copy of the GD, the importer's sales tax invoice or delivery challan for that quantity, and a bilty for this vehicle.</p>
+          <p class="note"><b>Count and weigh.</b> Packages &times; weight on each should agree with the invoice and the bilty.</p>
+          <p class="note"><b>Read the packing.</b> Product name, "Made in" and the manufacturing date. Goods made after the GD date cannot belong to it.</p>
+          <p class="note"><b>Open packages</b> from the middle and the back, not only near the door.</p>
+          <p class="note"><b>Ask the driver:</b> who owns it, where it was loaded, where it is going, how many trips on this GD. The answers should match the bilty.</p>
+        </details>
+        <details><summary>Rules for your account</summary>
+          <p class="note"><b>One phone.</b> Your account works on one phone only. For a new phone, an admin taps "Allow new phone" beside your name.</p>
+          <p class="note"><b>Your own results.</b> Post staff see only their own scans. Admins see all.</p>
+          <p class="note"><b>View only.</b> A view-only person can scan and can see all files, but cannot change other people's files or decide. He is shown "Restricted Access".</p>
+          <p class="note"><b>Location.</b> The phone's location is recorded with every scan.</p>
+          <p class="note"><b>Photos are official property.</b> Each photo is marked "Pakistan Coast Guards" with your name, post and time. When a photo is opened, the viewer's name is shown over it.</p>
+        </details>
+        <details><summary>About this app</summary>
+          <p class="note"><b>GD Verification System</b> helps Pakistan Coast Guards posts check goods on the road against their customs papers, quickly and in the same way at every post.</p>
+          <p class="note">The server reads the photos, checks the papers against each other, against the goods found and against every earlier file, and tells the post what to do.</p>
+          <p class="note">It records who scanned, where and when, what was found, every decision and who gave it.</p>
+          <p class="note">The app gives guidance from the papers. It can be wrong. The officer on the spot and the chain of command remain responsible for the decision.</p>
+        </details>
       </div>
       <footer class="legal"><b>GD Verification System</b><span class="lv"></span><span>Specially designed for use by Pakistan Coast Guards</span><span>&copy; 2026 &middot; All rights reserved &middot; Authorised official use only</span></footer>
     </section>
@@ -661,7 +687,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.37.0';
+var APPV = '2.37.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
