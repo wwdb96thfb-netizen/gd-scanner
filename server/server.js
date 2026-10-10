@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 44;
+const VERSION = 45;
 const CHECKS_V = 13;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -355,15 +355,16 @@ async function vet(m) {
   const dir = path.join(CAP, m.id);
   m.status = 'reading'; m.msg = ''; save(m);
   log('Reading', m.id, 'from', m.byName, '(' + m.nPages + ' page' + (m.nPages > 1 ? 's' : '') + ')');
-  const pages = [];
-  for (let n = 0; n < m.nPages; n++) {
-    if ((m.kinds || [])[n] === 'goods') { pages.push({ type: 'goods' }); continue; }   // a reference picture: kept, never sent for reading
-    try { const r = await readPage(dir, n, (m.kinds || [])[n]); countPage(); pages.push(r.type === 'other' ? { type: 'goods', what: clip(r.what, 80) } : r); }
-    catch (e) {
-      if (e.wait) { m.status = 'waiting'; m.retryAt = Date.now() + 15 * 60e3; m.msg = e.message; save(m); cfg.usage.lastLimit = new Date().toISOString(); saveCfg(); log('  usage limit reached, retry in 15 min'); return false; }
-      pages.push({ type: 'unread', err: e.message });
-    }
-  }
+  // Pages are read three at a time, so a file of five photos takes about as long as two. The first page is read alone to settle the reading mode.
+  const pages = new Array(m.nPages).fill(null); let limit = null;
+  const one = async n => { if (limit) return; if ((m.kinds || [])[n] === 'goods') { pages[n] = { type: 'goods' }; return; }   // a reference picture: kept, never sent for reading
+    try { const r = await readPage(dir, n, (m.kinds || [])[n]); countPage(); pages[n] = r.type === 'other' ? { type: 'goods', what: clip(r.what, 80) } : r; }
+    catch (e) { if (e.wait) { limit = e; return; } pages[n] = { type: 'unread', err: e.message }; } };
+  if (m.nPages) await one(0);
+  let next = 1; const lane = async () => { while (next < m.nPages && !limit) { const n = next++; await one(n); } };
+  await Promise.all([lane(), lane(), lane()]);
+  if (limit) { m.status = 'waiting'; m.retryAt = Date.now() + 15 * 60e3; m.msg = limit.message; save(m); cfg.usage.lastLimit = new Date().toISOString(); saveCfg(); log('  usage limit reached, retry in 15 min'); return false; }
+  for (let n = 0; n < m.nPages; n++) if (!pages[n]) pages[n] = { type: 'unread', err: 'Not read.' };
   const res = runChecks(pages, { seller: m.seller, takenAt: m.takenAt || m.receivedAt, location: m.location, offeredKg: m.offeredKg });
   // With no quantity typed in, the quantity on the seller's invoice is what counts towards an oversold GD.
   m.invoiceKg = pages.filter(p => p.type === 'inv' && p.inv).reduce((t, p) => t + (parseFloat(p.inv.quantity_kg) || 0), 0) || null;
