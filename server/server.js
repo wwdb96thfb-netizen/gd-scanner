@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 51;
+const VERSION = 52;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -680,12 +680,18 @@ const server = http.createServer(async (req, res) => {
     if (p[1] === 'capture' && p[2] && req.method === 'DELETE') { const m = index.get(p[2]); if (LOCK(m)) return send(res, 403, { error: 'locked' }); if (m) { log(user.name, 'deleted file', m.id, 'uploaded by', m.by || m.who || '?'); index.delete(m.id); xver++; fs.rmSync(path.join(CAP, m.id), { recursive: true, force: true }); } return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && req.method === 'GET') return send(res, 200, { ok: true, topic: cfg.topic, joinKey: cfg.joinKey,
       people: cfg.people.map(x => ({ name: x.name, code: x.code, role: x.role, added: x.added, pin: !!cfg.pins[idOf(x.code)], dev: !!cfg.devs[idOf(x.code)], files: [...index.values()].filter(m => m.by === x.code).length })),
-      requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })) });
+      requests: cfg.requests.map(x => ({ id: x.id, name: x.name, role: x.role, at: x.at })), removed: (cfg.removed || []).map(x => ({ name: x.name, code: x.code, role: x.role, at: x.removedAt })) });
     if (p[1] === 'people' && !p[2] && req.method === 'POST') { const b = await body(req); const name = clip(b.name, 40).trim(); if (!name) return send(res, 400, { error: 'name' }); const person = { name, code: rnd(8), role: ROLE(b.role), added: new Date().toISOString(), by: user.name }; cfg.people.push(person); saveCfg(); writeLinks(); log(user.name, 'added', name, 'as', person.role); return send(res, 200, { ok: true, person }); }
+    if (p[1] === 'people' && p[2] && p[3] === 'restore' && req.method === 'POST') {   // a removed person is added back with the same link; he chooses a new PIN on his phone
+      const x = (cfg.removed || []).find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' });
+      cfg.removed = cfg.removed.filter(y => y.code !== x.code); if (!cfg.people.some(y => y.code === x.code)) cfg.people.push({ name: x.name, code: x.code, role: ROLE(x.role), added: x.added || new Date().toISOString(), by: user.name });
+      saveCfg(); writeLinks(); log(user.name, 'added back', x.name); return send(res, 200, { ok: true });
+    }
+    if (p[1] === 'people' && p[2] && p[3] === 'forget' && req.method === 'DELETE') { cfg.removed = (cfg.removed || []).filter(y => y.code !== p[2]); saveCfg(); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'device' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.devs[idOf(x.code)]; saveCfg(); log(user.name, 'released the phone lock of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && p[3] === 'pin' && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); delete cfg.pins[idOf(x.code)]; pinFails.delete(idOf(x.code)); saveCfg(); log(user.name, 'reset the PIN of', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'people' && p[2] && req.method === 'POST') { const b = await body(req), x = cfg.people.find(y => y.code === p[2]); if (!x) return send(res, 404, { error: 'none' }); x.role = ROLE(b.role); saveCfg(); writeLinks(); log(user.name, 'changed', x.name, 'to', x.role); return send(res, 200, { ok: true }); }
-    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
+    if (p[1] === 'people' && p[2] && req.method === 'DELETE') { const x = cfg.people.find(y => y.code === p[2]); cfg.people = cfg.people.filter(y => y.code !== p[2]); delete cfg.pins[idOf(p[2])]; delete cfg.devs[idOf(p[2])]; if (x) { cfg.removed = (cfg.removed || []).filter(y => y.code !== x.code).concat([{ name: x.name, code: x.code, role: x.role, added: x.added, removedAt: new Date().toISOString(), removedBy: user.name }]).slice(-60); } saveCfg(); writeLinks(); if (x) log(user.name, 'removed', x.name); return send(res, 200, { ok: true }); }
     if (p[1] === 'requests' && p[2] && req.method === 'POST') {
       const b = await body(req), r = cfg.requests.find(y => y.id === p[2]); if (!r) return send(res, 404, { error: 'none' });
       cfg.requests = cfg.requests.filter(y => y.id !== p[2]);
@@ -702,7 +708,7 @@ const link = code => APP_URL + '?t=' + cfg.topic + '&c=' + code + (publicUrl ? '
 function writeLinks() {
   const L = ['GD Verification System links. Keep this file private.', '', 'Server address now: ' + (publicUrl || 'not up yet'), '', 'YOUR ADMIN LINK (sees everything, adds people):', link(cfg.adminCode), ''];
   L.push('JOIN LINK (anyone who opens it can ask for access; an admin must approve them):', APP_URL + '?t=' + cfg.topic + '&j=' + cfg.joinKey + (publicUrl ? '&s=' + publicUrl.replace('https://', '') : ''), '');
-  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (admin):' : x.role === 'viewer' ? ' (view only):' : ':'), link(x.code), ''); });
+  cfg.people.forEach(x => { L.push(x.name + (x.role === 'admin' ? ' (admin):' : x.role === 'viewer' ? ' (observer):' : ':'), link(x.code), ''); });
   fs.writeFileSync(path.join(ROOT, 'LINKS.txt'), L.join('\n'));
 }
 async function announce() {
