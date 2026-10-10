@@ -120,7 +120,7 @@ var HS_RULES=[
 ];
 function hsRule(desc){ for(var i=0;i<HS_RULES.length;i++){ var r=HS_RULES[i]; if(r[0].test(desc)&&!(r[1]&&r[1].test(desc))) return {hs:r[2],say:r[3]}; } return null; }
 function runChecks(pages,meta){
-  var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], labels=[], seen={};
+  var flags=[], gds=[], pqs=[], invs=[], vehs=[], docs=[], labels=[], aucs=[], seen={};
   pages.forEach(function(p,i){
     var add=function(l,n,t,d){ flags.push({l:l,n:n,t:t,d:d||'',p:i+1}); };
     var key=p.type==='gd'&&p.gd?'gd:'+conf(String(p.gd.machine_no||'').replace(/\s+/g,'')):(p.type==='pq'&&p.pq?'pq:'+conf(String(p.pq.ro_no||'').replace(/\s+/g,''))+'|'+String(p.pq.gd_no||'').replace(/\D/g,''):'');
@@ -132,6 +132,7 @@ function runChecks(pages,meta){
       if(reg.length>=3){ if(!vehs.some(function(x){return x.replace(/[^A-Z0-9]/g,'')===reg;})) vehs.push(String(p.veh.reg_no).trim().toUpperCase().slice(0,20)); add('ok',37,'Vehicle number recorded',String(p.veh.reg_no)); }
       else add('amber',37,'Vehicle number could not be read','Retake the photo with the number plate sharp and filling the frame.'); }
     else if(p.type==='id'){ var pi=p.id||{}; if(pi.name||pi.id_no) add('ok',0,'Driver identity recorded',[pi.name,pi.id_no].filter(Boolean).join(' · ')); else add('amber',0,'Driver identity card could not be read','Retake the photo of the CNIC, flat, sharp and filling the frame.'); }
+    else if(p.type==='auc'){ aucs.push({a:p.auc||{},p:i+1}); add('ok',0,'Auction paper recorded',[(p.auc||{}).kind,(p.auc||{}).lot_no?'lot '+p.auc.lot_no:'',(p.auc||{}).goods].filter(Boolean).join(' · ')); }
     else if(p.type==='doc'){ docs.push({d:p.doc||{},p:i+1,name:String((p.doc||{}).title||p.what||'document')}); add('skip',0,'Other document kept on file',p.what||(p.doc||{}).title||''); }
     else if(p.type==='goods'){ var gl=p.goods||{}; if(String(gl.product||gl.label_text||'').trim().length>=4||gl.made_in||gl.mfg_date) labels.push({g:gl,p:i+1}); }
     else if(p.type==='unread') add('amber',0,'Photo could not be read',p.err||'Retake the photo and upload again.');
@@ -215,6 +216,46 @@ function runChecks(pages,meta){
     else if(ss) add('ok',32,'Invoice seller is the importer on the GD','');
     var iq=num(iv.quantity_kg); if(iq!=null&&G.info.qty!=null){ if(iq>G.info.qty*1.02) add('red',33,'Invoice sells more than the GD imported','Invoice '+fmt(iq)+' kg, GD '+fmt(G.info.qty)+' kg.'); else add('ok',33,'Invoice quantity is within the GD quantity',''); }
   });
+
+  // ---- What a genuine paper always carries. A paper that is missing these, or carries a number of the wrong length, is doubtful on its face.
+  var has=function(v){ return v!=null&&String(v).trim()!==''&&String(v).trim()!=='0'&&!/^(null|none|n\/a|-+)$/i.test(String(v).trim()); }, dig=function(v){ return String(v||'').replace(/\D/g,''); };
+  var need=function(pg,name,rows){ var keyM=[], minM=[]; rows.forEach(function(r){ if(!has(r[1])) (r[2]?keyM:minM).push(r[0]); });
+    if(!keyM.length&&!minM.length){ flags.push({l:'ok',n:50,t:'The '+name+' carries all the particulars it should',d:'',p:pg}); return; }
+    var all=keyM.concat(minM), red=keyM.length>=2;
+    if(!keyM.length){ flags.push({l:'skip',n:50,t:'Not read on the '+name+': '+minM.join(', '),d:'Minor particulars. If the paper really lacks them, ask why.',p:pg}); return; }
+    flags.push({l:red?'red':'amber',n:50,t:(red?'Incomplete paper: the ':'The ')+name+(red?' is missing ':' does not show ')+all.slice(0,5).join(', ')+(all.length>5?' and '+(all.length-5)+' more':''),d:'A genuine '+name+' always carries '+(all.length>1?'these':'this')+'. Look at the paper itself. If '+(all.length>1?'they are':'it is')+' really absent, treat the paper as doubtful and hold. If the photo was unclear or cut off, retake it and send again.',p:pg}); };
+  var fmtN=function(pg,label,v,ok,say){ var d=dig(v); if(!d.length) return; if(ok.indexOf(d.length)<0) flags.push({l:'amber',n:51,t:label+' has the wrong number of digits',d:'Read as '+String(v).trim()+' ('+d.length+' digits). '+say+' A wrong length means a misread photo or a made-up number: check it on the paper.',p:pg}); };
+  var NTN='An NTN has 7 digits (8 with its check digit); an individual may use a 13-digit CNIC.', STRN='A sales tax registration number has 13 digits.', CNIC='A CNIC has 13 digits.';
+  var look=function(pg,name,lk){ if(!lk) return; if(has(lk.alterations)) flags.push({l:'amber',n:52,t:'Possible alteration seen on the '+name,d:'The reader noticed: '+lk.alterations+'. This is what the photo appears to show and can be wrong. Look at the original paper at that spot before deciding.',p:pg});
+    if(/screen/i.test(String(lk.medium||''))) flags.push({l:'amber',n:52,t:'The '+name+' was photographed from a screen',d:'A picture on a phone or computer is not the paper. Ask for the paper itself or a printed copy.',p:pg}); };
+  var pageOf=function(n){ return pages[n-1]||{}; };
+  gds.forEach(function(x){ var g=x.g, its=Array.isArray(g.items)?g.items:[];
+    need(x.p,'GD',[['GD machine number',g.machine_no,1],['GD date',g.gd_date,1],['importer name',g.importer,1],['importer NTN',g.ntn,1],['customs office',g.customs_office,0],['description of goods',its.length&&its[0].description,1],['HS code',its.length&&its[0].hs_code,1],['quantity',its.length&&its[0].qty_kg,0],['duty and taxes paid',g.total_paid_pkr,0]]);
+    fmtN(x.p,'Importer NTN on the GD',g.ntn,[7,8,13],NTN); fmtN(x.p,'STRN on the GD',g.strn,[13],STRN); look(x.p,'GD',pageOf(x.p).look); if((pageOf(x.p).look||{}).standard_form===false) flags.push({l:'red',n:52,t:'This GD is not on the standard GD form',d:'A real GD is printed from the Customs system on the standard form with numbered boxes and a machine number box. This one looks retyped or home-made. Hold and look at the paper itself.',p:x.p}); });
+  pqs.forEach(function(x){ var q=x.q; need(x.p,'release order',[['release order number',q.ro_no,1],['date of issue',q.issue_date,0],['importer name',q.importer,1],['goods',q.goods,1],['quantity',q.quantity_kg,0],['place of issue',q.place_of_issue,0]]); look(x.p,'release order',pageOf(x.p).look); });
+  invs.forEach(function(x){ var v=x.v, idt=pd(v.date);
+    need(x.p,'sales tax invoice',[['invoice number',v.invoice_no,1],['date',v.date,1],['seller name',v.seller,1],['seller registration number (NTN or STRN)',has(v.seller_strn)?v.seller_strn:v.seller_ntn,1],['buyer name',v.buyer,1],['description of goods',v.description,1],['quantity',v.quantity_kg,0],['value',v.value_pkr,0],['amount of sales tax',v.sales_tax_pkr,0]]);
+    fmtN(x.p,'Seller NTN on the invoice',v.seller_ntn,[7,8,13],NTN); fmtN(x.p,'Seller STRN on the invoice',v.seller_strn,[13],STRN); fmtN(x.p,'Buyer NTN on the invoice',v.buyer_ntn,[7,8,13],NTN); look(x.p,'sales tax invoice',pageOf(x.p).look);
+    // FBR digital invoicing: importers from 1 Nov 2025, every registered seller by 31 Dec 2025 (S.R.O. 1852(I)/2025, rule 150R).
+    if(idt!=null&&idt>=Date.UTC(2026,0,1)&&('has_qr' in v||'fbr_invoice_no' in v)){ var qr=v.has_qr===true||/^(true|yes)$/i.test(String(v.has_qr)), fno=has(v.fbr_invoice_no);
+      var fm=fno?String(v.fbr_invoice_no).replace(/\s/g,'').match(/(\d{2})(\d{2})(\d{2})\d{6}-\d{1,6}$/):null, fd=fm?Date.UTC(2000+ +fm[3],+fm[2]-1,+fm[1]):null;
+      if(fno&&!fm) flags.push({l:'amber',n:56,t:'FBR invoice number is not in the FBR pattern',d:'Read as '+v.fbr_invoice_no+'. A real one ends with the date and time of issue and a serial, like ...DDMMYYHHMMSS-0001 (rule 150R). Check it on the paper.',p:x.p});
+      else if(fd!=null&&Math.abs(fd-idt)>2*864e5) flags.push({l:'red',n:56,t:'Date inside the FBR invoice number does not match the invoice date',d:'The number '+v.fbr_invoice_no+' was issued on '+dstr(fd)+'. The invoice is dated '+v.date+'. The FBR number carries its own issue date, so a copied or invented number shows up here.',p:x.p});
+      else if(qr&&fno) flags.push({l:'ok',n:56,t:'Invoice carries an FBR invoice number and QR code',d:'FBR invoice number '+v.fbr_invoice_no+'. Scanning the QR code with a phone camera shows whether FBR knows this invoice.',p:x.p});
+      else flags.push({l:'amber',n:56,t:'Invoice has no FBR '+(fno?'QR code':qr?'invoice number':'invoice number or QR code'),d:'Since the end of 2025 every sales-tax-registered seller is required to issue invoices through the FBR system, printed with an FBR invoice number and a QR code. An invoice dated '+v.date+' without them is from an unregistered seller, an old-style book, or is made up. Ask who the seller is and compare with the GD importer.',p:x.p}); } });
+  aucs.forEach(function(x){ var a=x.a, isDO=/deliver/i.test(String(a.kind||'')), ad=pd(a.date), now=pd(String(meta&&meta.takenAt||'').replace(/^(\d{4})-(\d\d)-(\d\d).*$/,'$3-$2-$1'));
+    need(x.p,'auction paper',[['lot number',a.lot_no,1],['office that held the auction',a.office,1],['name of the bidder',a.bidder,1],['description of goods',a.goods,1],['quantity',a.quantity,1],['date',a.date,1],['bidder CNIC or NTN',a.bidder_cnic_ntn,0]].concat(isDO?[['delivery order serial number',a.do_no,1]]:[]));
+    fmtN(x.p,'Bidder CNIC or NTN on the auction paper',a.bidder_cnic_ntn,[7,8,13],NTN); look(x.p,'auction paper',pageOf(x.p).look);
+    if(isDO&&a.has_seal===false) flags.push({l:'amber',n:54,t:'Delivery order has no seal',d:'Under rule 72 of the Customs Rules, 2001 a delivery order is issued under the seal of the auctioneer, with a serial number and the lot number. Check the paper for the seal.',p:x.p});
+    if(!isDO) flags.push({l:'amber',n:54,t:'Auction paper is not a delivery order',d:'It reads as: '+(a.kind||'auction paper')+'. Goods leave an auction only against a delivery order, issued after the full bid is paid. Ask for the delivery order.',p:x.p});
+    if(ad!=null&&now!=null){ var days=Math.round((now-ad)/864e5); if(days>45) flags.push({l:'amber',n:54,t:'Auction paper is '+days+' days old',d:'Dated '+a.date+'. Auctioned goods are normally lifted soon after the delivery order. An old auction paper is the usual cover for moving other goods of the same kind: check the quantity carried so far under this lot.',p:x.p}); else if(days>=0) flags.push({l:'ok',n:54,t:'Auction paper is recent',d:'Dated '+a.date+'.',p:x.p}); }
+    flags.push({l:'amber',n:54,t:'Confirm this auction with the office that held it',d:'Ring '+(a.office||'the auctioning office')+' and confirm lot '+(a.lot_no||'?')+', the bidder and the quantity before release. Auction papers of Customs and other agencies have been misused in Karachi to move smuggled diesel.',p:x.p}); });
+  docs.forEach(function(x){ var d=x.d, nm=String(x.name||''), letter=/letter|n\.?o\.?c|no objection|permit|permission|authori[sz]|certificate|exemption|movement/i.test(nm), bilty=/bilty|builty|goods receipt|consignment|challan|gate ?pass|delivery|packing list/i.test(nm);
+    look(x.p,nm,pageOf(x.p).look);
+    if(letter){ need(x.p,nm,[['reference or letter number',d.number,1],['date',d.date,1],['issuing office',d.issued_by,1],['name and designation of the signatory',d.signed_by,0],['signature',d.has_signature===false?'':'y',0],['office stamp',d.has_stamp===false?'':'y',0]]);
+      flags.push({l:'amber',n:53,t:'Confirm this '+nm+' with the office that issued it',d:'A letter, NOC or permit cannot be verified from the paper. Ring '+(d.issued_by||'the issuing office')+' on a number you find yourself, not one printed on the letter, and confirm reference '+(d.number||'?')+' before release. Forged ministry letters and NOCs of other firms have been used to move smuggled goods.',p:x.p}); }
+    else if(bilty) need(x.p,nm,[['number',d.number,0],['date',d.date,0],['sender or receiver',d.parties,0],['goods',d.goods,0],['quantity',d.quantity,0],['vehicle number',d.vehicle_no,0]]); });
+  pages.forEach(function(p,i){ if(p.type==='id'&&p.id) fmtN(i+1,'CNIC number',/licen/i.test(String(p.id.doc_kind||''))?'':p.id.id_no,[13],CNIC); });
   var off=num(meta&&meta.offeredKg); if(G&&off!=null&&G.info.qty!=null){ if(off>G.info.qty*1.02) add('red',25,'More is on offer than the GD covers','Offered '+fmt(off)+' kg, GD '+fmt(G.info.qty)+' kg.'); else add('ok',25,'Quantity on offer is within the GD quantity',''); }
   var v=flags.some(function(f){return f.l==='red';})?'red':(flags.some(function(f){return f.l==='amber';})?'amber':'ok');
   return {flags:flags,verdict:v,vehicles:vehs,
