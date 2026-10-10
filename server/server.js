@@ -7,7 +7,7 @@ const http = require('http'), fs = require('fs'), path = require('path'), crypto
 const { spawn } = require('child_process');
 const { runChecks, dbFlags } = require('./checks.js');
 
-const VERSION = 60;
+const VERSION = 61;
 const CHECKS_V = 14;   // raise this whenever the checklist changes: every stored file is then re-checked from its saved readings, without calling Claude again
 const ROOT = __dirname, DATA = path.join(ROOT, 'data'), CAP = path.join(DATA, 'captures'), CFG = path.join(DATA, 'config.json');
 const APP_URL = process.env.GD_APP_URL || 'https://wwdb96thfb-netizen.github.io/gd-scanner/';
@@ -670,6 +670,7 @@ const server = http.createServer(async (req, res) => {
       if (!user.admin) return send(res, 403, { error: 'admin' }); const m = index.get(p[2]); if (!m || m.status !== 'done') return send(res, 404, { error: 'none' });
       if (LOCK(m)) return send(res, 403, { error: 'locked' });
       const b = await body(req), act = { release: 'released', detain: 'seized', seize: 'seized', docs: 'held' }[b.order]; if (!act) return send(res, 400, { error: 'form' });
+      if (m.order && (m.order.order === 'seize' || m.order.order === 'detain') && b.order !== 'release') return send(res, 400, { error: 'step' });   // a seizure can only be changed to a release
       const o = { order: b.order, note: clip(b.note, 300).trim(), byName: user.name, at: new Date().toISOString() }; const oo = clip(b.orderedBy, 60).replace(/\s+/g, ' ').trim(); if (oo && oo !== user.name) o.onOrderOf = oo;   // the officer who decides is always recorded; on whose order is optional
       m.orders = (m.orders || []).concat([o]).slice(-20); m.order = o; m.ack = null;
       if (b.order === 'release') ordered(m, 'admin decision on a critical file', o.note, b.orderedBy, b.releasedOn); else if (m.release && user.owner) { log('Owner removed the release order on', m.id, 'given by', m.release.byName); m.release = null; }
