@@ -351,9 +351,10 @@ dl.kv dd{font-family:var(--body);font-weight:500}
 @media (max-width:370px){.appbar .tag{letter-spacing:.1em;font-size:10.5px}.appbar h1{font-size:16.5px}.appbar .flag{width:50px}}
 button,.btn,summary,label.drop{-webkit-tap-highlight-color:transparent}
 @media (prefers-reduced-motion: reduce){#main>section:not([hidden]),#p-people .grp:not([hidden]){animation:none}}
-.stamp{display:block;flex:none;width:86px;height:86px;transform:rotate(-11deg);opacity:.9;-webkit-mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);-webkit-mask-composite:source-in;mask-image:radial-gradient(circle at 24% 30%,rgba(0,0,0,.7) 0 7%,#000 22%),radial-gradient(circle at 74% 76%,rgba(0,0,0,.72) 0 6%,#000 20%);mask-composite:intersect}
+.stamp{display:block;flex:none;width:92px;height:92px;transform:rotate(-11deg);opacity:.93;mix-blend-mode:multiply}
 .stamp svg{display:block;width:100%;height:100%;overflow:visible}.stamp text{fill:currentColor;font-family:var(--head);font-weight:700;text-anchor:middle}.stamp .ln{fill:none;stroke:currentColor}
-.stamp.red{color:var(--red)}.stamp.green{color:var(--green)}.stamp.amber{color:var(--amber)}
+.stamp.red{color:#b0202b}.stamp.green{color:#1c6b41}.stamp.amber{color:#9a6200}
+@media (prefers-color-scheme:dark){.stamp{mix-blend-mode:normal}.stamp.red{color:#ff8a80}.stamp.green{color:#6fd39b}.stamp.amber{color:#f2c063}}
 .stamp.big{width:190px;height:190px;margin:4px auto 8px}
 details.case>summary>.side{grid-column:1;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:9px}
 details.case>summary>.side>.pic{width:68px;height:68px;border-radius:11px;border:1px solid var(--line);background:var(--grey-soft);object-fit:cover;display:block}
@@ -427,7 +428,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 .dc-in p{margin:0;font:500 15px/1.45 var(--body)}.dc-in p.ur{font-size:19px;line-height:1.9;text-align:right}.dc-in .dc-note{background:rgba(255,255,255,.16);border-radius:9px;padding:8px 10px;font-weight:600}
 .dc-in .row{display:flex;gap:8px;margin-top:4px}.dc-in .row .btn{flex:1;background:#fff;color:#111;border-color:#fff}.dc-in .row .btn.ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
 .guide{display:flex;flex-direction:column;gap:0;padding:4px 14px}.guide details{border-bottom:1px solid var(--line)}.guide details:last-child{border-bottom:0}.guide summary{list-style:none;cursor:pointer;padding:13px 22px 13px 0;font:600 15px/1.3 var(--body);color:var(--ink);position:relative}.guide summary::-webkit-details-marker{display:none}.guide summary::after{content:'+';position:absolute;right:2px;top:50%;transform:translateY(-50%);font:400 22px/1 var(--body);color:var(--stamp)}.guide details[open] summary::after{content:'\2212'}.guide details[open] summary{color:var(--stamp)}.guide details>*:not(summary){margin:0 0 10px}.guide ol{padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.45;color:var(--ink)}.guide .ur{font-size:17px;color:var(--stamp);margin:0 4px}
-#print .stamp{float:right;width:42mm;height:42mm;color:#000;-webkit-mask-image:none;mask-image:none;margin:0 0 8px 12px}
+#print .stamp{float:right;width:42mm;height:42mm;color:#000;margin:0 0 8px 12px}
 </style>
 </head>
 <body>
@@ -733,7 +734,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.48.0';
+var APPV = '2.48.1';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -1363,8 +1364,15 @@ var STN = 0;
 function stampEl(c, big) { var s = stampOf(c); if (!s) return null; var NS = 'http://www.w3.org/2000/svg', id = 'st' + (++STN);
   var E = function (t, a, txt) { var e = document.createElementNS(NS, t); for (var k in a) e.setAttribute(k, a[k]); if (txt != null) e.textContent = txt; return e; };
   var sv = E('svg', { viewBox: '0 0 200 200', role: 'img', 'aria-label': s.w + ', ' + stampWhen(s.at) + (s.by ? ', ' + s.by : '') }), defs = E('defs', {});
-  defs.appendChild(E('path', { id: id + 't', d: 'M 32 100 A 68 68 0 0 1 168 100' })); defs.appendChild(E('path', { id: id + 'b', d: 'M 20 100 A 80 80 0 0 0 180 100' })); sv.appendChild(defs);
-  sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 96, 'stroke-width': 5 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 89, 'stroke-width': 1.4 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 59, 'stroke-width': 1.6 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 55, 'stroke-width': .8, 'stroke-dasharray': '2 3' }));
+  defs.appendChild(E('path', { id: id + 't', d: 'M 32 100 A 68 68 0 0 1 168 100' })); defs.appendChild(E('path', { id: id + 'b', d: 'M 20 100 A 80 80 0 0 0 180 100' }));
+  // Ink on paper: the edges wander a little and the ink misses in specks, differently on every stamp, as a rubber stamp does.
+  var hs = 0, sid = String(c.id || '') + s.w; for (var qi = 0; qi < sid.length; qi++) hs = (hs * 31 + sid.charCodeAt(qi)) % 9973; var fl = E('filter', { id: id + 'f', x: '-8%', y: '-8%', width: '116%', height: '116%' });
+  fl.appendChild(E('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.04', numOctaves: '2', seed: String(hs % 97), result: 'warp' })); fl.appendChild(E('feDisplacementMap', { 'in': 'SourceGraphic', in2: 'warp', scale: '3.4', xChannelSelector: 'R', yChannelSelector: 'G', result: 'ink' }));
+  fl.appendChild(E('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.9', numOctaves: '2', seed: String(hs % 89 + 5), result: 'grain' })); fl.appendChild(E('feColorMatrix', { 'in': 'grain', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -9 6.45', result: 'specks' }));
+  fl.appendChild(E('feTurbulence', { type: 'fractalNoise', baseFrequency: '0.018', numOctaves: '1', seed: String(hs % 61 + 11), result: 'press' })); fl.appendChild(E('feColorMatrix', { 'in': 'press', type: 'matrix', values: '0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.6', result: 'uneven' }));
+  fl.appendChild(E('feComposite', { 'in': 'ink', in2: 'specks', operator: 'in', result: 'a' })); fl.appendChild(E('feComposite', { 'in': 'a', in2: 'uneven', operator: 'in' })); defs.appendChild(fl); sv.appendChild(defs);
+  var root = sv, ink = E('g', { filter: 'url(#' + id + 'f)' }); root.appendChild(ink); sv = ink;
+  sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 95, 'stroke-width': 6.5 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 89, 'stroke-width': 1.4 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 59, 'stroke-width': 1.6 })); sv.appendChild(E('circle', { class: 'ln', cx: 100, cy: 100, r: 55, 'stroke-width': .8, 'stroke-dasharray': '2 3' }));
   var arc = function (pid, txt, max) { txt = String(txt || '').toUpperCase(); if (txt.length > 30) txt = txt.slice(0, 29).trim() + '…'; var fs = Math.min(15, max / (txt.length * .6)); var t = E('text', { 'font-size': fs.toFixed(1), 'letter-spacing': txt.length < 22 ? '1.2' : '.3' }), tp = E('textPath', { href: '#' + id + pid, startOffset: '50%' }, txt); tp.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + id + pid); t.appendChild(tp); sv.appendChild(t); };
   arc('t', 'Pakistan Coast Guards', 196); arc('b', s.by || 'Bn HQ', 215);
   sv.appendChild(E('text', { x: 14, y: 106, 'font-size': 15 }, '★')); sv.appendChild(E('text', { x: 186, y: 106, 'font-size': 15 }, '★'));
@@ -1374,7 +1382,7 @@ function stampEl(c, big) { var s = stampOf(c); if (!s) return null; var NS = 'ht
   if (W.length === 1) { sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 78, x2: 155, y2: 78, 'stroke-width': 1.6 })); sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 121, x2: 155, y2: 121, 'stroke-width': 1.6 })); sv.appendChild(E('text', { x: 100, y: 110, 'font-size': fit(W[0], 30), 'letter-spacing': '1' }, W[0])); }
   else { sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 75, x2: 155, y2: 75, 'stroke-width': 1.6 })); sv.appendChild(E('line', { class: 'ln', x1: 45, y1: 124, x2: 155, y2: 124, 'stroke-width': 1.6 })); sv.appendChild(E('text', { x: 100, y: 96, 'font-size': fit(W[0], 20), 'letter-spacing': '.6' }, W[0])); sv.appendChild(E('text', { x: 100, y: 117, 'font-size': fit(W[1], 20), 'letter-spacing': '.6' }, W[1])); }
   sv.appendChild(E('text', { x: 100, y: 140, 'font-size': 13, 'letter-spacing': '.6' }, dt[1] ? dt[1] + ' HRS' : 'BN HQ'));
-  var d = h('div', { class: 'stamp ' + s.col + (big ? ' big' : '') }); d.appendChild(sv); return d; }
+  var d = h('div', { class: 'stamp ' + s.col + (big ? ' big' : '') }); d.style.transform = 'rotate(' + (-(6 + hs % 12)) + 'deg)'; d.appendChild(root); return d; }
 function caseView(c) {
   var adm = !!(S.me && S.me.admin), done = c.status === 'done', adv = done ? advise(c) : null, v = done ? (c.local ? adv.k : postView(c).k) : 'busy', fl = c.flags || [];   // one colour per word everywhere: Release green, Detain amber, Seize red
   var nR = fl.filter(function (f) { return f.l === 'red'; }).length, nA = fl.filter(function (f) { return f.l === 'amber'; }).length;
