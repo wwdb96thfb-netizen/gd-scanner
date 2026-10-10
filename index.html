@@ -426,11 +426,11 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     <h2 class="sec">Request access</h2>
     <div class="panel" id="join-form">
       <label class="f">Your name<input type="text" id="j-name" maxlength="40" placeholder="Name and location" autocomplete="name"></label>
-      <label class="f">You are<select id="j-role"><option value="field">Post Operator: I photograph papers and vehicles</option><option value="admin">Admin: I review everyone's files</option><option value="viewer">Observer: I scan, and I can see all files but not change them</option></select></label>
+      <label class="f">You are<select id="j-role"><option value="field">Post Staff: I photograph papers and vehicles</option><option value="admin">Officer: I review everyone's files</option><option value="viewer">HQ Staff: I scan, and I can see all files but not change them</option></select></label>
       <label class="tick"><input type="checkbox" id="j-loc"><span>I agree that this phone's location is recorded with every scan I send. The app does not work without it.</span></label>
       <button class="btn wide" id="b-join">Send request</button>
     </div>
-    <div class="empty" id="join-wait" hidden><b>Request sent.</b> An admin has to approve you. Keep this page; it opens by itself once you are approved.</div>
+    <div class="empty" id="join-wait" hidden><b>Request sent.</b> An officer has to approve you. Keep this page; it opens by itself once you are approved.</div>
     <p class="status" id="s-join" role="status"></p>
   </section>
 
@@ -485,7 +485,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 
   <div id="main" hidden>
 
-    <div class="empty devb" id="dev-block" hidden><b>This account is already in use on another phone.</b> One account works on one phone only. If this is your new phone, ask an admin to open Admin, People, and tap "Allow new phone" beside your name. Then open the app again.</div>
+    <div class="empty devb" id="dev-block" hidden><b>This account is already in use on another phone.</b> One account works on one phone only. If this is your new phone, ask an officer to open HQ, People, and tap "Allow new phone" beside your name. Then open the app again.</div>
     <section id="p-scan">
       <div id="recent" hidden></div>
       <h2 class="sec">New scan</h2>
@@ -557,7 +557,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <h2 class="sec">Watchlist</h2>
       <div class="panel">
         <p class="note">Enter a vehicle number, importer name, NTN, GD number or container number. Any file that matches is marked Critical and the post is told to detain.</p>
-        <p class="note">When goods are seized, the vehicle that carried them and its driver are added here automatically. Those entries tell the post to check the vehicle thoroughly next time and alert the admins; they do not order a detention by themselves.</p>
+        <p class="note">When goods are seized, the vehicle that carried them and its driver are added here automatically. Those entries tell the post to check the vehicle thoroughly next time and alert the officers; they do not order a detention by themselves.</p>
         <div class="form">
           <label class="f">Watch for<input type="text" id="w-value" maxlength="60" placeholder="e.g. TKA-123 or a firm name"></label>
           <label class="f">Reason<input type="text" id="w-note" maxlength="120" placeholder="Optional"></label>
@@ -582,7 +582,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       </div>
       <h2 class="sec">Invite with the join link</h2>
       <div class="panel">
-        <p class="note">Send this one link to anyone who should join. They enter their name and ask for access. Nobody gets in until an admin approves them here.</p>
+        <p class="note">Send this one link to anyone who should join. They enter their name and ask for access. Nobody gets in until an officer approves them here.</p>
         <input class="linkbox" type="text" id="join-link" readonly aria-label="Join link">
         <button class="btn" id="b-sharejoin">Send join link</button>
       </div>
@@ -590,14 +590,14 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div class="panel">
         <div class="form">
           <label class="f">Name<input type="text" id="f-person" placeholder="Name and location" maxlength="40"></label>
-          <label class="f">Role<select id="f-role"><option value="field">Post Operator</option><option value="admin">Admin</option><option value="viewer">Observer</option></select></label>
+          <label class="f">Role<select id="f-role"><option value="field">Post Staff</option><option value="admin">Officer</option><option value="viewer">HQ Staff</option></select></label>
         </div>
         <button class="btn" id="b-person">Add and get their link</button>
         <p class="note">A person you add is approved straight away and gets a personal link.</p>
       </div>
       <p class="status" id="s-people" role="status"></p>
       <h2 class="sec">People with access</h2>
-      <p class="note">A Post Operator scans and sees only his own files. An Admin sees every file, decides and manages people. An Observer sees every file but cannot decide or change them.</p>
+      <p class="note">Post Staff scan and see only their own files. An Officer sees every file, decides and manages people. HQ Staff see every file but cannot decide or change them.</p>
       <div class="list" id="people"></div>
       </div>
     </section>
@@ -607,7 +607,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
       <div class="panel"><dl class="kv" id="st-acct"></dl></div>
       <h2 class="sec">PIN</h2>
       <div class="panel">
-        <p class="note">The app asks for your PIN each time it is opened, and again after 5 minutes away. If you forget it, it cannot be changed from the phone: an admin resets it under Admin, People, and you then choose a new one.</p>
+        <p class="note">The app asks for your PIN each time it is opened, and again after 5 minutes away. If you forget it, it cannot be changed from the phone: an officer resets it under HQ, People, and you then choose a new one.</p>
         <div class="row" id="pin-btns"><button class="btn ghost small" id="b-pinopen">Change PIN</button><button class="btn ghost small" id="b-lock">Lock the app now</button></div>
         <div id="pin-form" hidden style="display:flex;flex-direction:column;gap:10px">
           <input type="password" id="c-old" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="Current PIN" aria-label="Current PIN">
@@ -642,11 +642,11 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
           <p class="note"><b>Seize</b> <span class="ur" lang="ur" dir="rtl">ضبط کریں</span>: only on an order from HQ. Unload the goods to the warehouse and fill in the seizure report in the file.</p>
           <p class="note">Every order shows the vehicle photo and number. Check both before you act.</p>
         </details>
-        <details><summary>For admins: deciding a file</summary>
+        <details><summary>For officers: deciding a file</summary>
           <p class="note">Each file opens with a <b>Suggestion</b> (Release, Detain or Seize), the reason for it, and what can be done. Below it are all the points the check raised.</p>
           <p class="note">You choose one of the three. For Detain, write what the post must do or which papers to get. For Release, say who ordered it and when.</p>
           <p class="note">A suggestion to seize means critical points were found. Confirm them on the paper and the goods first: a blurred photo can cause a false one.</p>
-          <p class="note">After a seizure the post sends a report, an admin verifies it, and the court case is followed in the same file.</p>
+          <p class="note">After a seizure the post sends a report, an officer verifies it, and the court case is followed in the same file.</p>
         </details>
         <details><summary>Checking a paper yourself</summary>
           <p class="note"><b>GD:</b> a real one is printed from the Customs system. It has numbered boxes, a machine number in box 58, a payment number in box 65, and a line at the foot saying it is a system generated document. It needs no stamp or signature.</p>
@@ -664,9 +664,9 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
           <p class="note"><b>Ask the driver:</b> who owns it, where it was loaded, where it is going, how many trips on this GD. The answers should match the bilty.</p>
         </details>
         <details><summary>Rules for your account</summary>
-          <p class="note"><b>One phone.</b> Your account works on one phone only. For a new phone, an admin taps "Allow new phone" beside your name.</p>
-          <p class="note"><b>Your own results.</b> A Post Operator sees only his own scans. Admins see all.</p>
-          <p class="note"><b>Observer.</b> An Observer can scan and can see all files, but cannot change other people's files or decide. He is shown "Restricted Access".</p>
+          <p class="note"><b>One phone.</b> Your account works on one phone only. For a new phone, an officer taps "Allow new phone" beside your name.</p>
+          <p class="note"><b>Your own results.</b> Post Staff see only their own scans. Officers see all.</p>
+          <p class="note"><b>HQ Staff.</b> HQ Staff can scan and can see all files, but cannot change other people's files or decide. He is shown "Restricted Access".</p>
           <p class="note"><b>Location.</b> The phone's location is recorded with every scan.</p>
           <p class="note"><b>Photos are official property.</b> Each photo is marked "Pakistan Coast Guards" with your name, post and time. When a photo is opened, the viewer's name is shown over it.</p>
         </details>
@@ -682,7 +682,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
     <nav class="tabs" role="tablist">
       <button role="tab" aria-selected="true" data-p="scan"><span class="ci" data-ci="camera"></span><span>Scan</span></button>
       <button role="tab" aria-selected="false" data-p="files" id="t-files"><span class="ci" data-ci="folder"></span><span id="t-files-l">Files</span></button>
-      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><span class="ci" data-ci="people"></span><span>Admin<span class="badge" id="req-badge" hidden></span></span></button>
+      <button role="tab" aria-selected="false" data-p="people" id="t-people" hidden><span class="ci" data-ci="people"></span><span>HQ<span class="badge" id="req-badge" hidden></span></span></button>
       <button role="tab" aria-selected="false" data-p="settings"><span class="ci" data-ci="gear"></span><span>Settings</span></button>
     </nav>
   </div>
@@ -694,7 +694,7 @@ details.helpd{margin-bottom:10px}details.helpd .legend{margin-top:6px}.chips .mo
 <div id="dcard" hidden role="alertdialog" aria-modal="true"><div class="dc-in" id="dc-in"></div></div>
 
 <script>
-var APPV = '2.38.1';
+var APPV = '2.38.2';
 var $ = function (id) { return document.getElementById(id); };
 function h(tag, props) { var e = document.createElement(tag); if (props) Object.keys(props).forEach(function (k) { if (k === 'text') e.textContent = props[k]; else if (k === 'class') e.className = props[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), props[k]); else e.setAttribute(k, props[k]); });
   for (var i = 2; i < arguments.length; i++) { var c = arguments[i]; if (c == null) continue; e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); } return e; }
@@ -766,10 +766,10 @@ async function api1(path, opts) { var s = await findServer(); if (!s) throw { ne
   return r.json(); }
 
 function drawConn() { var e = $('conn'), n = S.outbox.length, held = n ? ' ' + n + ' waiting.' : '';
-  if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an admin to approve you.'; }
+  if (cfg.pending) { e.className = 'conn wait'; e.textContent = 'Waiting for an officer to approve you.'; }
   else if (!cfg.c) { e.className = 'conn'; e.textContent = cfg.j ? 'Not a member yet' : 'Not set up'; }
   else if (S.devBlock) { e.className = 'conn bad'; e.textContent = 'In use on another phone'; }
-  else if (S.bad) { e.className = 'conn bad'; e.textContent = 'This link is no longer valid. Ask for a new one.' + held; }
+  else if (S.bad) { e.className = 'conn bad'; e.textContent = 'Your access was removed. Ask an officer to add you again, then close and open the app.' + held; }
   else if (!navigator.onLine) { e.className = 'conn wait'; e.textContent = 'No signal. Scans wait on this phone.' + held; }
   else if (S.server) { e.className = 'conn ok'; e.textContent = 'Connected' + (S.me ? ' as ' + S.me.name : '') + '.' + held; }
   else if (S.finding) { e.className = 'conn'; e.textContent = 'Looking for the server…' + held; }
@@ -785,7 +785,7 @@ async function refresh() {
   try { var j = await api('/api/captures?v=' + encodeURIComponent(S.ver || '')); S.me = { name: j.name, admin: j.admin, viewer: !!j.viewer, owner: !!j.owner || !!(S.me && S.me.owner && j.owner === undefined) }; pinState(j); keep('gd.me', S.me); S.ver = j.ver || ''; S.q = j.q || null; drawQ(); if (Array.isArray(j.items) && JSON.stringify(j.items) !== JSON.stringify(S.items)) { S.items = j.items; keep('gd.items', S.items); if (!scanFound.read()) { $('found-scan').textContent = ''; scanFound = foundFields(); $('found-scan').appendChild(scanFound.el); } }
     if (j.same) { drawConn(); return; }
     j.list.forEach(function (c) { if (c.status === 'done' && S.seen[c.id] && S.seen[c.id] !== 'done') { toast('Result ready: ' + advise(c).head); if (navigator.vibrate) navigator.vibrate(c.verdict === 'red' ? [200, 100, 200] : 150); } S.seen[c.id] = c.status; });
-    if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the admin\'s decision on this phone as a notification.'; pushCheck();
+    if (j.vapid) S.vapid = j.vapid; if (j.admin) detainAlert(j.list); else orderAlert(j.list); $('push-txt').textContent = j.admin ? 'Get an alert on this phone when a post gets a Detain result.' : 'Get the officer\'s decision on this phone as a notification.'; pushCheck();
     S.list = j.list; try { announceResults(j.list); } catch (e) {} keep('gd.list', j.list.slice(0, 50)); if (S.search && $('q').value.trim().length >= 2) runSearch(); } catch (e) {}
   drawConn(); drawFiles(); }
 function orderAlert(list) { var seen = load('gd.ord') || {}, first = !load('gd.ordinit'), hit = null; list.forEach(function (c) { if (c.order && seen[c.id] !== c.order.at) { if (!first) hit = c; seen[c.id] = c.order.at; } }); keep('gd.ord', seen); keep('gd.ordinit', 1);
@@ -973,7 +973,7 @@ var WHY = {
   37: 'The number plate was dirty, at an angle or too far away.',
   17: 'Under-invoicing: a low value was declared to pay less duty and tax.',
   40: 'A repeat offender, or a vehicle used again after an earlier problem.',
-  41: 'On the watchlist: put there by an admin, or automatically because goods were seized from this vehicle before.',
+  41: 'On the watchlist: put there by an officer, or automatically because goods were seized from this vehicle before.',
   42: 'The scan was sent from somewhere else, or the wrong post was selected.',
   23: 'Usually normal trade: one GD, several part loads on copies. It matters only if the total goes over the GD.',
   49: 'Repacking after import is common. It can also mean other goods have been put under this GD.',
@@ -1010,7 +1010,7 @@ function advise(c) {
     else put(why, f.t); });
   if (!has('veh')) put(ask, 'A photo of the vehicle showing its number plate');
   var uniq = function (L) { var o = []; L.forEach(function (f) { put(o, f.t); }); return o; };
-  if (crit.length) return { k: 'red', a: 'detain', head: 'DETAIN THE VEHICLE', text: 'Critical mismatch. Hold the vehicle. Do not release. The admins have been told and will send their decision here.', items: uniq(crit), foot: 'If a photo was blurred, retake it and send again while the vehicle waits.' };
+  if (crit.length) return { k: 'red', a: 'detain', head: 'DETAIN THE VEHICLE', text: 'Critical mismatch. Hold the vehicle. Do not release. The officers have been told and will send their decision here.', items: uniq(crit), foot: 'If a photo was blurred, retake it and send again while the vehicle waits.' };
   if (red.length) return { k: 'red', a: 'hold', head: 'HOLD THE VEHICLE', text: 'Figures on the papers do not agree. Retake sharp photos and send again.', items: uniq(red), foot: 'If the result is still red, detain the vehicle and inform your officer.' };
   if (ask.length) return { k: 'amber', a: 'ask', head: 'ASK FOR DOCUMENTS', text: 'Do not release until these are shown and scanned:', items: ask.concat(why.map(function (t) { return 'Explanation: ' + t; })), foot: 'If the driver cannot produce them, hold the vehicle and inform your officer.' };
   if (why.length) return { k: 'amber', a: 'query', head: 'QUESTION THE DRIVER', text: 'Release only after a satisfactory answer on:', items: why, foot: 'If the answer does not satisfy you, hold the vehicle and inform your officer.' };
@@ -1076,7 +1076,7 @@ function foundBox(c) { var box = h('div', { class: 'dec' }), f = Array.isArray(c
     [h('b', { text: 'What was found on the vehicle?' }), ff.el, btn, msg].forEach(function (x) { box.appendChild(x); }); };
   if (f.length) { var ul = h('div'); ul.appendChild(h('b', { text: 'Goods found' + (f.length > 1 ? ' (' + f.length + ' kinds)' : '') })); f.forEach(function (x) { ul.appendChild(h('div', { text: foundOne(x) })); }); if (by && by.byName) ul.appendChild(h('div', { class: 'meta', text: 'Entered by ' + by.byName })); box.appendChild(ul); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
   return box; }
-// ---- seizure report: required from the post whenever goods are seized (vehicle detained and a case to be filed); an admin then re-verifies it
+// ---- seizure report: required from the post whenever goods are seized (vehicle detained and a case to be filed); an officer then re-verifies it
 var RPTF = [['vehicle', 'Vehicle number', 1], ['driver', 'Driver name', 1], ['contact', 'Driver phone or CNIC', 0], ['owner', 'Owner or party claiming the goods', 0], ['goods', 'Cargo: what it is', 1, 1], ['packages', 'Number and kind of packages', 1], ['weight', 'Total weight, kg', 0], ['marks', 'Brand or marks on the packages', 0, 1], ['from', 'Coming from', 0], ['to', 'Going to', 0], ['kept', 'Warehouse where the goods are kept, and where the vehicle is', 1, 1], ['reason', 'Reason for seizure', 1, 2], ['remarks', 'Other details and remarks', 0, 2]];
 var REV = { confirmed: 'Seizure confirmed: file the case', release: 'Release ordered', redo: 'Sent back for correction' };
 var CST = { prep: 'Goods in warehouse, case being prepared', filed: 'Case filed in Customs Court, decision awaited', confiscated: 'Court decided: goods confiscated', released: 'Court decided: goods released', paid: 'Court decided: released on payment of duty or fine', other: 'Court decided: other (see remark)' };
@@ -1088,7 +1088,7 @@ function rptText(c) { return 'SEIZURE REPORT\nGD Verification System, Pakistan C
 function rptPrint(c) { var P = $('print'); P.textContent = ''; var se = stampEl(c); if (se) P.appendChild(se); P.appendChild(h('h1', { text: 'Seizure Report' })); P.appendChild(h('div', { text: 'GD Verification System · Pakistan Coast Guards · For re-verification and filing in Customs Court' })); var t = h('table'); rptRows(c).forEach(function (x) { var tr = h('tr'); tr.appendChild(h('td', { text: x[0] })); tr.appendChild(h('td', { text: x[1] })); t.appendChild(tr); }); P.appendChild(h('h2', { text: 'Particulars' })); P.appendChild(t); P.appendChild(h('div', { class: 'sig' }, h('span', { text: 'Reporting official: ____________________' }), h('span', { text: 'Verifying officer: ____________________' }))); window.print(); }
 function courtBox(c) { var box = h('div', { class: 'dec' }), k = c.courtCase, adm = !!(S.me && S.me.admin);
   var view = function () { box.textContent = ''; box.appendChild(h('b', { text: 'Customs Court case' }));
-    if (k) box.appendChild(kv([['Status', CST[k.status]], ['Warehouse', k.warehouse], ['Case number', k.caseNo], ['Filed on', k.filedOn], ['Court', k.court], ['Next hearing', k.hearing], ['Decided on', k.decidedOn], ['Remark', k.remark], ['Updated by', k.byName + ', ' + when(k.at)]])); else box.appendChild(h('span', { text: adm ? 'No case details entered yet.' : 'The goods stay in the warehouse until the court decides. An admin will enter the case details here.' }));
+    if (k) box.appendChild(kv([['Status', CST[k.status]], ['Warehouse', k.warehouse], ['Case number', k.caseNo], ['Filed on', k.filedOn], ['Court', k.court], ['Next hearing', k.hearing], ['Decided on', k.decidedOn], ['Remark', k.remark], ['Updated by', k.byName + ', ' + when(k.at)]])); else box.appendChild(h('span', { text: adm ? 'No case details entered yet.' : 'The goods stay in the warehouse until the court decides. An officer will enter the case details here.' }));
     if (adm) box.appendChild(h('button', { class: 'btn ghost small', text: k ? 'Update case' : 'Enter case details', onclick: form })); };
   var form = function () { box.textContent = ''; var v = k || { status: 'prep', warehouse: (c.report || {}).kept || '' }, sel = h('select', { 'aria-label': 'Case status' }); Object.keys(CST).forEach(function (s) { var o = h('option', { value: s, text: CST[s] }); if (v.status === s) o.selected = true; sel.appendChild(o); });
     var F = [['warehouse', 'Warehouse holding the goods', 'text'], ['caseNo', 'Case number', 'text'], ['filedOn', 'Date filed', 'date'], ['court', 'Court', 'text'], ['hearing', 'Next hearing', 'date'], ['decidedOn', 'Date of decision', 'date'], ['remark', 'Decision or remark', 'text']], inp = {}, grid = h('div', { class: 'rptf' }), msg = h('span');
@@ -1102,17 +1102,17 @@ function reportBox(c) { var box = h('div', { class: 'dec' }), r = c.report, adm 
     RPTF.forEach(function (d) { var el = d[3] === 2 ? h('textarea', { maxlength: '500' }) : h('input', { type: 'text', maxlength: '120' }); el.value = pre[d[0]] || ''; inp[d[0]] = el; grid.appendChild(h('label', d[3] ? { class: 'wide' } : null, h('span', { text: d[1] + (d[2] ? ' *' : '') }), el)); });
     var btn = h('button', { class: 'btn', text: 'Submit report for re-verification', onclick: async function () { var out = {}, miss = []; RPTF.forEach(function (d) { out[d[0]] = inp[d[0]].value.trim(); if (d[2] && !out[d[0]]) miss.push(d[1]); });
       if (miss.length) { msg.textContent = 'Still needed: ' + miss.join(', ') + '.'; return; } btn.disabled = true;
-      try { await api('/api/report/' + c.id, { method: 'POST', body: JSON.stringify(out) }); toast('Report submitted. The admins have been told.'); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not submit. The server is not reachable or has not updated yet. Your entries are still here; try again.'; } } });
-    [h('b', { text: st === 'redo' ? 'Seizure report: correct and resend' : 'Seizure report (required)' }), h('span', { text: 'A seizure needs a full report for re-verification. Boxes marked * must be filled.' + (st === 'redo' && c.review && c.review.remark ? ' Admin says: ' + c.review.remark : '') }), grid, btn, msg].forEach(function (x) { box.appendChild(x); }); };
+      try { await api('/api/report/' + c.id, { method: 'POST', body: JSON.stringify(out) }); toast('Report submitted. The officers have been told.'); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = 'Could not submit. The server is not reachable or has not updated yet. Your entries are still here; try again.'; } } });
+    [h('b', { text: st === 'redo' ? 'Seizure report: correct and resend' : 'Seizure report (required)' }), h('span', { text: 'A seizure needs a full report for re-verification. Boxes marked * must be filled.' + (st === 'redo' && c.review && c.review.remark ? ' Officer says: ' + c.review.remark : '') }), grid, btn, msg].forEach(function (x) { box.appendChild(x); }); };
   if (!r || st === 'redo') { form(); return box; }
-  box.appendChild(h('b', { text: 'Seizure report' })); box.appendChild(kv(RPTF.map(function (d) { return [d[1], r[d[0]]]; }).concat([['Reported by', r.byName + ', ' + when(r.at)], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' · ' + c.review.remark : '') + ' · ' + c.review.byName + ', ' + when(c.review.at) : 'Waiting for an admin']])));
+  box.appendChild(h('b', { text: 'Seizure report' })); box.appendChild(kv(RPTF.map(function (d) { return [d[1], r[d[0]]]; }).concat([['Reported by', r.byName + ', ' + when(r.at)], ['Re-verification', c.review ? REV[c.review.result] + (c.review.remark ? ' · ' + c.review.remark : '') + ' · ' + c.review.byName + ', ' + when(c.review.at) : 'Waiting for an officer']])));
   box.appendChild(h('div', { class: 'row' }, h('button', { class: 'btn ghost small', text: 'Share report', onclick: async function () { var t = rptText(c); try { if (navigator.share) await navigator.share({ text: t }); else { await navigator.clipboard.writeText(t); toast('Report copied'); } } catch (e) {} } }), h('button', { class: 'btn ghost small', text: 'Print or save as PDF', onclick: function () { rptPrint(c); } }), !c.review ? h('button', { class: 'btn ghost small', text: 'Edit', onclick: form }) : null));
   if (adm) { var sel = h('select', { 'aria-label': 'Re-verification decision' }); sel.appendChild(h('option', { value: '', text: 'Re-verification decision…' })); Object.keys(REV).forEach(function (k) { var o = h('option', { value: k, text: REV[k] }); if (c.review && c.review.result === k) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '300', placeholder: 'Remark or instruction to the post', value: c.review ? c.review.remark || '' : '' }), m2 = h('span'), rw = relWho(sel, 'release');
     var b2 = h('button', { class: 'btn small', text: 'Save re-verification', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } if (rw.on() && !rw.get()) { m2.textContent = 'Enter the name of who ordered the release.'; return; } b2.disabled = true; try { await api('/api/review/' + c.id, { method: 'POST', body: JSON.stringify({ result: sel.value, remark: rem.value, orderedBy: rw.on() ? rw.get() : '', releasedOn: rw.on() ? rw.when() : '' }) }); toast('Saved: ' + REV[sel.value]); S.ver = ''; refresh(); } catch (e) { b2.disabled = false; m2.textContent = 'Could not save.'; } } });
-    [h('b', { text: 'Re-verification (admin)' }), sel, rw.el, rem, b2, m2].forEach(function (x) { box.appendChild(x); }); }
+    [h('b', { text: 'Re-verification (officer)' }), sel, rw.el, rem, b2, m2].forEach(function (x) { box.appendChild(x); }); }
   return box; }
-// ---- critical files: the admin decides, the post is told and confirms. Other files: the post decides and it is recorded.
+// ---- critical files: the officer decides, the post is told and confirms. Other files: the post decides and it is recorded.
 // Who ordered a release: the Comdt is the one authority; anyone else at HQ is typed in by name.
 var RELN = 0;
 function relWho(sel, val) { var nm = 'rw' + (++RELN), r1 = h('input', { type: 'radio', name: nm, value: 'Comdt' }), r2 = h('input', { type: 'radio', name: nm, value: '' }), other = h('input', { type: 'text', maxlength: '60', placeholder: 'Name and rank of who ordered it', hidden: '' }), dt = h('input', { type: 'datetime-local', 'aria-label': 'Date and time of release' }); r1.checked = true; var nw = new Date(), p2 = function (n) { return (n < 10 ? '0' : '') + n; }; dt.value = nw.getFullYear() + '-' + p2(nw.getMonth() + 1) + '-' + p2(nw.getDate()) + 'T' + p2(nw.getHours()) + ':' + p2(nw.getMinutes()); dt.max = dt.value;
@@ -1120,14 +1120,14 @@ function relWho(sel, val) { var nm = 'rw' + (++RELN), r1 = h('input', { type: 'r
   var show = function () { el.hidden = sel.value !== val; other.hidden = !r2.checked; }; sel.addEventListener('change', show); r1.addEventListener('change', show); r2.addEventListener('change', show); show();
   return { el: el, on: function () { return sel.value === val; }, get: function () { return r1.checked ? 'Comdt' : other.value.trim(); }, when: function () { var d = new Date(dt.value); return isNaN(d) ? '' : d.toISOString(); } }; }
 function orderBox(c) { var box = h('div', { class: 'dec ord' }), adm = !!(S.me && S.me.admin), o = c.order;
-  box.appendChild(h('b', { text: 'Admin decision (critical file)' }));
+  box.appendChild(h('b', { text: 'Officer decision (critical file)' }));
   if (o) { box.appendChild(h('div', { class: 'act ' + (o.order === 'release' ? 'ok' : o.order === 'docs' ? 'amber' : 'red') }, h('b', { text: ORD[o.order].toUpperCase() }), o.note ? h('span', { text: o.note }) : null, h('small', { text: 'Decided by ' + o.byName + ', ' + when(o.at) })));
     if (c.ack) box.appendChild(h('span', { text: 'Carried out by ' + c.ack.byName + ', ' + when(c.ack.at) + (c.ack.remark ? ' · ' + c.ack.remark : '') }));
     else if (o.order === 'docs') box.appendChild(h('span', { text: adm ? 'Waiting for the post to scan the extra documents.' : 'Keep holding the vehicle. Scan the documents asked for as a new scan with the same vehicle, then wait for the next decision.' }));
     else if (!adm || (S.me && c.byName === S.me.name)) { var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)' }), msg = h('span'), ab = h('button', { class: 'btn small', text: 'Confirm: decision carried out', onclick: async function () { ab.disabled = true; try { await api('/api/ack/' + c.id, { method: 'POST', body: JSON.stringify({ remark: rem.value }) }); toast('Confirmed'); S.ver = ''; refresh(); } catch (e) { ab.disabled = false; msg.textContent = 'Could not save. The server is not reachable.'; } } }); [rem, ab, msg].forEach(function (x) { box.appendChild(x); }); }
     else box.appendChild(h('span', { text: 'Waiting for the post to confirm it has been carried out.' }));
     if ((c.orders || []).length > 1) box.appendChild(h('div', { class: 'meta', text: 'Earlier: ' + c.orders.slice(0, -1).map(function (x) { return ORD[x.order] + ' (' + x.byName + ', ' + when(x.at) + ')'; }).join('; ') })); }
-  else if (!adm) box.appendChild(h('div', { class: 'act amber' }, h('b', { text: 'WAITING FOR THE ADMIN\'S DECISION' }), h('span', { text: 'Hold the vehicle. Do not release it. The decision will appear here and you will be alerted.' })));
+  else if (!adm) box.appendChild(h('div', { class: 'act amber' }, h('b', { text: 'WAITING FOR THE OFFICER\'S DECISION' }), h('span', { text: 'Hold the vehicle. Do not release it. The decision will appear here and you will be alerted.' })));
   if (adm && !(c.release && !(S.me && S.me.owner))) { var sel = h('select', { 'aria-label': 'Decision' }); sel.appendChild(h('option', { value: '', text: o ? 'Change the decision…' : 'Choose the decision…' })); ['release', 'docs', 'seize'].forEach(function (k) { sel.appendChild(h('option', { value: k, text: ORD[k] })); });
     var note = h('input', { type: 'text', maxlength: '300', placeholder: 'Instruction to the post, e.g. which papers to get' }), m2 = h('span'), rw = relWho(sel, 'release'), sb = h('button', { class: 'btn small', text: 'Send decision to the post', onclick: async function () { if (!sel.value) { m2.textContent = 'Choose the decision first.'; return; } if (rw.on() && !rw.get()) { m2.textContent = 'Enter the name of who ordered the release.'; return; } if (sel.value === 'docs' && !note.value.trim()) { m2.textContent = 'Tell the post what to do or which papers to get.'; return; } sb.disabled = true;
       try { await api('/api/order/' + c.id, { method: 'POST', body: JSON.stringify({ order: sel.value, note: note.value, orderedBy: rw.on() ? rw.get() : '', releasedOn: rw.on() ? rw.when() : '' }) }); toast('Decision sent: ' + ORD[sel.value]); S.ver = ''; refresh(); } catch (e) { sb.disabled = false; m2.textContent = e && e.status === 403 ? 'This file is locked by a release order. Only the Owner can change it.' : 'Could not send. The server is not reachable or has not updated yet.'; } } });
@@ -1152,7 +1152,7 @@ function driverBox(c) { var box = h('div', { class: 'dec' }), d = c.driver, msg 
 function decBox(c) { var box = h('div', { class: 'dec' }), d = c.decision;
   var form = function () { box.textContent = ''; var sel = h('select', { 'aria-label': 'Action taken' }); sel.appendChild(h('option', { value: '', text: 'Action taken…' })); ['released', 'held', 'seized'].forEach(function (k) { var o = h('option', { value: k, text: DEC[k] }); if (d && (d.action === k || (k === 'seized' && (d.action === 'handed' || d.action === 'detained')))) o.selected = true; sel.appendChild(o); });
     var rem = h('input', { type: 'text', maxlength: '200', placeholder: 'Remark (optional)', value: d ? d.remark || '' : '' }), msg = h('span'), adm = !!(S.me && S.me.admin), rw = relWho(sel, adm ? 'released' : '\u0000');
-    var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } if (rw.on() && !rw.get()) { msg.textContent = 'Enter the name of who ordered the release.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value, orderedBy: rw.on() ? rw.get() : '', releasedOn: rw.on() ? rw.when() : '' }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = e && e.status === 403 ? 'This file is locked or waiting for the admin, so it was not changed.' : 'Could not save: the server did not answer after three tries. Nothing was lost. Wait a minute and tap Save again.'; } } });
+    var btn = h('button', { class: 'btn small', text: 'Save action taken', onclick: async function () { if (!sel.value) { msg.textContent = 'Choose the action first.'; return; } if (rw.on() && !rw.get()) { msg.textContent = 'Enter the name of who ordered the release.'; return; } btn.disabled = true; try { await api('/api/decision/' + c.id, { method: 'POST', body: JSON.stringify({ action: sel.value, remark: rem.value, orderedBy: rw.on() ? rw.get() : '', releasedOn: rw.on() ? rw.when() : '' }) }); toast('Recorded: ' + DEC[sel.value]); S.ver = ''; refresh(); } catch (e) { btn.disabled = false; msg.textContent = e && e.status === 403 ? 'This file is locked or waiting for the officer, so it was not changed.' : 'Could not save: the server did not answer after three tries. Nothing was lost. Wait a minute and tap Save again.'; } } });
     [h('b', { text: 'What did you do with this vehicle?' }), sel, rw.el, rem, btn, msg].forEach(function (x) { box.appendChild(x); }); };
   if (d) { box.appendChild(h('span', null, h('b', { text: 'Action taken: ' + (DEC[d.action] || d.action) }), h('span', { text: (d.remark ? ' · ' + d.remark : '') + ' · ' + (d.byName || '') + ', ' + when(d.at) }))); box.appendChild(h('button', { class: 'btn ghost small', text: 'Change', onclick: form })); } else form();
   return box; }
@@ -1178,7 +1178,7 @@ var CIS = {
 function CI(name, size) { var sp = document.createElement('span'); sp.className = 'ci'; sp.setAttribute('aria-hidden', 'true'); sp.innerHTML = '<svg viewBox="0 0 24 24" width="' + (size || 22) + '" height="' + (size || 22) + '">' + (CIS[name] || '') + '</svg>'; return sp; }
 var ICON = { detain: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2zM12 7.5v5.5M12 16.5v.01', hold: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 9v6M14 9v6', ask: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M12 11v6M9 14h6', query: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.6 9.5a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9M12 16.8v.01', clear: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8 12.3l2.8 2.8L16.2 9.5' };
 function icon(d) { var NS = 'http://www.w3.org/2000/svg', sv = document.createElementNS(NS, 'svg'), pa = document.createElementNS(NS, 'path'); sv.setAttribute('viewBox', '0 0 24 24'); sv.setAttribute('class', 'ico'); sv.setAttribute('aria-hidden', 'true'); pa.setAttribute('d', d); sv.appendChild(pa); return sv; }
-// ---- Post staff see one of three plain orders, in English and Urdu: RELEASE, DETAIN or SEIZE. Admins keep the detailed view.
+// ---- Post staff see one of three plain orders, in English and Urdu: RELEASE, DETAIN or SEIZE. Officers keep the detailed view.
 var URASK = [[/sales tax invoice|invoice/i, 'سیلز ٹیکس انوائس'], [/bilty|transport paper/i, 'بلٹی'], [/goods declaration|\bGD\b/i, 'جی ڈی (گڈز ڈیکلریشن)'], [/release order/i, 'ریلیز آرڈر'], [/number plate/i, 'نمبر پلیٹ کی صاف تصویر'], [/goods found|enter the goods/i, 'گاڑی میں موجود سامان درج کریں'], [/open the packages/i, 'پیکٹ کھول کر سامان دیکھیں'], [/cnic/i, 'ڈرائیور کا شناختی کارڈ']];
 function urAsk(t) { for (var i = 0; i < URASK.length; i++) if (URASK[i][0].test(t)) return URASK[i][1]; return ''; }
 function postView(c) { var a = advise(c), o = c.order, d = c.decision;
@@ -1282,7 +1282,7 @@ function caseView(c) {
   if (c.location) gl.push(h('div', { class: 'meta gl' }, h('b', { text: 'Checked at: ' }), h('span', { text: c.location })));
   var st = stampEl(c), side = pic || st ? h('div', { class: 'side' }, pic, st) : null, main = h('div', { class: 'main' }, h('div', { class: 'top' }, h('span', { class: 'pill ' + v, text: label }), h('span', { class: 'gdno', text: title })), !done ? h('div', { class: 'meta', text: line }) : null, c.hits && c.hits.length ? h('div', { class: 'meta hit', text: 'Found in: ' + c.hits.map(function (x) { return x[0] + ': ' + x[1]; }).join(' · ') }) : null);
   gl.forEach(function (x) { main.appendChild(x); }); var sum = h('summary', side ? null : { class: 'nopic' }, side, main); d.appendChild(sum);
-  var info = done ? h('div', { class: 'cinfo' }, h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR ADMIN DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Admin decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Detain', check: 'result was Detain', clear: 'result was Release' }[c.already.result] || '') + (c.already.order ? ' · admin decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })) : null;
+  var info = done ? h('div', { class: 'cinfo' }, h('div', { class: 'meta', text: line }), reasons ? h('div', { class: 'meta why', text: reasons }) : null, done && !c.local && !c.order && advise(c).a === 'detain' && !c.decision ? h('div', { class: 'meta rpt due', text: 'WAITING FOR THE OFFICER\'S DECISION' }) : null, done && c.order && !c.release ? h('div', { class: 'meta rpt ' + (c.order.order === 'docs' ? 'sent' : 'due'), text: 'Officer decision: ' + ORD[c.order.order] + (c.ack ? ' · carried out' : ' · not yet confirmed by the post') }) : null, done && c.already ? h('div', { class: 'meta rpt sent', text: 'Already checked at ' + (c.already.location || 'another post') + ', ' + when(c.already.at) + ': ' + ({ detain: 'result was Detain', hold: 'result was Detain', check: 'result was Detain', clear: 'result was Release' }[c.already.result] || '') + (c.already.order ? ' · officer decision: ' + ORD[c.already.order] : c.already.taken ? ' · ' + (DEC[c.already.taken] || c.already.taken) : '') }) : null, done && c.release ? h('div', { class: 'meta rpt release', text: 'Released on the order of ' + c.release.byName + (c.order && c.order.order === 'release' ? (c.ack ? ' · carried out' : ' · not yet confirmed by the post') : '') }) : null, rst && !(c.courtCase && rst === 'confirmed') && !(c.release && rst === 'release') ? h('div', { class: 'meta rpt ' + rst, text: RS[rst] }) : null, done && c.courtCase ? h('div', { class: 'meta rpt ' + (caseOpen(c) ? 'sent' : 'confirmed'), text: CST[c.courtCase.status] + (c.courtCase.caseNo ? ' · Case ' + c.courtCase.caseNo : '') + (c.courtCase.hearing && caseOpen(c) ? ' · Next hearing ' + c.courtCase.hearing : '') }) : null, h('div', { class: 'meta', text: meta })) : null;
   var body = h('div', { class: 'body' }); d.appendChild(body);
   // The opened file reads top to bottom in the order the work happens: what it is, what was found, what to do, what was decided, then the records.
   var sec = function (t, ic) { body.appendChild(h('h3', { class: 'csec' }, CI(ic || 'info', 22), h('span', { text: t }))); }, put = function (x) { if (x) body.appendChild(x); };
@@ -1355,7 +1355,7 @@ async function runSearch() { var q = $('q').value.trim(), info = $('q-info'); cl
     drawFiles(); }, 350); }
 $('q').addEventListener('input', runSearch); $('q').addEventListener('search', runSearch);
 
-// ---- people (admin)
+// ---- people (officer)
 function linkFor(code) { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&c=' + code + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 function joinLink() { return location.origin + location.pathname + '?t=' + (S.topic || cfg.t) + '&j=' + (S.joinKey || '') + (S.server ? '&s=' + S.server.replace('https://', '') : ''); }
 async function shareText(text, btn, field) { try { if (navigator.share) await navigator.share({ title: 'GD Verification System', text: text }); else { await navigator.clipboard.writeText(field.value); btn.textContent = 'Copied'; } } catch (e) { field.focus(); field.select(); } }
@@ -1394,17 +1394,17 @@ function drawPeople() { var box = $('people'), rq = $('requests'), n = (S.reques
   if (sig === S.peopleSig) return; S.peopleSig = sig; box.textContent = ''; rq.textContent = '';
   $('req-box').hidden = !n; $('req-badge').hidden = !n; $('req-badge').textContent = n; $('chip-people').textContent = 'People' + (n ? ' (' + n + ')' : ''); $('join-link').value = S.joinKey ? joinLink() : '';
   (S.requests || []).forEach(function (r) { var act = async function (action, role) { try { await api('/api/requests/' + r.id, { method: 'POST', body: JSON.stringify({ action: action, role: role }) }); loadPeople(); } catch (e) { setStatus('s-people', 'Could not save. The server must be reachable.', true); } };
-    rq.appendChild(h('div', { class: 'person' }, h('b', { text: r.name }), h('span', { class: 'note', text: 'Asked to join as ' + (r.role === 'admin' ? 'an admin' : r.role === 'viewer' ? 'an observer' : 'a post operator') + ' · ' + when(r.at) }),
-      h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as post staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as admin', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
+    rq.appendChild(h('div', { class: 'person' }, h('b', { text: r.name }), h('span', { class: 'note', text: 'Asked to join as ' + (r.role === 'admin' ? 'an officer' : r.role === 'viewer' ? 'HQ staff' : 'post staff') + ' · ' + when(r.at) }),
+      h('div', { class: 'row' }, h('button', { class: 'btn small', text: 'Approve as post staff', onclick: function () { act('approve', 'field'); } }), h('button', { class: 'btn ghost small', text: 'Approve as officer', onclick: function () { act('approve', 'admin'); } }), h('button', { class: 'btn danger small', text: 'Reject', onclick: function () { act('reject'); } })))); });
   if (!S.people.length) box.appendChild(h('div', { class: 'empty', text: 'No one else has been added yet.' }));
   S.people.forEach(function (p) { var link = linkFor(p.code), adm = p.role === 'admin', field = h('input', { class: 'linkbox', type: 'text', readonly: '', value: link, 'aria-label': 'Link for ' + p.name, onfocus: function (e) { e.target.select(); } });
     var send = h('button', { class: 'btn small', text: navigator.share ? 'Send link' : 'Copy link', onclick: function () { shareText('Your GD Verification System link, ' + p.name + '. Open it once on your phone:\n' + link, send, field); } });
-    var role = h('select', { class: 'rolesel', 'aria-label': 'Role of ' + p.name }); [['field', 'Post Operator'], ['admin', 'Admin'], ['viewer', 'Observer']].forEach(function (o) { var op = h('option', { value: o[0], text: o[1] }); if (p.role === o[0]) op.selected = true; role.appendChild(op); }); role.addEventListener('change', async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: role.value }) }); toast(p.name + ' is now ' + role.options[role.selectedIndex].text); loadPeople(); } catch (e) { loadPeople(); } });
+    var role = h('select', { class: 'rolesel', 'aria-label': 'Role of ' + p.name }); [['field', 'Post Staff'], ['admin', 'Officer'], ['viewer', 'HQ Staff']].forEach(function (o) { var op = h('option', { value: o[0], text: o[1] }); if (p.role === o[0]) op.selected = true; role.appendChild(op); }); role.addEventListener('change', async function () { try { await api('/api/people/' + p.code, { method: 'POST', body: JSON.stringify({ role: role.value }) }); toast(p.name + ' is now ' + role.options[role.selectedIndex].text); loadPeople(); } catch (e) { loadPeople(); } });
     var ask = h('button', { class: 'btn danger small', text: 'Remove', onclick: function () { ask.hidden = true; yes.hidden = false; } });
     var yes = h('button', { class: 'btn danger small', text: 'Yes, remove', hidden: '', onclick: async function () { try { await api('/api/people/' + p.code, { method: 'DELETE' }); loadPeople(); } catch (e) {} } });
-    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Admin' : p.role === 'viewer' ? 'Observer' : 'Post Operator' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin && p.code !== cfg.c ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); });
+    box.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role' + (adm ? ' admin' : ''), text: adm ? 'Officer' : p.role === 'viewer' ? 'HQ Staff' : 'Post Staff' })), h('span', { class: 'note', text: p.files + ' file' + (p.files === 1 ? '' : 's') + ' uploaded' }), field, h('div', { class: 'row' }, send, role, p.dev ? h('button', { class: 'btn ghost small', text: 'Allow new phone', onclick: async function (e) { var bt = e.currentTarget; bt.disabled = true; try { await api('/api/people/' + p.code + '/device', { method: 'DELETE' }); toast(p.name + ' can now sign in on a new phone. The first phone to open the app becomes the only one.'); loadPeople(); } catch (x) { bt.disabled = false; } } }) : null, p.pin && p.code !== cfg.c ? h('button', { class: 'btn ghost small', text: 'Reset PIN', onclick: async function (e) { e.currentTarget.disabled = true; try { await api('/api/people/' + p.code + '/pin', { method: 'DELETE' }); toast('PIN reset. ' + p.name + ' can now choose a new one.'); loadPeople(); } catch (x) {} } }) : null, ask, yes))); });
   if ((S.removed || []).length) { var rd = h('details', { class: 'more' }, h('summary', { text: 'Removed people (' + S.removed.length + ')' })); S.removed.slice().reverse().forEach(function (p) { var ab = h('button', { class: 'btn ghost small', text: 'Add again', onclick: async function () { ab.disabled = true; try { await api('/api/people/' + p.code + '/restore', { method: 'POST' }); toast(p.name + ' is added again. His old link works; he chooses a new PIN.'); loadPeople(); } catch (e) { ab.disabled = false; } } });
-      rd.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role', text: p.role === 'admin' ? 'Admin' : p.role === 'viewer' ? 'Observer' : 'Post Operator' })), h('span', { class: 'note', text: 'Removed ' + when(p.at) }), h('div', { class: 'row' }, ab))); }); box.appendChild(rd); } }
+      rd.appendChild(h('div', { class: 'person' }, h('div', null, h('b', { text: p.name }), h('span', { class: 'role', text: p.role === 'admin' ? 'Officer' : p.role === 'viewer' ? 'HQ Staff' : 'Post Staff' })), h('span', { class: 'note', text: 'Removed ' + when(p.at) }), h('div', { class: 'row' }, ab))); }); box.appendChild(rd); } }
 $('b-person').addEventListener('click', async function () { var name = $('f-person').value.trim(); if (!name) { setStatus('s-people', 'Type a name first.', true); return; } try { await api('/api/people', { method: 'POST', body: JSON.stringify({ name: name, role: $('f-role').value }) }); $('f-person').value = ''; loadPeople(); } catch (e) { setStatus('s-people', 'Could not add. The server must be reachable.', true); } });
 $('b-sharejoin').addEventListener('click', function () { if ($('join-link').value) shareText('Join GD Verification System: open this link on your phone, enter your name and wait for approval.\n' + $('join-link').value, $('b-sharejoin'), $('join-link')); });
 $('join-link').addEventListener('focus', function (e) { e.target.select(); });
@@ -1421,7 +1421,7 @@ $('b-join').addEventListener('click', async function () { var name = $('j-name')
   catch (e) { setStatus('s-join', 'The server is not reachable right now, or this join link is out of date. Try again in a minute.', true); }
   $('b-join').disabled = false; });
 async function checkApproval() { if (!cfg.pending || document.hidden) return;
-  try { var f = await findWith(cfg.c); if (f.unknown) { cfg = { j: cfg.j, t: cfg.t, s: cfg.s, trusted: cfg.trusted }; keep('gd.cfg', cfg); start(); setStatus('s-join', 'Your request was not approved. You can ask again, or contact the admin.', true); return; }
+  try { var f = await findWith(cfg.c); if (f.unknown) { cfg = { j: cfg.j, t: cfg.t, s: cfg.s, trusted: cfg.trusted }; keep('gd.cfg', cfg); start(); setStatus('s-join', 'Your request was not approved. You can ask again, or contact an officer.', true); return; }
     if (!f.url) return; var r = await fx(f.url + '/api/ping?_=' + Date.now(), { headers: { 'x-code': cfg.c } }, 8000);
     if (r.ok) { cfg = { c: cfg.c, t: cfg.t, s: f.url, trusted: f.url }; keep('gd.cfg', cfg); toast('You are approved. Welcome.'); start(); } } catch (e) {} }
 setInterval(checkApproval, 10000);
@@ -1452,23 +1452,23 @@ $('g-ok').addEventListener('click', async function () { var p = $('g-p1').value;
   if (cfg.ph) { if (H === cfg.ph) unlock(); else { $('g-p1').value = ''; setStatus('s-gpin', 'Wrong PIN.', true); } return; }
   if (p !== $('g-p2').value) { setStatus('s-gpin', 'The two PINs do not match.', true); return; }
   $('g-ok').disabled = true; setStatus('s-gpin', 'Checking…'); var r = await pinPost(H); $('g-ok').disabled = false;
-  if (r === 'wrong') { setStatus('s-gpin', 'This link already has a different PIN. Enter that PIN, or ask an admin to reset it.', true); return; }
-  if (r === 'locked') { setStatus('s-gpin', 'Too many wrong tries. Wait 15 minutes, or ask an admin to reset the PIN.', true); return; }
+  if (r === 'wrong') { setStatus('s-gpin', 'This link already has a different PIN. Enter that PIN, or ask an officer to reset it.', true); return; }
+  if (r === 'locked') { setStatus('s-gpin', 'Too many wrong tries. Wait 15 minutes, or ask an officer to reset the PIN.', true); return; }
   if (r === 'code') { revoked(); drawConn(); return; }
   if (r !== 'ok') { setStatus('s-gpin', 'The server cannot be reached. A PIN can only be set while connected. Check the internet and try again.', true); return; }
   cfg.ph = H; cfg.pinSync = true; keep('gd.cfg', cfg); unlock(); });
-// The server tells the phone whether a PIN exists for this account. Only when an admin has reset it there may a new one be chosen.
-function pinState(j) { if (j && j.pinSet === false && cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; gate(); setStatus('s-gpin', 'Your PIN was reset by an admin. Choose a new one.'); } }
+// The server tells the phone whether a PIN exists for this account. Only when an officer has reset it there may a new one be chosen.
+function pinState(j) { if (j && j.pinSet === false && cfg.ph) { cfg.ph = null; cfg.pinSync = false; keep('gd.cfg', cfg); S.unlocked = false; gate(); setStatus('s-gpin', 'Your PIN was reset by an officer. Choose a new one.'); } }
 $('g-forgot').addEventListener('click', async function () { var bt = $('g-forgot'); bt.disabled = true; setStatus('s-gpin', 'Checking…'); S.server = null; try { await findServer(); } catch (e) {} bt.disabled = false;
   if (!cfg.ph) return;   // the server confirmed the PIN was reset: the "choose a new PIN" screen is already showing
-  setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an admin to open Admin, People, and tap Reset PIN beside your name. Then open the app again.', true); });
+  setStatus('s-gpin', (S.me && S.me.owner) ? 'A forgotten PIN cannot be changed from the phone. On the Mac, create an empty file named RESET-PIN.txt in the GD-Scanner folder, then open the app again.' : 'A forgotten PIN cannot be changed from the phone. Ask an officer to open HQ, People, and tap Reset PIN beside your name. Then open the app again.', true); });
 document.addEventListener('visibilitychange', function () { if (document.hidden) S.hidAt = Date.now(); else if (S.hidAt && Date.now() - S.hidAt > 5 * 60e3 && S.unlocked) { S.unlocked = false; gate(); } });
 function drawSettings() { var box = $('st-acct'); box.textContent = ''; var me = S.me || {}, nameNode;
   if (me.admin && !getLoc()) { $('f-locsel').value = 'Bn HQ'; locChanged(); }   // admins sit at Bn HQ
   if (me.owner) { var inp = h('input', { type: 'text', maxlength: '40', placeholder: 'Your rank and name' }), msg = h('span', { class: 'note' }); inp.value = me.name && me.name !== 'Owner' ? me.name : '';
     var sv = h('button', { class: 'btn small', text: 'Save name', onclick: async function () { var v = inp.value.trim(); if (v.length < 2) { msg.textContent = 'Type your name first.'; return; } sv.disabled = true; try { var j = await api('/api/me', { method: 'POST', body: JSON.stringify({ name: v }) }); S.me.name = j.name; keep('gd.me', S.me); toast('Name saved'); S.ver = ''; refresh(); drawSettings(); } catch (e) { sv.disabled = false; msg.textContent = 'Could not save. The server is not reachable or has not updated yet.'; } } });
     nameNode = h('div', { style: 'display:flex;flex-direction:column;gap:7px' }, inp, sv, msg); }
-  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', !S.me ? 'Not known yet' : me.owner ? 'Owner (admin)' : me.viewer ? 'Observer' : me.admin ? 'Admin' : 'Post Operator'], ['Location', !S.me ? (getLoc() || 'Not known yet') : me.admin ? 'Bn HQ' : (getLoc() || 'Not chosen yet (choose on the Scan tab)')], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
+  [['Name', nameNode || me.name || 'Not known yet (appears once the server is reached)'], ['Role', !S.me ? 'Not known yet' : me.owner ? 'Owner (officer)' : me.viewer ? 'HQ Staff' : me.admin ? 'Officer' : 'Post Staff'], ['Location', !S.me ? (getLoc() || 'Not known yet') : me.admin ? 'Bn HQ' : (getLoc() || 'Not chosen yet (choose on the Scan tab)')], ['Server', S.server ? 'Connected' : 'Not reachable now'], ['Waiting on this phone', S.outbox.length + ' file' + (S.outbox.length === 1 ? '' : 's')]].forEach(function (r) { box.appendChild(h('dt', { text: r[0] })); var dd = h('dd'); if (typeof r[1] === 'string') dd.textContent = r[1]; else dd.appendChild(r[1]); box.appendChild(dd); }); }
 $('b-lock').addEventListener('click', function () { S.unlocked = false; gate(); });
 function pinForm(open) { $('pin-form').hidden = !open; $('pin-form').style.display = open ? 'flex' : 'none'; $('pin-btns').hidden = open; if (!open) { ['c-old', 'c-new', 'c-new2'].forEach(function (i) { $(i).value = ''; }); } else { setStatus('s-pin', ''); $('c-old').focus(); } }
 $('b-pinopen').addEventListener('click', function () { pinForm(true); }); $('b-pincancel').addEventListener('click', function () { pinForm(false); setStatus('s-pin', ''); }); pinForm(false);
