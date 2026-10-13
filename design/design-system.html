@@ -1,0 +1,455 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GD Verification Design System</title>
+<style>
+@font-face{font-family:"Inter";src:url(../fonts/inter.woff2) format("woff2");font-weight:100 900;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url(../fonts/barlow-600.woff2) format("woff2");font-weight:600;font-display:block}
+@font-face{font-family:"Barlow Semi Condensed";src:url(../fonts/barlow-700.woff2) format("woff2");font-weight:700;font-display:block}
+/* Layout: a field manual. Left rail of sections on wide screens, one column on phones. Every specimen is a working copy of the real part. */
+:root{
+  --brand-900:#01411C; --brand:#0b6b41; --brand-soft:#e4f2ea; --on-brand:#ffffff;
+  --bg:#f1f4f2; --card:#ffffff; --ink:#15201b; --muted:#56645d; --line:#d2dbd6; --sunk:#e7ece9;
+  --rel:#17854a; --det:#b97a08; --sz:#c62f26; --on-dec:#ffffff;
+  --rel-soft:#e1f2e7; --rel-ink:#1c6b41; --det-soft:#fcefd3; --det-ink:#8a5a00; --sz-soft:#fbe8e6; --sz-ink:#b0202b;
+  --info-soft:#e6eef7; --info-ink:#1f4f86;
+  --focus:#1f6feb;
+  --font-body:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-head:"Barlow Semi Condensed","Inter",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r-sm:6px; --r-md:10px; --r-lg:14px;
+  --sh-1:0 1px 2px rgba(16,32,24,.06),0 2px 8px rgba(16,32,24,.05); --sh-2:0 8px 28px rgba(16,32,24,.16);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --brand-900:#01411C; --brand:#74d6a4; --brand-soft:#16301f; --on-brand:#0c1510;
+  --bg:#0e1411; --card:#16201b; --ink:#e6ece8; --muted:#97a59d; --line:#29352f; --sunk:#1c2722;
+  --rel-soft:#15301f; --rel-ink:#7fd49b; --det-soft:#3a2e12; --det-ink:#f2c063; --sz-soft:#3a1c1a; --sz-ink:#ff8a80;
+  --info-soft:#17263a; --info-ink:#9cc2f0; --focus:#7fb2ff;
+  --sh-1:none; --sh-2:0 8px 28px rgba(0,0,0,.5); color-scheme:dark }}
+:root[data-theme="dark"]{
+  --brand-900:#01411C; --brand:#74d6a4; --brand-soft:#16301f; --on-brand:#0c1510;
+  --bg:#0e1411; --card:#16201b; --ink:#e6ece8; --muted:#97a59d; --line:#29352f; --sunk:#1c2722;
+  --rel-soft:#15301f; --rel-ink:#7fd49b; --det-soft:#3a2e12; --det-ink:#f2c063; --sz-soft:#3a1c1a; --sz-ink:#ff8a80;
+  --info-soft:#17263a; --info-ink:#9cc2f0; --focus:#7fb2ff;
+  --sh-1:none; --sh-2:0 8px 28px rgba(0,0,0,.5); color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.5 var(--font-body)}
+.page{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:0 64px;display:grid;grid-template-columns:200px minmax(0,1fr);gap:32px}
+@media(max-width:860px){.page{grid-template-columns:minmax(0,1fr)}.rail{display:none}}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding-top:24px;display:flex;flex-direction:column;gap:2px}
+.rail a{color:var(--muted);text-decoration:none;font:600 14px/1.2 var(--font-body);padding:8px 10px;border-radius:var(--r-sm)}
+.rail a:hover{background:var(--sunk);color:var(--ink)}
+main{min-width:0;display:flex;flex-direction:column;gap:56px;padding-top:0}
+/* masthead */
+.mast{position:relative;overflow:hidden;border-radius:0 0 var(--r-lg) var(--r-lg);background:linear-gradient(100deg,var(--brand-900) 0%,#0b5a38 55%,#174a4a 100%);color:#fff;min-height:220px;display:flex;align-items:flex-end;padding:24px 28px;grid-column:1/-1}
+.mast img.boat{position:absolute;right:0;top:0;height:100%;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18%);mask-image:linear-gradient(90deg,transparent 0,#000 18%)}
+@media(max-width:700px){.mast img.boat{height:58%;top:auto;bottom:0}}
+.mast>div:not(.themes){position:relative;max-width:560px}
+.mast small{font:600 12px/1 var(--font-body);letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.mast h1{font:700 40px/1.05 var(--font-head);letter-spacing:.01em;margin:8px 0 8px;text-wrap:balance}
+.mast p{margin:0;opacity:.9;max-width:46ch}
+.themes{position:absolute;top:16px;left:28px;display:flex;gap:4px;background:rgba(0,0,0,.3);padding:4px;border-radius:999px}
+.themes button{all:unset;cursor:pointer;font:600 12.5px/1 var(--font-body);padding:7px 12px;border-radius:999px;color:#fff}
+.themes button[aria-pressed="true"]{background:#fff;color:#0b3b22}
+.themes button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+/* sections */
+section>h2{font:700 13px/1 var(--font-body);letter-spacing:.14em;text-transform:uppercase;color:var(--brand);margin:0 0 6px}
+section>h3{font:700 28px/1.15 var(--font-head);margin:0 0 10px;text-wrap:balance}
+section>p.lead{margin:0 0 20px;color:var(--muted);max-width:68ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.box{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;min-width:0}
+.cap{font:600 12px/1.3 var(--font-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.rule{font-size:14px;color:var(--muted);margin:10px 0 0}
+.rule b{color:var(--ink)}
+code{font:500 12.5px/1 var(--mono);background:var(--sunk);padding:2px 6px;border-radius:4px}
+/* swatches */
+.sw{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.sw i{display:block;height:64px}
+.sw div{padding:10px 12px;font-size:13px;line-height:1.4}
+.sw b{display:block;font-size:14px}
+.sw code{font-size:11.5px}
+.dec-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media(max-width:560px){.dec-row{grid-template-columns:minmax(0,1fr)}}
+.dec-card{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.dec-card .top{padding:18px;color:var(--on-dec);font:700 26px/1 var(--font-head);letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:end;min-height:96px}
+.dec-card .top small{font:600 12px/1 var(--mono);letter-spacing:0;text-transform:none;opacity:.9}
+.dec-card .bot{padding:12px 18px;font-size:14px;display:flex;flex-direction:column;gap:8px}
+/* type */
+.ts{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card);overflow:hidden}
+.ts>div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:16px;align-items:baseline;padding:14px 18px;border-top:1px solid var(--line)}
+.ts>div:first-child{border-top:0}
+.ts span.n{font:500 12.5px/1.4 var(--mono);color:var(--muted)}
+@media(max-width:560px){.ts>div{grid-template-columns:minmax(0,1fr);gap:4px}}
+.t-display{font:700 32px/1.1 var(--font-head);letter-spacing:.01em}
+.t-title{font:700 24px/1.2 var(--font-head)}
+.t-head{font:700 18px/1.3 var(--font-body)}
+.t-body{font:400 16px/1.5 var(--font-body)}
+.t-small{font:400 14px/1.45 var(--font-body)}
+.t-label{font:600 12px/1.3 var(--font-body);letter-spacing:.08em;text-transform:uppercase}
+.t-num{font:700 36px/1 var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.t-mono{font:600 16px/1.4 var(--font-body);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+/* spacing */
+.sp{display:flex;flex-direction:column;gap:8px}
+.sp div{display:flex;align-items:center;gap:12px;font:500 13px/1 var(--mono);color:var(--muted)}
+.sp i{display:block;height:16px;background:var(--brand);border-radius:3px;opacity:.85}
+.radii{display:flex;gap:14px;flex-wrap:wrap}
+.radii div{width:84px;height:64px;background:var(--brand-soft);border:2px solid var(--brand);display:flex;align-items:end;justify-content:center;padding-bottom:6px;font:500 12px/1 var(--mono);color:var(--ink)}
+.shadows{display:flex;gap:18px;flex-wrap:wrap}
+.shadows div{width:160px;height:84px;background:var(--card);border-radius:var(--r-lg);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:var(--r-md);font:700 16px/1 var(--font-body);border:1.5px solid transparent;cursor:pointer;text-decoration:none;transition:transform .08s,filter .12s}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible,.field input:focus-visible,.field select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.btn svg{width:20px;height:20px}
+.btn.main{background:var(--brand);color:var(--on-brand)}
+.btn.second{background:var(--card);color:var(--ink);border-color:var(--line)}
+.btn.danger{background:var(--card);color:var(--sz-ink);border-color:currentColor}
+.btn.link{min-height:44px;padding:0 4px;background:none;color:var(--brand);text-decoration:underline;text-underline-offset:3px;font-weight:600}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.45;cursor:not-allowed;transform:none}
+.btn.busy{pointer-events:none}
+.btn.busy::before{content:"";width:16px;height:16px;border:2.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.decbtns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.dbtn{min-height:56px;border:0;border-radius:var(--r-md);color:var(--on-dec);font:700 18px/1 var(--font-head);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.dbtn.rel{background:var(--rel)}.dbtn.det{background:var(--det)}.dbtn.sz{background:var(--sz)}
+.dbtn.arm{box-shadow:0 0 0 3px var(--card),0 0 0 6px currentColor;color:#fff}
+.dbtn:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* fields */
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label{font:600 14px/1.2 var(--font-body)}
+.field input,.field select{min-height:52px;padding:0 14px;font:400 17px/1 var(--font-body);color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:var(--r-md);width:100%}
+.field input::placeholder{color:var(--muted)}
+.field .help{font-size:13.5px;color:var(--muted)}
+.field.bad input{border-color:var(--sz-ink)}
+.field.bad .help{color:var(--sz-ink);font-weight:600}
+.pin input{text-align:center;letter-spacing:.5em;font-weight:700}
+/* chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 11px;border-radius:999px;font:700 12.5px/1 var(--font-body);letter-spacing:.03em;white-space:nowrap}
+.chip i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.c-rel{background:var(--rel-soft);color:var(--rel-ink)}.c-det{background:var(--det-soft);color:var(--det-ink)}.c-sz{background:var(--sz-soft);color:var(--sz-ink)}
+.c-pend{background:var(--det-soft);color:var(--det-ink);animation:pulse 1.6s ease-in-out infinite}
+.c-read{background:var(--info-soft);color:var(--info-ink)}.c-grey{background:var(--sunk);color:var(--muted)}.c-brand{background:var(--brand-soft);color:var(--brand)}
+@keyframes pulse{50%{opacity:.5}}
+@media(prefers-reduced-motion:reduce){.c-pend,.btn.busy::before,.skel{animation:none!important}}
+/* case card */
+.phone{width:min(360px,100%);border:10px solid #1b231f;border-radius:34px;background:var(--bg);overflow:hidden;box-shadow:var(--sh-2)}
+.phone .bar{display:flex;justify-content:space-between;padding:10px 18px 6px;font:600 12px/1 var(--font-body);color:var(--muted)}
+.phone .in{padding:10px 14px 0;display:flex;flex-direction:column;gap:12px;min-height:420px}
+.case{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+.case .h{display:grid;grid-template-columns:64px minmax(0,1fr);gap:12px;padding:12px}
+.case .thumb{width:64px;height:64px;border-radius:var(--r-md);background:linear-gradient(135deg,#c79a54,#8a6a3a);display:flex;align-items:center;justify-content:center;color:#fff}
+.case .thumb svg{width:30px;height:30px}
+.case .no{font:600 13px/1 var(--font-body);color:var(--muted);font-variant-numeric:tabular-nums}
+.case .veh{font:700 20px/1.2 var(--font-body);letter-spacing:.02em;margin:3px 0 4px}
+.case .meta{font-size:13.5px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.case .meta svg{width:15px;height:15px}
+.case .why{border-top:1px solid var(--line);padding:10px 12px;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.case .why div{display:flex;gap:8px}.case .why b{color:var(--sz-ink)}
+.case .act{border-top:1px solid var(--line);padding:12px}
+.tabsbar{margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);background:var(--card);border-top:1px solid var(--line)}
+.tabsbar div{min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 11.5px/1 var(--font-body);color:var(--muted);position:relative}
+.tabsbar svg{width:24px;height:24px}
+.tabsbar .on{color:var(--brand)}
+.tabsbar .on::before{content:"";position:absolute;top:0;left:30%;right:30%;height:3px;border-radius:0 0 3px 3px;background:var(--brand)}
+.tabsbar .n{position:absolute;top:8px;right:28%;background:var(--sz);color:#fff;font:700 10.5px/1 var(--font-body);border-radius:999px;padding:3px 5px}
+/* table */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{text-align:left;font:600 12px/1 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--sunk)}
+td{padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--sunk);cursor:pointer}
+td.num{font-variant-numeric:tabular-nums}
+td.strong{font-weight:700;letter-spacing:.02em}
+/* notices */
+.note{display:grid;grid-template-columns:24px minmax(0,1fr);gap:12px;padding:14px 16px;border-radius:var(--r-md);font-size:15px;align-items:start}
+.note svg{width:22px;height:22px;margin-top:1px}
+.note b{display:block;margin-bottom:2px}
+.n-info{background:var(--info-soft);color:var(--info-ink)}.n-ok{background:var(--rel-soft);color:var(--rel-ink)}.n-warn{background:var(--det-soft);color:var(--det-ink)}.n-err{background:var(--sz-soft);color:var(--sz-ink)}
+.toast{display:inline-flex;align-items:center;gap:10px;background:#16201b;color:#fff;border-radius:var(--r-md);padding:12px 16px;font:600 15px/1.3 var(--font-body);box-shadow:var(--sh-2)}
+.toast svg{width:20px;height:20px;color:#7fd49b}
+/* states */
+.empty{text-align:center;padding:28px 18px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.empty .ic{width:56px;height:56px;border-radius:50%;background:var(--sunk);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.empty .ic svg{width:28px;height:28px}
+.empty b{font:700 18px/1.3 var(--font-body)}
+.empty p{margin:0;color:var(--muted);font-size:14.5px;max-width:30ch}
+.skel{background:linear-gradient(90deg,var(--sunk) 0%,var(--line) 50%,var(--sunk) 100%);background-size:200% 100%;animation:sh 1.4s linear infinite;border-radius:6px}
+@keyframes sh{to{background-position:-200% 0}}
+/* icons */
+.icons{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.icons div{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 6px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);text-align:center}
+.icons svg{width:28px;height:28px;color:var(--ink)}
+svg.i{fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+/* words */
+.words td{white-space:normal;vertical-align:top}
+.words td:first-child{font-weight:700;width:30%}
+.words .no{color:var(--sz-ink);text-decoration:line-through;text-decoration-thickness:1px}
+.dodont{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:620px){.dodont{grid-template-columns:minmax(0,1fr)}}
+.dodont .box{border-top:4px solid var(--rel)}.dodont .box.x{border-top-color:var(--sz)}
+.dodont ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.reach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:center}
+@media(max-width:700px){.reach{grid-template-columns:minmax(0,1fr)}}
+.thumbzone{position:relative;width:200px;height:360px;border:8px solid #1b231f;border-radius:28px;background:var(--card);overflow:hidden;margin:0 auto}
+.thumbzone i{position:absolute;inset:auto 0 0 0;height:46%;background:var(--rel-soft);border-top:2px dashed var(--rel)}
+.thumbzone b{position:absolute;bottom:12px;left:0;right:0;text-align:center;font:600 12.5px/1.3 var(--font-body);color:var(--rel-ink)}
+.thumbzone u{position:absolute;top:14px;left:0;right:0;text-align:center;text-decoration:none;font:600 12.5px/1.3 var(--font-body);color:var(--muted)}
+.mac{border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--bg);box-shadow:var(--sh-1);display:grid;grid-template-columns:150px minmax(0,1fr);min-width:0}
+.mac .side{background:#0c1a14;color:#cfe0d6;padding:14px 8px;display:flex;flex-direction:column;gap:4px;font:600 13px/1 var(--font-body)}
+.mac .side div{display:flex;gap:8px;align-items:center;padding:9px 8px;border-radius:8px}
+.mac .side svg{width:17px;height:17px}
+.mac .side .on{background:#fff;color:#0c1a14}
+.mac .body{padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:12px}
+.kpi small{display:block;font:600 11px/1.2 var(--font-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.kpi b{display:block;font:700 30px/1.1 var(--font-body);font-variant-numeric:tabular-nums;margin-top:4px}
+.kpi.hot{background:var(--det-soft)}.kpi.hot b{color:var(--det-ink)}
+@media(max-width:620px){.mac{grid-template-columns:minmax(0,1fr)}.mac .side{display:none}}
+.sum{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;display:grid;gap:10px}
+.sum ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+</style>
+
+<div class="page">
+<header class="mast">
+  <img class="boat" src="../boat.jpg" alt="">
+  <div class="themes" role="group" aria-label="Preview theme"><button type="button" id="th-auto" aria-pressed="true">Auto</button><button type="button" id="th-light" aria-pressed="false">Light</button><button type="button" id="th-dark" aria-pressed="false">Dark</button></div>
+  <div><small>Pakistan Coast Guards · GD Verification System</small><h1>Design system</h1><p>One look for the phone app and the GD Server control room. Proposal 1, for approval.</p></div>
+</header>
+
+<nav class="rail" aria-label="Sections">
+  <a href="#summary">Summary</a><a href="#colour">Colour</a><a href="#decisions">Decision colours</a><a href="#type">Type</a><a href="#space">Spacing and shape</a><a href="#touch">Touch and reach</a><a href="#buttons">Buttons</a><a href="#fields">Form fields</a><a href="#chips">Status chips</a><a href="#cards">Cards</a><a href="#tables">Tables</a><a href="#notices">Notices</a><a href="#states">Empty, loading, errors</a><a href="#icons">Icons</a><a href="#words">Wording</a><a href="#apply">Phone and Mac</a>
+</nav>
+
+<main>
+<section id="summary">
+  <h2>Summary</h2><h3>What changes, and what stays</h3>
+  <div class="sum">
+    <ul>
+      <li><b>Stays the same:</b> the Coast Guards green, the boat banner, the two typefaces already in the app (so it still works offline), and the three decision colours.</li>
+      <li><b>Becomes consistent:</b> one set of sizes for text, spacing, corners and shadows, used in both apps. Today the phone and the Mac use slightly different greens, reds and ambers; this fixes one set for both.</li>
+      <li><b>Easier outdoors:</b> body text goes from 15 to 16, every tap target is at least 48 pixels, the Release / Detain / Seize buttons grow to 56, and the main action sits where the thumb reaches.</li>
+      <li><b>One icon style:</b> simple outline icons, all drawn the same way, replacing today's mix of coloured pictures.</li>
+      <li><b>One vocabulary:</b> each thing has one name everywhere (for example "case", never "file" or "scan").</li>
+    </ul>
+    <p class="rule">Use the Auto / Light / Dark switch at the top to see every part in both modes.</p>
+  </div>
+</section>
+
+<section id="colour">
+  <h2>Colour</h2><h3>Brand and neutrals</h3>
+  <p class="lead">Green is the brand and the colour of the main action. Greys lean slightly green so the whole app feels of one piece. Colour is never the only signal: every coloured state also has a word.</p>
+  <div class="grid">
+    <div class="sw"><i style="background:var(--brand-900)"></i><div><b>Pakistan green</b>Banner and headers<br><code>brand-900</code></div></div>
+    <div class="sw"><i style="background:var(--brand)"></i><div><b>Brand</b>Main buttons, links, selected tab<br><code>brand</code></div></div>
+    <div class="sw"><i style="background:var(--brand-soft)"></i><div><b>Brand soft</b>Selected rows, light highlights<br><code>brand-soft</code></div></div>
+    <div class="sw"><i style="background:var(--bg)"></i><div><b>Background</b>Behind everything<br><code>bg</code></div></div>
+    <div class="sw"><i style="background:var(--card)"></i><div><b>Card</b>Cards, sheets, fields<br><code>card</code></div></div>
+    <div class="sw"><i style="background:var(--ink)"></i><div><b>Text</b>All main text<br><code>ink</code></div></div>
+    <div class="sw"><i style="background:var(--muted)"></i><div><b>Quiet text</b>Times, hints, labels<br><code>muted</code></div></div>
+    <div class="sw"><i style="background:var(--line)"></i><div><b>Line</b>Borders and dividers<br><code>line</code></div></div>
+  </div>
+</section>
+
+<section id="decisions">
+  <h2>Decision colours</h2><h3>Release, Detain, Seize: the same everywhere</h3>
+  <p class="lead">These three colours mean only these three decisions. They are not used for anything else, so a soldier never has to wonder what a colour means. The strong colour is for buttons and stamps; the soft version is for chips and highlights.</p>
+  <div class="dec-row">
+    <div class="dec-card"><div class="top" style="background:var(--rel)"><span>Release</span><small>#17854a</small></div><div class="bot"><span class="chip c-rel"><i></i>Released</span><span>Let the vehicle go.</span></div></div>
+    <div class="dec-card"><div class="top" style="background:var(--det)"><span>Detain</span><small>#b97a08</small></div><div class="bot"><span class="chip c-det"><i></i>Detained</span><span>Hold the vehicle; get more papers.</span></div></div>
+    <div class="dec-card"><div class="top" style="background:var(--sz)"><span>Seize</span><small>#c62f26</small></div><div class="bot"><span class="chip c-sz"><i></i>Seized</span><span>Seize the goods.</span></div></div>
+  </div>
+  <p class="rule"><b>Kept exactly from the phone app.</b> The Mac control room currently uses slightly different shades (#15803d, #d97706, #b91c1c); these three replace them so both match.</p>
+  <p class="rule"><b>Amber needs big, bold text.</b> White text on amber is only readable at large bold sizes, so decision buttons always use 18-pixel bold capitals.</p>
+</section>
+
+<section id="type">
+  <h2>Type</h2><h3>Two faces, eight sizes</h3>
+  <p class="lead">Barlow Semi Condensed for headings, stamps and decision words: narrow and strong, it fits long words on a small screen. Inter for everything else: clear at small sizes. Both are already in the app's fonts folder and work offline. No other sizes are used.</p>
+  <div class="ts">
+    <div><span class="n">Display · 32 · Barlow</span><span class="t-display">Control room</span></div>
+    <div><span class="n">Title · 24 · Barlow</span><span class="t-title">Case 2026/0014</span></div>
+    <div><span class="n">Heading · 18 · Inter bold</span><span class="t-head">Waiting for a decision</span></div>
+    <div><span class="n">Body · 16 · Inter</span><span class="t-body">Take photos of the GD, the number plate, the driver's CNIC and the goods.</span></div>
+    <div><span class="n">Small · 14 · Inter</span><span class="t-small">Sent by Sep Ali Khan · 12 Oct, 08:42</span></div>
+    <div><span class="n">Label · 12 · caps</span><span class="t-label">Goods found on the vehicle</span></div>
+    <div><span class="n">Number · 36 · Inter</span><span class="t-num">14</span></div>
+    <div><span class="n">Plate / ID · 16 · even digits</span><span class="t-mono">TKA-456 · 42201-7654321-3</span></div>
+  </div>
+  <p class="rule"><b>Smallest text is 12</b>, and only for labels in capitals. Nothing a soldier must read to act is smaller than 14.</p>
+</section>
+
+<section id="space">
+  <h2>Spacing and shape</h2><h3>One ruler for gaps, corners and depth</h3>
+  <div class="grid">
+    <div class="box"><p class="cap">Spacing steps</p><div class="sp">
+      <div><i style="width:4px"></i>4 · inside chips</div><div><i style="width:8px"></i>8 · between buttons</div><div><i style="width:12px"></i>12 · inside cards</div><div><i style="width:16px"></i>16 · screen edge</div><div><i style="width:24px"></i>24 · between groups</div><div><i style="width:32px"></i>32 · between sections</div></div></div>
+    <div class="box"><p class="cap">Corners</p><div class="radii"><div style="border-radius:6px">6</div><div style="border-radius:10px">10</div><div style="border-radius:14px">14</div><div style="border-radius:999px">round</div></div>
+      <p class="rule">6 for small tags, 10 for buttons and fields, 14 for cards, round for chips.</p></div>
+    <div class="box"><p class="cap">Depth</p><div class="shadows"><div style="box-shadow:var(--sh-1);border:1px solid var(--line)">Card</div><div style="box-shadow:var(--sh-2)">Sheet or menu</div></div>
+      <p class="rule">Only two levels. In dark mode cards use a border instead of a shadow.</p></div>
+  </div>
+</section>
+
+<section id="touch">
+  <h2>Touch and reach</h2><h3>Built for a thumb, outdoors</h3>
+  <div class="reach">
+    <div class="thumbzone" aria-hidden="true"><u>Hard to reach: information only</u><i></i><b>Easy reach:<br>main action and tabs</b></div>
+    <div class="dodont">
+      <div class="box"><p class="cap">Do</p><ul><li>Every tap target at least 48 × 48</li><li>Decision buttons 56 high</li><li>8 or more between targets</li><li>The one main action at the bottom of the screen</li><li>Strong contrast that still reads in sunlight</li></ul></div>
+      <div class="box x"><p class="cap">Avoid</p><ul><li>Small text links as the only way to act</li><li>Two dangerous buttons side by side</li><li>Important actions at the top corners</li><li>Grey text for anything that must be read</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="buttons">
+  <h2>Buttons</h2><h3>One main action per screen</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr))">
+    <div class="box"><p class="cap">Kinds</p><div class="row">
+      <button class="btn main" type="button"><svg class="i" viewBox="0 0 24 24" data-i="camera"></svg>Take photos</button>
+      <button class="btn second" type="button">Add a note</button>
+      <button class="btn danger" type="button"><svg class="i" viewBox="0 0 24 24" data-i="trash"></svg>Remove</button>
+      <button class="btn link" type="button">Change name</button></div>
+      <p class="rule"><b>Main</b> (green, filled): the one thing to do next. <b>Secondary</b> (outlined): other choices. <b>Danger</b> (red outline): removes or stops something. <b>Text link</b>: small, rare actions.</p></div>
+    <div class="box"><p class="cap">States</p><div class="row">
+      <button class="btn main" type="button">Normal</button><button class="btn main busy" type="button">Sending</button><button class="btn main" type="button" disabled>Send</button></div>
+      <p class="rule">While working the button shows a spinner and its own word ("Sending"). A disabled button always has a line nearby saying why.</p></div>
+    <div class="box" style="grid-column:1/-1"><p class="cap">Decision buttons</p>
+      <div class="decbtns" style="max-width:520px"><button class="dbtn rel" type="button">Release</button><button class="dbtn det arm" type="button" style="color:var(--det)"><span style="color:#fff">Confirm detain?</span></button><button class="dbtn sz" type="button">Seize</button></div>
+      <p class="rule"><b>Two taps to decide:</b> the first tap turns the button into "Confirm detain?" with a ring; the second records it. After 5 seconds it goes back. This is how both apps work today; it stays.</p></div>
+  </div>
+</section>
+
+<section id="fields">
+  <h2>Form fields</h2><h3>Label on top, help underneath</h3>
+  <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+    <div class="box field"><label for="f1">Vehicle number</label><input id="f1" type="text" value="TKA-456"><span class="help">As written on the plate.</span></div>
+    <div class="box field"><label for="f2">Post</label><select id="f2"><option>Post West</option><option>Post Creek</option><option>Post North</option></select><span class="help">Remembered for the next case.</span></div>
+    <div class="box field pin"><label for="f3">PIN</label><input id="f3" type="password" inputmode="numeric" value="1234"><span class="help">Signing in as username</span></div>
+    <div class="box field bad"><label for="f4">Username</label><input id="f4" type="text" value="post a"><span class="help">No spaces. Use small letters and numbers, 3 to 20.</span></div>
+  </div>
+  <p class="rule">Fields are 52 high with 17-pixel text so the phone does not zoom in. Errors appear under the field, in red, saying what to change.</p>
+</section>
+
+<section id="chips">
+  <h2>Status chips</h2><h3>The state of a case, in one word</h3>
+  <div class="box"><div class="chips">
+    <span class="chip c-pend"><i></i>Decision pending</span><span class="chip c-rel"><i></i>Released</span><span class="chip c-rel"><i></i>Released · System</span><span class="chip c-det"><i></i>Detained</span><span class="chip c-sz"><i></i>Seized</span><span class="chip c-read"><i></i>Being read</span><span class="chip c-grey"><i></i>Could not be read</span></div>
+    <div class="chips" style="margin-top:12px"><span class="chip c-brand"><i></i>Online</span><span class="chip c-grey"><i></i>Offline</span><span class="chip c-grey">Post Staff</span><span class="chip c-grey">Bn Staff</span><span class="chip c-brand">Officer</span><span class="chip c-brand">Owner</span></div>
+    <p class="rule"><b>Only "Decision pending" moves</b> (a slow pulse), so the one thing that needs an officer stands out. It stays still for anyone who has reduced motion turned on.</p></div>
+</section>
+
+<section id="cards">
+  <h2>Cards</h2><h3>A case, as the officer sees it</h3>
+  <p class="lead">Every case card has the same order: what (vehicle), where and when, what may be wrong, then what to do. The phone app's bottom tabs are shown underneath.</p>
+  <div class="phone" aria-label="Phone example">
+    <div class="bar"><span>08:42</span><span>GD Verification</span></div>
+    <div class="in">
+      <div class="case">
+        <div class="h"><div class="thumb"><svg class="i" viewBox="0 0 24 24" data-i="crate"></svg></div>
+          <div><div class="row" style="gap:8px"><span class="no">2026/0014</span><span class="chip c-pend"><i></i>Decision pending</span></div><div class="veh">TKA-456</div><div class="meta"><svg class="i" viewBox="0 0 24 24" data-i="pin"></svg>Post West · 10 min ago</div></div></div>
+        <div class="why"><div><b>!</b>No sales tax paid on this GD</div><div><b>!</b>Goods found are not on the GD: Iranian diesel</div></div>
+        <div class="act"><div class="decbtns"><button class="dbtn rel" type="button">Release</button><button class="dbtn det" type="button">Detain</button><button class="dbtn sz" type="button">Seize</button></div></div>
+      </div>
+      <div class="tabsbar"><div><svg class="i" viewBox="0 0 24 24" data-i="camera"></svg>Scan</div><div class="on"><svg class="i" viewBox="0 0 24 24" data-i="files"></svg>Cases<span class="n">3</span></div><div><svg class="i" viewBox="0 0 24 24" data-i="people"></svg>Manage</div><div><svg class="i" viewBox="0 0 24 24" data-i="settings"></svg>Settings</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="tables">
+  <h2>Tables</h2><h3>For the control room</h3>
+  <div class="tw"><table><thead><tr><th>Case</th><th>Time</th><th>Post</th><th>Vehicle</th><th>Sent by</th><th>Status</th></tr></thead><tbody>
+    <tr><td class="strong num">2026/0014</td><td class="num">Today, 08:42</td><td>Post West</td><td class="strong">TKA-456</td><td>Sep Ali Khan</td><td><span class="chip c-pend"><i></i>Decision pending</span></td></tr>
+    <tr><td class="strong num">2026/0013</td><td class="num">Today, 07:15</td><td>Post Creek</td><td class="strong">TKB-908</td><td>Hav Rashid</td><td><span class="chip c-sz"><i></i>Seized</span></td></tr>
+    <tr><td class="strong num">2026/0012</td><td class="num">11 Oct, 16:03</td><td>Post North</td><td class="strong">LEA-2231</td><td>Sep Ali Khan</td><td><span class="chip c-rel"><i></i>Released · System</span></td></tr>
+  </tbody></table></div>
+  <p class="rule">Header row tinted, numbers in even-width digits so columns line up, a whole row opens the case. On a narrow window the table scrolls sideways inside its box; the page never does.</p>
+</section>
+
+<section id="notices">
+  <h2>Notices</h2><h3>Four kinds, always with a next step</h3>
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:640px">
+    <div class="note n-info"><svg class="i" viewBox="0 0 24 24" data-i="info"></svg><div><b>Waiting for approval</b>An officer has been told. This screen opens by itself once he approves.</div></div>
+    <div class="note n-ok"><svg class="i" viewBox="0 0 24 24" data-i="check"></svg><div><b>Case sent</b>Case 2026/0014 is being read. You will be told the result here.</div></div>
+    <div class="note n-warn"><svg class="i" viewBox="0 0 24 24" data-i="offline"></svg><div><b>No connection</b>The case is saved on this phone and goes up by itself when the connection returns.</div></div>
+    <div class="note n-err"><svg class="i" viewBox="0 0 24 24" data-i="alert"></svg><div><b>Wrong PIN</b>3 tries left before sign-in locks for 15 minutes.</div></div>
+    <div><span class="toast"><svg class="i" viewBox="0 0 24 24" data-i="check"></svg>Detain recorded. The post has been told.</span></div>
+  </div>
+  <p class="rule">Blue informs, green confirms, amber warns, red stops. The short message at the bottom (a "toast") confirms an action and disappears after a few seconds.</p>
+</section>
+
+<section id="states">
+  <h2>Empty, loading, errors</h2><h3>Every screen has something useful to say</h3>
+  <div class="grid">
+    <div class="box empty"><span class="ic"><svg class="i" viewBox="0 0 24 24" data-i="files"></svg></span><b>No cases yet</b><p>Cases you send appear here, with their result.</p><button class="btn main" type="button">Start a new scan</button></div>
+    <div class="box"><p class="cap">Loading</p><div style="display:flex;gap:12px"><div class="skel" style="width:64px;height:64px;border-radius:10px"></div><div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px"><div class="skel" style="height:14px;width:40%"></div><div class="skel" style="height:20px;width:70%"></div><div class="skel" style="height:14px;width:55%"></div></div></div><p class="rule">Grey shapes the size of what is coming, instead of a blank screen.</p></div>
+    <div class="box empty"><span class="ic" style="background:var(--sz-soft);color:var(--sz-ink)"><svg class="i" viewBox="0 0 24 24" data-i="offline"></svg></span><b>The server cannot be reached</b><p>Your cases are safe on this phone. Check the internet, then try again.</p><button class="btn second" type="button">Try again</button></div>
+  </div>
+  <p class="rule"><b>Error message pattern:</b> what happened, in plain words; then what to do. Never "Error 401", never "Something went wrong".</p>
+</section>
+
+<section id="icons">
+  <h2>Icons</h2><h3>One outline style</h3>
+  <p class="lead">All icons are drawn on the same 24-pixel grid with the same line thickness and rounded ends. They always sit next to a word, except in the bottom tab bar where the word is underneath.</p>
+  <div class="icons" id="icongrid"></div>
+</section>
+
+<section id="words">
+  <h2>Wording</h2><h3>Same thing, same word</h3>
+  <div class="tw"><table class="words"><thead><tr><th>Use</th><th>Not</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td>Case</td><td class="no">file, scan, capture</td><td>One vehicle check, with its number like 2026/0014</td></tr>
+    <tr><td>Release / Detain / Seize</td><td class="no">clear, hold, confiscate</td><td>The three decisions (buttons). As a state: Released, Detained, Seized</td></tr>
+    <tr><td>Decision pending</td><td class="no">awaiting, under review</td><td>An officer has not decided yet</td></tr>
+    <tr><td>Post</td><td class="no">location, checkpoint</td><td>Where the vehicle was checked</td></tr>
+    <tr><td>Vehicle number</td><td class="no">plate, registration</td><td>As written on the number plate</td></tr>
+    <tr><td>Goods found</td><td class="no">cargo, items</td><td>What was actually on the vehicle</td></tr>
+    <tr><td>Sign in · username · PIN</td><td class="no">log in, password, passcode</td><td>Opening the app</td></tr>
+    <tr><td>Phone</td><td class="no">device, mobile</td><td>The one phone tied to an account</td></tr>
+    <tr><td>Owner · Officer · Bn Staff · Post Staff</td><td class="no">admin, viewer, user</td><td>The four roles</td></tr>
+    <tr><td>Control room</td><td class="no">server, dashboard</td><td>The GD Server app on the Mac. "Server" means only the machine</td></tr>
+  </tbody></table></div>
+  <div class="dodont" style="margin-top:14px">
+    <div class="box"><p class="cap">Write like this</p><ul><li>Buttons start with a verb, three words at most: "Send case"</li><li>Confirmations say what happened: "Seize recorded. The post has been told."</li><li>Errors say what to do next</li><li>Numbers as digits: "3 cases"</li><li>Dates as 12 Oct, 08:42</li></ul></div>
+    <div class="box x"><p class="cap">Not like this</p><ul><li>"Please", "successfully", "kindly"</li><li>Technical words: server error, request, sync</li><li>Long sentences on buttons</li><li>Two names for one thing</li><li>Capitals for whole sentences</li></ul></div>
+  </div>
+</section>
+
+<section id="apply">
+  <h2>Phone and Mac</h2><h3>Same parts, different frame</h3>
+  <p class="lead">The phone keeps the bottom tab bar and one column. The control room keeps the left menu and a wider grid. Colours, type, chips, buttons and words are the same in both.</p>
+  <div class="mac" aria-label="Control room example">
+    <div class="side"><div class="on"><svg class="i" viewBox="0 0 24 24" data-i="home"></svg>Control room</div><div><svg class="i" viewBox="0 0 24 24" data-i="files"></svg>Cases</div><div><svg class="i" viewBox="0 0 24 24" data-i="people"></svg>People</div><div><svg class="i" viewBox="0 0 24 24" data-i="eye"></svg>Watchlist</div><div><svg class="i" viewBox="0 0 24 24" data-i="backup"></svg>Backup</div><div><svg class="i" viewBox="0 0 24 24" data-i="server"></svg>Server</div></div>
+    <div class="body">
+      <div class="kpis"><div class="kpi hot"><small>Decision pending</small><b>3</b></div><div class="kpi"><small>Cases today</small><b>14</b></div><div class="kpi"><small>Members online</small><b>6</b></div></div>
+      <div class="case"><div class="h"><div class="thumb"><svg class="i" viewBox="0 0 24 24" data-i="crate"></svg></div><div><div class="row" style="gap:8px"><span class="no">2026/0014</span><span class="chip c-pend"><i></i>Decision pending</span></div><div class="veh">TKA-456</div><div class="meta">Post West · sent by Sep Ali Khan · 10 min ago</div></div></div>
+      <div class="act"><div class="decbtns" style="max-width:420px"><button class="dbtn rel" type="button">Release</button><button class="dbtn det" type="button">Detain</button><button class="dbtn sz" type="button">Seize</button></div></div></div>
+    </div>
+  </div>
+</section>
+</main>
+</div>
+
+<script>
+var IC = {
+  camera:'M4 8h3l2-3h6l2 3h3v11H4zM12 16.500a3.500 3.500 0 1 0 0-7 3.500 3.500 0 0 0 0 7z', files:'M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z',
+  people:'M9 11a3.500 3.500 0 1 0 0-7 3.500 3.500 0 0 0 0 7zM2.500 20a6.500 6.500 0 0 1 13 0M16 4.500a3.500 3.500 0 0 1 0 6.500M17.500 14a6 6 0 0 1 4 6', settings:'M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4',
+  bell:'M6 16v-5a6 6 0 0 1 12 0v5l1.500 2h-15zM10 20a2 2 0 0 0 4 0', home:'M3 11l9-7 9 7v9H3zM9 20v-6h6v6', pin:'M12 21s-6.500-6-6.500-11a6.500 6.500 0 0 1 13 0c0 5-6.500 11-6.500 11zM12 12.500a2.500 2.500 0 1 0 0-5 2.500 2.500 0 0 0 0 5z',
+  crate:'M4 7.500l8-3.500 8 3.500v9l-8 3.500-8-3.500zM4 7.500l8 3.500 8-3.500M12 11v9', truck:'M2.500 6h11v10h-11zM13.500 9.500h4l3 3.500V16h-7M6.500 19a1.750 1.750 0 1 0 0-3.500 1.750 1.750 0 0 0 0 3.500zM17 19a1.750 1.750 0 1 0 0-3.500 1.750 1.750 0 0 0 0 3.500z',
+  cnic:'M3 6h18v12H3zM8.500 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM5.500 15.500a3 3 0 0 1 6 0M14 10h4.500M14 13h4.500', gd:'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 15.500h6M9 9h2',
+  eye:'M2 12s3.600-6.500 10-6.500S22 12 22 12s-3.600 6.500-10 6.500S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', search:'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM16 16l4.500 4.500',
+  backup:'M12 3v11M7.500 9.500L12 14l4.500-4.500M4 17v3h16v-3', server:'M4 4h16v6H4zM4 14h16v6H4zM7.500 7h.01M7.500 17h.01', log:'M5 4h14v16H5zM8.500 8.500h7M8.500 12h7M8.500 15.500h4',
+  lock:'M7 10V7.500a5 5 0 0 1 10 0V10M5.500 10h13v10h-13zM12 14v2.500', finger:'M6.500 9.500a5.500 5.500 0 0 1 11 0v3.500c0 2.500-.5 4.500-1.500 6.500M9.500 20c1-2 1.500-4.200 1.500-6.500V10a1 1 0 0 1 2 0v3M4.800 15.500c.5-1.500.7-3 .7-4.500M8.500 6.200A5.500 5.500 0 0 1 12 4',
+  face:'M3.500 8V6.500a3 3 0 0 1 3-3H8M16 3.500h1.500a3 3 0 0 1 3 3V8M20.500 16v1.500a3 3 0 0 1-3 3H16M8 20.500H6.500a3 3 0 0 1-3-3V16M8.700 9v1.600M15.300 9v1.600M12.200 9v4.200h-1.200M8.600 15.300a5 5 0 0 0 6.800 0',
+  share:'M12 3v12M7.500 7.500L12 3l4.500 4.500M5 12v8h14v-8', trash:'M4 7h16M9.500 7V4.500h5V7M6.500 7l.8 12.500h9.400L17.500 7M10 11v5M14 11v5', plus:'M12 5v14M5 12h14',
+  check:'M5 12.500l4.500 4.500L19 7.500', alert:'M12 4l9 16H3zM12 10v4.500M12 17.500h.01', info:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5.500M12 7.500h.01',
+  offline:'M2 8.500a15 15 0 0 1 5-3M10.500 5a15 15 0 0 1 11.500 3.500M5.500 12a10 10 0 0 1 4-2.300M15 10.500a10 10 0 0 1 3.500 1.500M9 15.500a5 5 0 0 1 6 0M12 19h.01M3 3l18 18', anchor:'M12 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 7v14M8 10h8M4.500 13.500a7.500 7.500 0 0 0 15 0M4.500 13.500H3M19.500 13.500H21'
+};
+var NAMES = [['camera','Scan, photo'],['files','Cases'],['people','People'],['settings','Settings'],['bell','Notices'],['home','Control room'],['pin','Post'],['truck','Vehicle'],['crate','Goods found'],['gd','GD paper'],['cnic','CNIC'],['eye','Watchlist'],['search','Search'],['backup','Backup'],['server','Server'],['log','Activity log'],['lock','Lock, PIN'],['finger','Fingerprint'],['face','Face unlock'],['share','Share'],['trash','Remove'],['plus','Add'],['check','Done'],['alert','Problem'],['info','Information'],['offline','No connection'],['anchor','Coast Guards']];
+document.querySelectorAll('svg[data-i]').forEach(function (s) { var d = IC[s.getAttribute('data-i')]; if (d) s.innerHTML = '<path d="' + d + '"/>'; });
+var g = document.getElementById('icongrid'); NAMES.forEach(function (n) { var d = document.createElement('div'); d.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="' + IC[n[0]] + '"/></svg>'; d.appendChild(document.createTextNode(n[1])); g.appendChild(d); });
+function setTheme(t) { var r = document.documentElement; if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t); ['auto', 'light', 'dark'].forEach(function (k) { document.getElementById('th-' + k).setAttribute('aria-pressed', String(k === t)); }); try { localStorage.setItem('ds-theme', t); } catch (e) {} }
+['auto', 'light', 'dark'].forEach(function (k) { document.getElementById('th-' + k).addEventListener('click', function () { setTheme(k); }); });
+try { var saved = localStorage.getItem('ds-theme'); if (saved) setTheme(saved); } catch (e) {}
+</script>

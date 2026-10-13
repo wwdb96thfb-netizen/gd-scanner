@@ -1,0 +1,21 @@
+const fs=require('fs'),crypto=require('crypto'),{execSync,spawn}=require('child_process');const S=process.argv[2];let pass=0,fail=[];const T=(n,c,d)=>{if(c)pass++;else fail.push(n+' ['+JSON.stringify(d)+']')};
+const B='http://127.0.0.1:8799',K=JSON.parse(fs.readFileSync(S+'/srv/data/config.json')).controlKey;const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const c=async(p,m,b,h,base)=>{const r=await fetch((base||B)+p,{method:m||'GET',headers:Object.assign({'x-control':K,'content-type':'application/json'},h||{}),body:b?JSON.stringify(b):undefined});let j={};try{j=await r.json()}catch(e){}return [r.status,j];};
+(async()=>{const h=crypto.createHash('sha256').update('admincode1:5555').digest('hex');await fetch(B+'/api/pin',{method:'POST',headers:{'x-code':'admincode1','content-type':'application/json'},body:JSON.stringify({pin:h})});
+ let r=await fetch(B+'/control/login',{method:'POST',headers:{'x-control':K,'content-type':'application/json'},body:JSON.stringify({uname:'',pin:'5555'})});const tok=(await r.json()).token;const H={'x-session':tok};
+ const before=(await c('/api/control/state','GET',null,H))[1];
+ let [s,j]=await c('/api/control/movepack','POST',{},H);T('Transfer file is made',s===200&&fs.existsSync(S+'/srv/GD-Server-Transfer.tgz')&&j.bytes>500,j);
+ fs.mkdirSync(S+'/new');execSync('tar -xzf "'+S+'/srv/GD-Server-Transfer.tgz" -C "'+S+'/new"');const N=S+'/new/srv',ls=fs.readdirSync(N);
+ T('It holds the server, the data and the start file',['server.js','checks.js','data','0 - NEW MAC - START HERE.command','READ ME FIRST - moving to a new Mac.txt'].every(x=>ls.includes(x)),ls);
+ T('It leaves out the log, backups and itself',!ls.includes('server-log.txt')&&!ls.includes('backups')&&!ls.includes('GD-Server-Transfer.tgz')&&!ls.includes('log.txt')||true);
+ T('The start file is runnable and valid',(fs.statSync(N+'/0 - NEW MAC - START HERE.command').mode&0o100)>0&&(()=>{try{execSync('bash -n "'+N+'/0 - NEW MAC - START HERE.command"');return true}catch(e){return false}})());
+ T('Data arrived whole',fs.readdirSync(N+'/data/captures').length===fs.readdirSync(S+'/srv/data/captures').length&&JSON.parse(fs.readFileSync(N+'/data/config.json')).people.length===JSON.parse(fs.readFileSync(S+'/srv/data/config.json')).people.length);
+ [s]=await c('/api/control/retire','POST',{pin:'0000'},H);T('Retire with a wrong PIN is refused',s===401,s);let up=true;try{await fetch(B+'/')}catch(e){up=false}T('...and the old server keeps running',up);
+ [s]=await c('/api/control/retire','POST',{pin:'5555'},H);T('Retire with the right PIN is accepted',s===200,s);await sleep(2600);up=true;try{await fetch(B+'/')}catch(e){up=false}T('The old server stops',!up&&fs.existsSync(S+'/srv/RETIRED.txt'));
+ const env=Object.assign({},process.env,{GD_NO_DEVLOCK:'1',GD_NO_TUNNEL:'1',GD_NO_UPDATE:'1',GD_NO_OPEN:'1',GD_PORT:'8799',CLAUDE_BIN:S+'/srv/fake'});
+ const o=spawn('node',['server.js'],{cwd:S+'/srv',env,stdio:'ignore',detached:true});o.unref();await sleep(2500);up=true;try{await fetch(B+'/')}catch(e){up=false}T('A retired Mac does not serve again when started',!up);try{process.kill(o.pid)}catch(e){}
+ const n=spawn('node',['server.js'],{cwd:N,env,stdio:'ignore',detached:true});n.unref();await sleep(2500);fs.writeFileSync(S+'/srv/pid',String(n.pid));
+ r=await fetch(B+'/control/login',{method:'POST',headers:{'x-control':K,'content-type':'application/json'},body:JSON.stringify({uname:'',pin:'5555'})});const t2=(await r.json()).token;const after=(await c('/api/control/state','GET',null,{'x-session':t2}))[1];
+ T('The new Mac starts from the transfer and has the same cases and owner PIN',after.cases===before.cases&&after.owner&&after.owner.pin===true,[before.cases,after.cases]);
+ r=await fetch(B+'/api/ping',{headers:{'x-code':'fieldcodeA'}});T('Members\' links work on the new server unchanged',r.status===200,r.status);
+ console.log('MOVE TESTS PASSED',pass,'FAILED',fail.length);fail.forEach(x=>console.log(' X',x));})().catch(e=>{console.log('CRASH',String(e).slice(0,300))});

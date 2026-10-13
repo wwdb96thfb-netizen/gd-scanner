@@ -1,0 +1,1 @@
+S=$1; NODEV=1 bash $S/start.sh $S; cd /home/claude/gd-scanner; curl -s -o /dev/null 127.0.0.1:8798 || (nohup python3 -m http.server 8798 >/dev/null 2>&1 &); sleep 1; cp $S/t_btn.js _b.js; NODE_PATH=$(npm root -g) timeout 500 node _b.js $S 2>&1 | cut -c1-520; rm -f _b.js
